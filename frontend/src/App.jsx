@@ -1,0 +1,28 @@
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import LeagueGameSelection from './pages/LeagueGameSelection.jsx';
+import RosterAttendance from './pages/RosterAttendance.jsx';
+import InGameMenu from './pages/InGameMenu.jsx';
+import GoalRecord from './pages/GoalRecord.jsx';
+import PenaltyRecord from './pages/PenaltyRecord.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import { GameProvider } from './contexts/GameContext.jsx';
+
+/**
+ * Main application component defining routes and wrapping with GameProvider.
+ */
+export default function App() {
+  return (
+    <GameProvider>
+      <Routes>
+        <Route path="/" element={<LeagueGameSelection />} />
+        <Route path="/roster" element={<RosterAttendance />} />
+        <Route path="/ingame" element={<InGameMenu />} />
+        <Route path="/goal" element={<GoalRecord />} />
+        <Route path="/penalty" element={<PenaltyRecord />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </GameProvider>
+  );
+}

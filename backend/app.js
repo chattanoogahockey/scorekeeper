@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import {
   getGamesContainer,
   getTeamsContainer,
@@ -12,6 +14,10 @@ import {
 } from './cosmosClient.js';
 import googleTTS from 'google-tts-api';
 
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Load environment variables from .env file if present
 dotenv.config();
 
@@ -21,6 +27,9 @@ const port = process.env.PORT || 3001;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from the public directory (where frontend build will be copied)
+app.use(express.static(path.join(__dirname, 'public')));
 
 /**
  * Helper to create a standardized error response.
@@ -492,6 +501,11 @@ app.get('/api/tts', async (req, res) => {
   } catch (error) {
     handleError(res, error);
   }
+});
+
+// Catch-all handler: send back React's index.html file for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start server

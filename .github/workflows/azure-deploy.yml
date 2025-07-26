@@ -15,9 +15,9 @@ permissions:
   contents: read
 
 jobs:
-  build-and-deploy-backend:
+  build-and-deploy:
     runs-on: ubuntu-latest
-    name: Build and Deploy Backend API
+    name: Build and Deploy Full Stack App
     steps:
     - name: 'Checkout GitHub Action'
       uses: actions/checkout@v4
@@ -34,8 +34,29 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-        cache-dependency-path: './backend/package-lock.json'
+        cache-dependency-path: |
+          ./backend/package-lock.json
+          ./frontend/package-lock.json
 
+    # Build Frontend First
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+      env:
+        VITE_API_BASE_URL: https://${{ env.AZURE_WEBAPP_NAME }}-a0gmcmfqbtcnbqdq.canadacentral-01.azurewebsites.net
+
+    - name: Copy frontend build to backend public folder
+      run: |
+        mkdir -p backend/public
+        cp -r frontend/dist/* backend/public/
+
+    # Build Backend
     - name: Install backend dependencies
       run: |
         cd backend
@@ -51,47 +72,8 @@ jobs:
         cd backend
         npm test --if-present
 
-    - name: 'Deploy to Azure App Service'
+    - name: 'Deploy full stack app to Azure App Service'
       uses: azure/webapps-deploy@v2
       with:
         app-name: ${{ env.AZURE_WEBAPP_NAME }}
         package: './backend'
-
-  build-and-deploy-frontend:
-    runs-on: ubuntu-latest
-    name: Build and Deploy Frontend
-    steps:
-    - name: 'Checkout GitHub Action'
-      uses: actions/checkout@v4
-      with:
-        submodules: true
-
-    - name: Setup Node.js ${{ env.NODE_VERSION }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ env.NODE_VERSION }}
-        cache: 'npm'
-        cache-dependency-path: './frontend/package-lock.json'
-
-    - name: Install frontend dependencies
-      run: |
-        cd frontend
-        npm ci
-
-    - name: Build frontend
-      run: |
-        cd frontend
-        npm run build
-      env:
-        VITE_API_BASE_URL: https://${{ env.AZURE_WEBAPP_NAME }}.azurewebsites.net
-
-    - name: Deploy to Azure Static Web Apps
-      uses: Azure/static-web-apps-deploy@v1
-      with:
-        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        action: "upload"
-        app_location: "./frontend"
-        api_location: ""
-        output_location: "dist"
-        skip_app_build: true

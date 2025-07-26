@@ -1,0 +1,83 @@
+name: Deploy to Azure
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AZURE_WEBAPP_NAME: scorekeeper    # Set this to your Azure App Service name
+  AZURE_WEBAPP_PACKAGE_PATH: './backend'  # Set this to the path to your web app project
+  NODE_VERSION: '18'                # Set this to the node version to use
+
+jobs:
+  build-and-deploy-backend:
+    runs-on: ubuntu-latest
+    name: Build and Deploy Backend API
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: './backend/package-lock.json'
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        npm ci
+
+    - name: Test backend (if tests exist)
+      run: |
+        cd backend
+        npm test --if-present
+
+    - name: 'Deploy to Azure App Service'
+      uses: azure/webapps-deploy@v2
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
+
+  build-and-deploy-frontend:
+    runs-on: ubuntu-latest
+    name: Build and Deploy Frontend
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Setup Node.js ${{ env.NODE_VERSION }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: './frontend/package-lock.json'
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+      env:
+        VITE_API_BASE_URL: https://scorekeeper.azurewebsites.net
+
+    - name: Deploy to Azure Static Web Apps
+      uses: Azure/static-web-apps-deploy@v1
+      with:
+        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: "upload"
+        app_location: "./frontend"
+        api_location: ""
+        output_location: "dist"
+        skip_app_build: true

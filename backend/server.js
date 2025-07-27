@@ -59,7 +59,7 @@ app.post('/api/attendance', async (req, res) => {
     });
   }
   try {
-    const container = getAttendanceContainer();
+    const container = getAttendanceContainer(); // This is gameEvents container
     const attendanceRecord = {
       id: `${gameId}-attendance-${Date.now()}`,
       eventType: 'attendance',
@@ -89,13 +89,62 @@ app.post('/api/attendance', async (req, res) => {
   }
 });
 
-import { getGamesContainer, getAttendanceContainer } from './cosmosClient.js';
+import { getGamesContainer, getAttendanceContainer, getRostersContainer } from './cosmosClient.js';
 
 // Helper function for error handling
 const handleError = (res, error) => {
   console.error('Error:', error);
   res.status(500).json({ error: 'Internal server error' });
 };
+
+// Add the `/api/leagues` endpoint
+app.get('/api/leagues', async (req, res) => {
+  try {
+    // For now, return static leagues - you can make this dynamic later
+    const leagues = [
+      { id: 'cha-hockey', name: 'CHA Hockey League' },
+      { id: 'youth-league', name: 'Youth Hockey League' }
+    ];
+    res.status(200).json(leagues);
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+// Add the `/api/rosters` endpoint - fetches from rosters container
+app.get('/api/rosters', async (req, res) => {
+  const { team, gameId } = req.query;
+  
+  try {
+    const container = getRostersContainer(); // Using rosters container for roster data
+    let querySpec;
+    
+    if (team) {
+      // Get roster by team name
+      querySpec = {
+        query: 'SELECT * FROM c WHERE c.team = @team',
+        parameters: [{ name: '@team', value: team }],
+      };
+    } else if (gameId) {
+      // Get all rosters for teams in a specific game (you'll need to implement this logic)
+      querySpec = {
+        query: 'SELECT * FROM c WHERE c.isActive = true',
+        parameters: [],
+      };
+    } else {
+      // Get all active rosters
+      querySpec = {
+        query: 'SELECT * FROM c WHERE c.isActive = true',
+        parameters: [],
+      };
+    }
+
+    const { resources: rosters } = await container.items.query(querySpec).fetchAll();
+    res.status(200).json(rosters);
+  } catch (error) {
+    handleError(res, error);
+  }
+});
 
 // Add the `/api/games` endpoint
 app.get('/api/games', async (req, res) => {
@@ -116,6 +165,63 @@ app.get('/api/games', async (req, res) => {
   } catch (error) {
     console.error('Error fetching games:', error);
     res.status(500).json({ error: 'Failed to fetch games' });
+  }
+});
+
+// Add goal recording endpoint
+app.post('/api/goals', async (req, res) => {
+  const { gameId, teamId, playerId, period, time, assistIds } = req.body;
+  if (!gameId || !teamId || !playerId || !period || !time) {
+    return res.status(400).json({ 
+      error: 'Invalid payload. Expected: { gameId, teamId, playerId, period, time, assistIds? }' 
+    });
+  }
+  try {
+    const container = getAttendanceContainer(); // Using attendance container for game events
+    const goalRecord = {
+      id: `${gameId}-goal-${Date.now()}`,
+      eventType: 'goal',
+      gameId,
+      teamId,
+      playerId,
+      period,
+      time,
+      assistIds: assistIds || [],
+      recordedAt: new Date().toISOString()
+    };
+    const { resource } = await container.items.create(goalRecord);
+    res.status(201).json(resource);
+  } catch (error) {
+    handleError(res, error);
+  }
+});
+
+// Add penalty recording endpoint
+app.post('/api/penalties', async (req, res) => {
+  const { gameId, teamId, playerId, period, time, penaltyType, duration } = req.body;
+  if (!gameId || !teamId || !playerId || !period || !time || !penaltyType) {
+    return res.status(400).json({ 
+      error: 'Invalid payload. Expected: { gameId, teamId, playerId, period, time, penaltyType, duration? }' 
+    });
+  }
+  try {
+    const container = getAttendanceContainer(); // Using attendance container for game events
+    const penaltyRecord = {
+      id: `${gameId}-penalty-${Date.now()}`,
+      eventType: 'penalty',
+      gameId,
+      teamId,
+      playerId,
+      period,
+      time,
+      penaltyType,
+      duration: duration || 2, // Default 2 minutes
+      recordedAt: new Date().toISOString()
+    };
+    const { resource } = await container.items.create(penaltyRecord);
+    res.status(201).json(resource);
+  } catch (error) {
+    handleError(res, error);
   }
 });
 

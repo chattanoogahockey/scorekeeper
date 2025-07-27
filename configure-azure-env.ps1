@@ -2,7 +2,7 @@
 # Run this script to configure the required environment variables for your Azure App Service
 
 # Replace these values with your actual Azure Cosmos DB details
-$resourceGroupName = "scorekeeper-rg"  # Update this with your resource group name
+$resourceGroupName = "scorekeeperRG"   # Update this with your resource group name
 $webAppName = "scorekeeper"            # Update this with your app service name
 
 # Environment variables that need to be set in Azure App Service

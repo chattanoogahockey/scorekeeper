@@ -97,15 +97,23 @@ const handleError = (res, error) => {
   res.status(500).json({ error: 'Internal server error' });
 };
 
-// Add the `/api/leagues` endpoint
+// Add the `/api/leagues` endpoint - get leagues from games container
 app.get('/api/leagues', async (req, res) => {
   try {
-    // For now, return static leagues - you can make this dynamic later
-    const leagues = [
-      { id: 'cha-hockey', name: 'CHA Hockey League' },
-      { id: 'youth-league', name: 'Youth Hockey League' }
-    ];
-    res.status(200).json(leagues);
+    const container = getGamesContainer();
+    const querySpec = {
+      query: 'SELECT DISTINCT c.league FROM c',
+      parameters: [],
+    };
+
+    const { resources: leagues } = await container.items.query(querySpec).fetchAll();
+    // Transform to expected format
+    const formattedLeagues = leagues.map(item => ({
+      id: item.league.toLowerCase().replace(/\s+/g, '-'),
+      name: item.league
+    }));
+    
+    res.status(200).json(formattedLeagues);
   } catch (error) {
     handleError(res, error);
   }

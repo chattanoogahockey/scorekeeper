@@ -1,8 +1,0 @@
-<step title="Incoming Request" date="2025-07-26T22:17:32.704" instance="a5653c" url="/api/deployments/latest?deployer=GITHUB_ZIP_DEPLOY&amp;time=2025-07-26_22-17-32Z" method="GET" type="request" pid="823,1,19" Host="scorekeeper.scm.azurewebsites.net" User-Agent="GITHUBACTIONS_DeployWebAppToAzure_185d9b4bcafe7e4ac3b2d131314f93e1d21a9c4fd3cd3426031e8ba675ca7140" Authorization="Bea..." Content-Type="application/json; charset=utf-8" Cookie="ARRAffinity=a5653cfdf14c8f3313bb5e81498415621191f39e9781757d6a8f77265d97d272;Path=/;HttpOnly;Secure;Domain=scorekeeper.scm.azurewebsites.net; ARRAffinitySameSite=a5653cfdf14c8f3313bb5e81498415621191f39e9781757d6a8f77265d97d272;Path=/;HttpOnly;SameSite=None;Secure;Domain=scorekeeper.scm.azurewebsites.net" Content-Length="0" X-ARR-LOG-ID="f41cc037-f853-4a57-978b-00cbc64d387d" CLIENT-IP="172.171.254.145:5121" X-SITE-DEPLOYMENT-ID="scorekeeper" WAS-DEFAULT-HOSTNAME="scorekeeper.scm.azurewebsites.net" X-Forwarded-Proto="https" X-AppService-Proto="https" X-Forwarded-TlsVersion="1.3" X-WAWS-Unencoded-URL="/api/deployments/latest?deployer=GITHUB_ZIP_DEPLOY&amp;time=2025-07-26_22-17-32Z" X-Client-IP="172.171.254.145" X-Client-Port="5121" >
-  <step title="DeploymentService.GetResult" date="2025-07-26T22:17:32.754" >
-    <step title="DeploymentService.GetLatestDeployment" date="2025-07-26T22:17:32.761" >
-      <step title="DeploymentManager.GetResults" date="2025-07-26T22:17:32.763" /><!-- duration: 112ms -->
-    </step><!-- duration: 118ms -->
-  </step><!-- duration: 132ms -->
-  <step title="Outgoing response" date="2025-07-26T22:17:32.928" type="response" statusCode="202" statusText="Accepted" /><!-- duration: 8ms -->
-</step><!-- duration: 234ms -->

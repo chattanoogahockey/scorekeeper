@@ -1,0 +1,22 @@
+# Azure App Service Node.js + React/Vite Build Automation
+
+# This file ensures Azure builds the frontend before starting the backend.
+# Place this file in the root of your repo as 'azure-webapps-node.yml'.
+
+# Azure will use this workflow to build and start your app.
+
+version: 1.0
+
+# Install dependencies for root, frontend, and backend
+prebuild:
+  - npm install
+  - cd frontend && npm install && cd ..
+  - cd backend && npm install && cd ..
+
+# Build the frontend
+build:
+  - npm run build
+
+# Start the backend (serves the built frontend)
+start:
+  - cd backend && npm start

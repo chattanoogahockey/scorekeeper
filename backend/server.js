@@ -11,9 +11,7 @@ app.use(express.json());
 // Serve static files from the frontend dist directory
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-// Consolidated features from server-new.js
-
-// Add debugging endpoints from server-new.js
+// Debug endpoint for troubleshooting
 app.get('/api/debug/env', (req, res) => {
   const cosmosVars = Object.keys(process.env)
     .filter(key => key.includes('COSMOS'))
@@ -31,7 +29,7 @@ app.get('/api/debug/env', (req, res) => {
   });
 });
 
-// Add graceful shutdown logic from server-new.js
+// Graceful shutdown handling
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
   server.close(() => {
@@ -48,9 +46,18 @@ process.on('SIGINT', () => {
   });
 });
 
-// Consolidated routes and logic from app.js
+// Import database functions
+import { getGamesContainer, getAttendanceContainer, getRostersContainer } from './cosmosClient.js';
 
-// Add unique routes from app.js
+// Helper function for error handling
+const handleError = (res, error) => {
+  console.error('Error:', error);
+  res.status(500).json({ error: 'Internal server error' });
+};
+
+// API endpoints
+
+// Record attendance for a game
 app.post('/api/attendance', async (req, res) => {
   const { gameId, attendance, totalRoster } = req.body;
   if (!gameId || !attendance || !totalRoster) {
@@ -89,60 +96,58 @@ app.post('/api/attendance', async (req, res) => {
   }
 });
 
-import { getGamesContainer, getAttendanceContainer, getRostersContainer } from './cosmosClient.js';
-
-// Helper function for error handling
-const handleError = (res, error) => {
-  console.error('Error:', error);
-  res.status(500).json({ error: 'Internal server error' });
-};
-
-// Get available leagues from scheduled games
+// Get available divisions from scheduled games (Gold, Silver, Bronze within cha-hockey league)
 app.get('/api/games/leagues', async (req, res) => {
   try {
     const container = getGamesContainer();
     const querySpec = {
-      query: 'SELECT DISTINCT c.league FROM c',
+      query: 'SELECT DISTINCT c.division FROM c WHERE c.league = "cha-hockey"',
       parameters: [],
     };
 
-    const { resources: leagues } = await container.items.query(querySpec).fetchAll();
-    // Transform to expected format
-    const formattedLeagues = leagues.map(item => ({
-      id: item.league.toLowerCase().replace(/\s+/g, '-'),
-      name: item.league
+    const { resources: divisions } = await container.items.query(querySpec).fetchAll();
+    // Transform to expected format - these are divisions within cha-hockey
+    const formattedDivisions = divisions.map(item => ({
+      id: item.division.toLowerCase().replace(/\s+/g, '-'),
+      name: item.division
     }));
     
-    res.status(200).json(formattedLeagues);
+    res.status(200).json(formattedDivisions);
   } catch (error) {
     handleError(res, error);
   }
 });
 
-// Add the `/api/rosters` endpoint - fetches from rosters container
+// Get roster data by team or division
 app.get('/api/rosters', async (req, res) => {
-  const { team, gameId } = req.query;
+  const { team, gameId, division } = req.query;
   
   try {
-    const container = getRostersContainer(); // Using rosters container for roster data
+    const container = getRostersContainer();
     let querySpec;
     
     if (team) {
       // Get roster by team name
       querySpec = {
-        query: 'SELECT * FROM c WHERE c.team = @team',
+        query: 'SELECT * FROM c WHERE c.team = @team AND c.league = "cha-hockey"',
         parameters: [{ name: '@team', value: team }],
       };
-    } else if (gameId) {
-      // Get all rosters for teams in a specific game (you'll need to implement this logic)
+    } else if (division) {
+      // Get rosters by division
       querySpec = {
-        query: 'SELECT * FROM c WHERE c.isActive = true',
+        query: 'SELECT * FROM c WHERE c.division = @division AND c.league = "cha-hockey"',
+        parameters: [{ name: '@division', value: division }],
+      };
+    } else if (gameId) {
+      // Get all rosters for teams in a specific game
+      querySpec = {
+        query: 'SELECT * FROM c WHERE c.isActive = true AND c.league = "cha-hockey"',
         parameters: [],
       };
     } else {
-      // Get all active rosters
+      // Get all active rosters in cha-hockey
       querySpec = {
-        query: 'SELECT * FROM c WHERE c.isActive = true',
+        query: 'SELECT * FROM c WHERE c.isActive = true AND c.league = "cha-hockey"',
         parameters: [],
       };
     }
@@ -154,18 +159,18 @@ app.get('/api/rosters', async (req, res) => {
   }
 });
 
-// Add the `/api/games` endpoint
+// Get games by division within cha-hockey league
 app.get('/api/games', async (req, res) => {
-  const { league } = req.query;
+  const { league } = req.query; // This is actually the division (Gold, Silver, Bronze)
   if (!league) {
-    return res.status(400).json({ error: 'Missing required query parameter: league' });
+    return res.status(400).json({ error: 'Missing required query parameter: league (division)' });
   }
 
   try {
     const container = getGamesContainer();
     const querySpec = {
-      query: 'SELECT * FROM c WHERE c.league = @league',
-      parameters: [{ name: '@league', value: league }],
+      query: 'SELECT * FROM c WHERE c.league = "cha-hockey" AND c.division = @division',
+      parameters: [{ name: '@division', value: league }],
     };
 
     const { resources: games } = await container.items.query(querySpec).fetchAll();
@@ -233,8 +238,7 @@ app.post('/api/penalties', async (req, res) => {
   }
 });
 
-// Add other unique routes from app.js as needed
-// ...
+// Add other API endpoints as needed
 
 // Serve the frontend for all non-API routes
 app.get('*', (req, res) => {

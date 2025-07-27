@@ -14,7 +14,7 @@ export default function LeagueGameSelection() {
   useEffect(() => {
     // Reset context when visiting selection page
     reset();
-    axios.get('/api/leagues')
+    axios.get('/api/games/leagues')
       .then((res) => setLeagues(res.data))
       .catch((err) => console.error('Failed to load leagues', err));
   }, []);

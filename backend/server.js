@@ -97,8 +97,8 @@ const handleError = (res, error) => {
   res.status(500).json({ error: 'Internal server error' });
 };
 
-// Add the `/api/leagues` endpoint - get leagues from games container
-app.get('/api/leagues', async (req, res) => {
+// Get available leagues from scheduled games
+app.get('/api/games/leagues', async (req, res) => {
   try {
     const container = getGamesContainer();
     const querySpec = {

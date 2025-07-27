@@ -1,9 +1,3 @@
-// This file has been deprecated. All server logic has been consolidated into server-new.js.
-
-console.warn('⚠️ server.js is deprecated. Please use server-new.js instead.');
-
-process.exit(1);
-
 // Consolidated features from server-new.js
 
 // Add debugging endpoints from server-new.js

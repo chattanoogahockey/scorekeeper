@@ -46,6 +46,13 @@ console.log('COSMOS_DB_NAME:', process.env.COSMOS_DB_NAME);
 // Log the current working directory for debugging
 console.log('Current working directory:', process.cwd());
 
+// Log all relevant environment variables for debugging
+console.log('Environment Variables:', {
+  COSMOS_DB_URI: process.env.COSMOS_DB_URI,
+  COSMOS_DB_KEY: process.env.COSMOS_DB_KEY,
+  COSMOS_DB_NAME: process.env.COSMOS_DB_NAME,
+});
+
 // Support multiple environment variable naming conventions
 const cosmosUri = COSMOS_DB_URI || COSMOS_DB_ENDPOINT || COSMOS_ENDPOINT;
 const cosmosKey = COSMOS_DB_KEY || COSMOS_KEY;

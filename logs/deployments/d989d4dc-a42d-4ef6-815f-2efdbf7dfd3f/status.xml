@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<deployment>
+  <id>d989d4dc-a42d-4ef6-815f-2efdbf7dfd3f</id>
+  <author>N/A</author>
+  <deployer>GITHUB_ZIP_DEPLOY</deployer>
+  <authorEmail>N/A</authorEmail>
+  <message>{"type":"deployment","sha":"64cccbe32b4d3146a7667d2c04338b4af3949d94","repoName":"chattanoogahockey/scorekeeper2","actor":"chattanoogahockey","slotName":"production","commitMessage":"Clean professional setup: rename to scorekeeper.azurewebsites.net and remove all bloat"}</message>
+  <progress></progress>
+  <status>Success</status>
+  <statusText></statusText>
+  <lastSuccessEndTime>2025-07-26T21:58:35.8325053Z</lastSuccessEndTime>
+  <receivedTime>2025-07-26T21:58:22.5309584Z</receivedTime>
+  <startTime>2025-07-26T21:58:23.8141277Z</startTime>
+  <endTime>2025-07-26T21:58:35.8325053Z</endTime>
+  <complete>True</complete>
+  <is_temp>False</is_temp>
+  <is_readonly>True</is_readonly>
+  <buildSummary />
+</deployment>

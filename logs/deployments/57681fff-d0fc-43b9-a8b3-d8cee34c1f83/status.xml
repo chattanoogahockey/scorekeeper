@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<deployment>
+  <id>57681fff-d0fc-43b9-a8b3-d8cee34c1f83</id>
+  <author>N/A</author>
+  <deployer>GITHUB_ZIP_DEPLOY</deployer>
+  <authorEmail>N/A</authorEmail>
+  <message>{"type":"deployment","sha":"c86bc3ee9760259b9b48ef4a0cc09420d3c9a38f","repoName":"chattanoogahockey/scorekeeper2","actor":"chattanoogahockey","slotName":"production","commitMessage":"Fix Cosmos DB authentication with connection string support"}</message>
+  <progress></progress>
+  <status>Success</status>
+  <statusText></statusText>
+  <lastSuccessEndTime>2025-07-26T22:18:00.1650225Z</lastSuccessEndTime>
+  <receivedTime>2025-07-26T22:17:46.9134857Z</receivedTime>
+  <startTime>2025-07-26T22:17:48.1554835Z</startTime>
+  <endTime>2025-07-26T22:18:00.1650225Z</endTime>
+  <complete>True</complete>
+  <is_temp>False</is_temp>
+  <is_readonly>True</is_readonly>
+  <buildSummary />
+</deployment>

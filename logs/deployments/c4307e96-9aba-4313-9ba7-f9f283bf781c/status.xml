@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<deployment>
+  <id>c4307e96-9aba-4313-9ba7-f9f283bf781c</id>
+  <author>N/A</author>
+  <deployer>GITHUB_ZIP_DEPLOY</deployer>
+  <authorEmail>N/A</authorEmail>
+  <message>{"type":"deployment","sha":"be63e3d82fecd745acceab3e07fcbb718d3a089e","repoName":"chattanoogahockey/scorekeeper2","actor":"chattanoogahockey","slotName":"production","commitMessage":"FIXED: Use games container with correct division query - found actual data structure!"}</message>
+  <progress></progress>
+  <status>Success</status>
+  <statusText></statusText>
+  <lastSuccessEndTime>2025-07-26T22:42:53.3980599Z</lastSuccessEndTime>
+  <receivedTime>2025-07-26T22:42:40.0459394Z</receivedTime>
+  <startTime>2025-07-26T22:42:41.3502305Z</startTime>
+  <endTime>2025-07-26T22:42:53.3980599Z</endTime>
+  <complete>True</complete>
+  <is_temp>False</is_temp>
+  <is_readonly>True</is_readonly>
+  <buildSummary />
+</deployment>

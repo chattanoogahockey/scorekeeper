@@ -1,6 +1,14 @@
 import express from 'express';
+import path from 'path';
+import cors from 'cors';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 app.use(express.json());
+app.use(cors());
 
 // Consolidated features from server-new.js
 
@@ -22,6 +30,10 @@ app.get('/api/debug/env', (req, res) => {
   });
 });
 
+// Serve static frontend files
+const frontendDist = path.resolve(__dirname, '../frontend/dist');
+app.use(express.static(frontendDist));
+
 // Add graceful shutdown logic from server-new.js
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
@@ -39,8 +51,8 @@ process.on('SIGINT', () => {
   });
 });
 
-// Consolidated routes and logic from app.js
 
+// Consolidated routes and logic from app.js
 // Add unique routes from app.js
 app.post('/api/attendance', async (req, res) => {
   const { gameId, attendance, totalRoster } = req.body;
@@ -80,6 +92,7 @@ app.post('/api/attendance', async (req, res) => {
   }
 });
 
+
 import { getGamesContainer } from './cosmosClient.js';
 
 // Add the `/api/games` endpoint
@@ -107,9 +120,17 @@ app.get('/api/games', async (req, res) => {
 // Add other unique routes from app.js as needed
 // ...
 
-const server = app;
+// Catch-all route to serve index.html for SPA (after all API routes)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
+});
 
-const port = process.env.PORT || 8080;
-server.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+// Centralized error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+const server = app.listen(process.env.PORT || 8080, () => {
+  console.log(`Server is running on port ${process.env.PORT || 8080}`);
 });

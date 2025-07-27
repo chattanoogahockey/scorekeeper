@@ -88,7 +88,7 @@ app.get('/api/games', async (req, res) => {
   try {
     const gamesContainer = getGamesContainer();
     const teamsContainer = getTeamsContainer();
-    
+
     // Get all teams first
     const teamsQuery = { query: 'SELECT * FROM c' };
     const { resources: teams } = await teamsContainer.items.query(teamsQuery).fetchAll();
@@ -96,7 +96,7 @@ app.get('/api/games', async (req, res) => {
       map[team.id || team.teamId] = team;
       return map;
     }, {});
-    
+
     // Query games for the given league ordered by gameDate ascending
     const querySpec = {
       query: 'SELECT * FROM c WHERE c.division = @league ORDER BY c.gameDate',
@@ -105,17 +105,18 @@ app.get('/api/games', async (req, res) => {
       ],
     };
     const { resources: games } = await gamesContainer.items.query(querySpec).fetchAll();
-    
+
     // Add team names to games
     const gamesWithTeamNames = games.map(game => ({
       ...game,
       awayTeam: teamsMap[game.awayTeamId]?.name || game.awayTeamId,
       homeTeam: teamsMap[game.homeTeamId]?.name || game.homeTeamId,
     }));
-    
+
     res.json(gamesWithTeamNames);
   } catch (error) {
-    handleError(res, error);
+    console.error('Error fetching games:', error.message, error.stack);
+    res.status(500).json({ error: 'Failed to fetch games', details: error.message });
   }
 });
 
@@ -137,14 +138,14 @@ app.get('/api/rosters', async (req, res) => {
       parameters: [{ name: '@gameId', value: gameId }],
     };
     const { resources: games } = await gamesContainer.items.query(gameQuery).fetchAll();
-    
+
     if (games.length === 0) {
       return res.status(404).json({ error: 'Game not found' });
     }
-    
+
     const game = games[0];
     const { homeTeamId, awayTeamId } = game;
-    
+
     // Get team names
     const teamsContainer = getTeamsContainer();
     const teamsQuery = {
@@ -159,7 +160,7 @@ app.get('/api/rosters', async (req, res) => {
       map[team.id || team.teamId] = team;
       return map;
     }, {});
-    
+
     // Get players for both teams
     const playersContainer = getRostersContainer();
     const playersQuery = {
@@ -170,7 +171,7 @@ app.get('/api/rosters', async (req, res) => {
       ],
     };
     const { resources: players } = await playersContainer.items.query(playersQuery).fetchAll();
-    
+
     // Group players by team and format for frontend
     const awayTeamPlayers = players
       .filter(p => p.teamId === awayTeamId)
@@ -180,7 +181,7 @@ app.get('/api/rosters', async (req, res) => {
         position: p.position || '', // Empty if not present
         playerId: p.playerId,
       }));
-    
+
     const homeTeamPlayers = players
       .filter(p => p.teamId === homeTeamId)
       .map(p => ({
@@ -189,9 +190,9 @@ app.get('/api/rosters', async (req, res) => {
         position: p.position || '',
         playerId: p.playerId,
       }));
-    
+
     console.log(`Found ${awayTeamPlayers.length} away team players, ${homeTeamPlayers.length} home team players`);
-    
+
     const rosters = [
       {
         teamName: teamsMap[awayTeamId]?.name || 'Away Team',

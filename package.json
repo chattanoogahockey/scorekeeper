@@ -13,10 +13,19 @@
     "deploy:setup": "echo 'Follow DEPLOYMENT.md for Azure setup instructions'",
     "start": "cd backend && npm start"
   },
-  "keywords": ["hockey", "scorekeeper", "azure", "react", "express"],
+  "keywords": [
+    "hockey",
+    "scorekeeper",
+    "azure",
+    "react",
+    "express"
+  ],
   "author": "Chattanooga Hockey",
   "license": "MIT",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.1"
   }
 }

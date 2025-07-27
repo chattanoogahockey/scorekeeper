@@ -1,3 +1,7 @@
+import express from 'express';
+const app = express();
+app.use(express.json());
+
 // Consolidated features from server-new.js
 
 // Add debugging endpoints from server-new.js
@@ -102,3 +106,10 @@ app.get('/api/games', async (req, res) => {
 
 // Add other unique routes from app.js as needed
 // ...
+
+const server = app;
+
+const port = process.env.PORT || 8080;
+server.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});

@@ -1,8 +1,19 @@
-import { CosmosClient } from '@azure/cosmos';
-import dotenv from 'dotenv';
+// Use ES module-compatible code to get the directory name
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-// Load environment variables from .env file
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Change the working directory to the backend folder
+process.chdir(__dirname);
+console.log('Changed working directory to:', process.cwd());
+
+// Ensure dotenv is configured after setting the working directory
+import dotenv from 'dotenv';
+dotenv.config({ path: './.env' });
+
+import { CosmosClient } from '@azure/cosmos';
 
 /*
  * This module initializes a connection to Azure Cosmos DB and provides
@@ -26,6 +37,14 @@ const {
   COSMOS_DB_GOAL_EVENTS_CONTAINER,
   COSMOS_DB_PENALTY_EVENTS_CONTAINER,
 } = process.env;
+
+// Debugging: Log critical environment variables to verify they are loaded
+console.log('COSMOS_DB_URI:', process.env.COSMOS_DB_URI);
+console.log('COSMOS_DB_KEY:', process.env.COSMOS_DB_KEY);
+console.log('COSMOS_DB_NAME:', process.env.COSMOS_DB_NAME);
+
+// Log the current working directory for debugging
+console.log('Current working directory:', process.cwd());
 
 // Support multiple environment variable naming conventions
 const cosmosUri = COSMOS_DB_URI || COSMOS_DB_ENDPOINT || COSMOS_ENDPOINT;
@@ -87,4 +106,14 @@ export function getPenaltyEventsContainer() {
 
 export function getGameEventsContainer() {
   return getContainer('COSMOS_DB_ATTENDANCE_CONTAINER'); // Using gameEvents container for all game events
+}
+
+export async function testDatabaseConnection() {
+  try {
+    const container = getGamesContainer(); // Using the games container for testing
+    const { resources: items } = await container.items.query('SELECT TOP 1 * FROM c').fetchAll();
+    console.log('Database connection successful. Sample item:', items[0]);
+  } catch (error) {
+    console.error('Database connection failed:', error);
+  }
 }

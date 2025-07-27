@@ -1,6 +1,15 @@
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 app.use(express.json());
+
+// Serve static files from the frontend dist directory
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 // Consolidated features from server-new.js
 
@@ -106,6 +115,11 @@ app.get('/api/games', async (req, res) => {
 
 // Add other unique routes from app.js as needed
 // ...
+
+// Serve the frontend for all non-API routes
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+});
 
 const server = app;
 

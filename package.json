@@ -8,7 +8,7 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev",
-    "build": "echo 'Installing frontend dependencies...' && cd frontend && npm install --include=dev && echo 'Building frontend...' && npm run build && echo 'Installing backend dependencies...' && cd ../backend && npm install && echo 'Build complete!'",
+    "build": "echo 'Installing frontend dependencies...' && cd frontend && npm install --include=dev && echo 'Building frontend...' && npx vite build && echo 'Installing backend dependencies...' && cd ../backend && npm install && echo 'Build complete!'",
     "test": "cd frontend && npm run test && cd ../backend && npm run test",
     "deploy:setup": "echo 'Follow DEPLOYMENT.md for Azure setup instructions'",
     "start": "cd backend && npm start",

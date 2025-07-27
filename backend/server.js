@@ -89,7 +89,13 @@ app.post('/api/attendance', async (req, res) => {
   }
 });
 
-import { getGamesContainer } from './cosmosClient.js';
+import { getGamesContainer, getAttendanceContainer } from './cosmosClient.js';
+
+// Helper function for error handling
+const handleError = (res, error) => {
+  console.error('Error:', error);
+  res.status(500).json({ error: 'Internal server error' });
+};
 
 // Add the `/api/games` endpoint
 app.get('/api/games', async (req, res) => {

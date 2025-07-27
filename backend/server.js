@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
+import { getGamesContainer, getAttendanceContainer } from './cosmosClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -9,6 +10,15 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+// Utility function for error handling
+function handleError(res, error) {
+  console.error('API Error:', error);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: error.message || 'An unexpected error occurred'
+  });
+}
 
 // Consolidated features from server-new.js
 
@@ -92,8 +102,6 @@ app.post('/api/attendance', async (req, res) => {
   }
 });
 
-
-import { getGamesContainer } from './cosmosClient.js';
 
 // Add the `/api/games` endpoint
 app.get('/api/games', async (req, res) => {

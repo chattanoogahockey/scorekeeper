@@ -17,6 +17,7 @@ const {
   COSMOS_KEY,
   COSMOS_DB_NAME,
   COSMOS_DB_DATABASE_ID,
+  COSMOS_DB_CONNECTION_STRING,
   COSMOS_DB_GAMES_CONTAINER,
   COSMOS_DB_TEAMS_CONTAINER,
   COSMOS_DB_ROSTERS_CONTAINER,
@@ -31,18 +32,25 @@ const cosmosKey = COSMOS_DB_KEY || COSMOS_KEY;
 const cosmosDatabase = COSMOS_DB_NAME || COSMOS_DB_DATABASE_ID;
 
 console.log('🔍 Cosmos DB Configuration:');
+console.log(`  Connection String: ${COSMOS_DB_CONNECTION_STRING ? 'SET' : 'MISSING'}`);
 console.log(`  Endpoint: ${cosmosUri ? 'SET' : 'MISSING'}`);
-console.log(`  Key: ${cosmosKey ? 'SET' : 'MISSING'}`);
+console.log(`  Key: ${cosmosKey ? 'SET (length=' + (cosmosKey?.length || 0) + ')' : 'MISSING'}`);
 console.log(`  Database: ${cosmosDatabase || 'MISSING'}`);
 
-if (!cosmosUri || !cosmosKey || !cosmosDatabase) {
-  throw new Error('Missing Cosmos DB configuration. Please ensure endpoint, key and database name are set.');
+// Use connection string if available, otherwise use endpoint/key
+let cosmosClient;
+if (COSMOS_DB_CONNECTION_STRING) {
+  console.log('🔗 Using Cosmos DB Connection String');
+  cosmosClient = new CosmosClient(COSMOS_DB_CONNECTION_STRING);
+} else if (cosmosUri && cosmosKey && cosmosDatabase) {
+  console.log('🔑 Using Cosmos DB Endpoint/Key');
+  cosmosClient = new CosmosClient({
+    endpoint: cosmosUri,
+    key: cosmosKey,
+  });
+} else {
+  throw new Error('Missing Cosmos DB configuration. Please provide either COSMOS_DB_CONNECTION_STRING or (endpoint, key, database).');
 }
-
-const cosmosClient = new CosmosClient({
-  endpoint: cosmosUri,
-  key: cosmosKey,
-});
 
 const database = cosmosClient.database(cosmosDatabase);
 

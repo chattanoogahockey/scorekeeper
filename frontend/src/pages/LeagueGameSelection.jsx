@@ -51,17 +51,21 @@ export default function LeagueGameSelection() {
   };
 
   const handleGameSelect = async (game) => {
+    console.log('Selected game:', game);
     setSelectedGame(game);
     setSelectedLeague(game.league);
     
     try {
       // Load rosters for the game's teams
+      console.log('Loading rosters...');
       const rostersResponse = await axios.get('/api/rosters');
       const allRosters = rostersResponse.data;
+      console.log('All rosters loaded:', allRosters.length, 'players');
       
       // Get team names from the game
       const awayTeamName = game.awayTeam || game.awayTeamId;
       const homeTeamName = game.homeTeam || game.homeTeamId;
+      console.log('Looking for teams:', awayTeamName, 'vs', homeTeamName);
       
       // Group rosters by team for the selected teams
       const gameRosters = [];
@@ -70,6 +74,7 @@ export default function LeagueGameSelection() {
         const awayPlayers = allRosters.filter(player => 
           player.teamName === awayTeamName
         );
+        console.log('Away team players found:', awayPlayers.length, 'for', awayTeamName);
         if (awayPlayers.length > 0) {
           gameRosters.push({
             teamName: awayTeamName,
@@ -87,6 +92,7 @@ export default function LeagueGameSelection() {
         const homePlayers = allRosters.filter(player => 
           player.teamName === homeTeamName
         );
+        console.log('Home team players found:', homePlayers.length, 'for', homeTeamName);
         if (homePlayers.length > 0) {
           gameRosters.push({
             teamName: homeTeamName,
@@ -100,8 +106,8 @@ export default function LeagueGameSelection() {
         }
       }
       
+      console.log('Final game rosters:', gameRosters);
       setRosters(gameRosters);
-      console.log('Loaded rosters for game:', gameRosters);
     } catch (err) {
       console.error('Failed to load rosters', err);
       setRosters([]); // Fallback to empty rosters
@@ -135,9 +141,9 @@ export default function LeagueGameSelection() {
                   <span className="font-medium">Date:</span> {formatGameDate(game.gameDate || game.date)}
                 </p>
                 
-                {game.division && (
+                {(game.division || game.league) && (
                   <p className="text-gray-600">
-                    <span className="font-medium">Division:</span> {game.division}
+                    <span className="font-medium">Division:</span> {game.division || game.league}
                   </p>
                 )}
                 

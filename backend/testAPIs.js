@@ -2,7 +2,7 @@
 const baseUrl = 'https://scorekeeper.azurewebsites.net';
 
 async function testAPIs() {
-  console.log('🚀 Testing APIs on', baseUrl);
+  console.log('Testing APIs on', baseUrl);
   
   try {
     // Test rosters endpoint
@@ -24,7 +24,7 @@ async function testAPIs() {
       return;
     }
     
-    console.log(`✅ Found ${rosters.length} players in gold division winter 2025`);
+    console.log(`Found ${rosters.length} players in gold division winter 2025`);
     
     // Show team summary
     const teamCounts = {};
@@ -41,7 +41,7 @@ async function testAPIs() {
     console.log('\n🏒 Testing specific team: Whiskey Dekes...');
     const whiskeyResponse = await fetch(`${baseUrl}/api/rosters?teamName=Whiskey%20Dekes`);
     const whiskeyPlayers = await whiskeyResponse.json();
-    console.log(`✅ Whiskey Dekes has ${whiskeyPlayers.length} players:`);
+    console.log(`Whiskey Dekes has ${whiskeyPlayers.length} players:`);
     whiskeyPlayers.forEach(player => {
       console.log(`  #${player.jerseyNumber} ${player.fullName}`);
     });
@@ -50,9 +50,9 @@ async function testAPIs() {
     console.log('\n🎯 Testing /api/game-events endpoint...');
     const eventsResponse = await fetch(`${baseUrl}/api/game-events`);
     const events = await eventsResponse.json();
-    console.log(`✅ Current game events: ${events.length}`);
+    console.log(`Current game events: ${events.length}`);
     
-    console.log('\n🎉 All API tests completed successfully!');
+    console.log('\nAll API tests completed successfully!');
     
   } catch (error) {
     console.error('❌ API test failed:', error);

@@ -58,7 +58,7 @@ const rosterData = [
 
 async function loadRosterData() {
   try {
-    console.log('🚀 Starting roster data load...');
+    console.log('Starting roster data load...');
     const container = getRostersContainer();
     
     for (const player of rosterData) {
@@ -77,10 +77,10 @@ async function loadRosterData() {
       };
       
       const { resource } = await container.items.create(rosterRecord);
-      console.log(`✅ Added ${resource.fullName} to ${resource.teamName}`);
+      console.log(`Added ${resource.fullName} to ${resource.teamName}`);
     }
     
-    console.log('🎉 Roster data load completed successfully!');
+    console.log('Roster data load completed successfully!');
     
     // Summary
     const teamCounts = {};

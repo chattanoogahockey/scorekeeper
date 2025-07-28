@@ -33,13 +33,13 @@ export default function InGameMenu() {
         {/* Game Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6 text-center">
           <h1 className="text-2xl font-bold text-gray-800 mb-2">
-            Game In Progress
+            In-Game Menu
           </h1>
           <p className="text-lg text-gray-600">
             {selectedGame.awayTeam || selectedGame.awayTeamId} vs {selectedGame.homeTeam || selectedGame.homeTeamId}
           </p>
           <p className="text-sm text-gray-500 mt-1">
-            {new Date(selectedGame.gameDate).toLocaleDateString()}
+            {selectedGame.date || selectedGame.gameDate || 'Date TBD'}
           </p>
         </div>
 

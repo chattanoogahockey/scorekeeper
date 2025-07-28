@@ -565,11 +565,9 @@ export default function GoalRecord() {
                 const goalSummary = `Goal Recorded!
 
 ${selectedGame.awayTeam} vs ${selectedGame.homeTeam}
-Current Score: ${result.event.scoringTeamGoalsAgainst} - ${result.event.scoringTeamGoalsFor}
-
 ${formData.player} scored for ${formData.team}${assistText}
-Goals in game: ${result.event.scorerGoalsInGame}
-Time: ${formData.time} - Period ${formData.period}`;
+Time: ${formData.time} - Period ${formData.period}
+Shot Type: ${formData.shotType}`;
 
                 alert(goalSummary);
 

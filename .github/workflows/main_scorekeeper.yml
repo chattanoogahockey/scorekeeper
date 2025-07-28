@@ -40,9 +40,9 @@ jobs:
     
     - name: Create deployment package
       run: |
-        mkdir -p deploy
+        mkdir -p deploy/frontend
         cp -r backend/* deploy/
-        cp -r frontend/dist deploy/
+        cp -r frontend/* deploy/frontend/
         cp package.json deploy/
         cd deploy && npm install --production --ignore-scripts
     

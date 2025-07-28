@@ -52,6 +52,7 @@ export default function LeagueGameSelection() {
 
   const handleGameSelect = async (game) => {
     console.log('Selected game:', game);
+    console.log('Build timestamp:', new Date().toISOString());
     setSelectedGame(game);
     setSelectedLeague(game.league);
     

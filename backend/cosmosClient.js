@@ -70,6 +70,10 @@ const client = new CosmosClient({
 
 const database = client.database(cosmosDatabase);
 
+export function getDatabase() {
+  return database;
+}
+
 /**
  * Returns a reference to a container by name. Throws if the container name is
  * undefined in the environment. Container objects can be used to query,
@@ -104,6 +108,10 @@ export function getAttendanceContainer() {
 
 export function getGameEventsContainer() {
   return getContainer('COSMOS_DB_GAME_EVENTS_CONTAINER');
+}
+
+export function getPlayerStatsContainer() {
+  return database.container('playerStats');
 }
 
 export async function testDatabaseConnection() {

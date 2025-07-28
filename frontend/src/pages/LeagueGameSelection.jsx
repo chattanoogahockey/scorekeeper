@@ -55,11 +55,56 @@ export default function LeagueGameSelection() {
     setSelectedLeague(game.league);
     
     try {
-      // For now, set empty rosters - you can implement roster loading later
-      // based on your rosters container structure
-      setRosters([]);
+      // Load rosters for the game's teams
+      const rostersResponse = await axios.get('/api/rosters');
+      const allRosters = rostersResponse.data;
+      
+      // Get team names from the game
+      const awayTeamName = game.awayTeam || game.awayTeamId;
+      const homeTeamName = game.homeTeam || game.homeTeamId;
+      
+      // Group rosters by team for the selected teams
+      const gameRosters = [];
+      
+      if (awayTeamName) {
+        const awayPlayers = allRosters.filter(player => 
+          player.teamName === awayTeamName
+        );
+        if (awayPlayers.length > 0) {
+          gameRosters.push({
+            teamName: awayTeamName,
+            teamId: awayTeamName,
+            players: awayPlayers.map(player => ({
+              name: player.fullName || `${player.firstName} ${player.lastName}`,
+              jerseyNumber: player.jerseyNumber,
+              position: 'Player' // Default position, can be updated later
+            }))
+          });
+        }
+      }
+      
+      if (homeTeamName) {
+        const homePlayers = allRosters.filter(player => 
+          player.teamName === homeTeamName
+        );
+        if (homePlayers.length > 0) {
+          gameRosters.push({
+            teamName: homeTeamName,
+            teamId: homeTeamName,
+            players: homePlayers.map(player => ({
+              name: player.fullName || `${player.firstName} ${player.lastName}`,
+              jerseyNumber: player.jerseyNumber,
+              position: 'Player' // Default position, can be updated later
+            }))
+          });
+        }
+      }
+      
+      setRosters(gameRosters);
+      console.log('Loaded rosters for game:', gameRosters);
     } catch (err) {
       console.error('Failed to load rosters', err);
+      setRosters([]); // Fallback to empty rosters
     }
     navigate('/roster');
   };

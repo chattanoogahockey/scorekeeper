@@ -195,7 +195,7 @@ app.get('/api/game-events', async (req, res) => {
     if (!gameId && !eventType) {
       // Return all game events
       querySpec = {
-        query: 'SELECT * FROM c ORDER BY c.timestamp DESC',
+        query: 'SELECT * FROM c',
         parameters: [],
       };
     } else {
@@ -214,7 +214,7 @@ app.get('/api/game-events', async (req, res) => {
       }
       
       querySpec = {
-        query: `SELECT * FROM c WHERE ${conditions.join(' AND ')} ORDER BY c.timestamp DESC`,
+        query: `SELECT * FROM c WHERE ${conditions.join(' AND ')}`,
         parameters: parameters,
       };
     }

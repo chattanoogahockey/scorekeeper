@@ -25,6 +25,27 @@ export default function RosterAttendance() {
     return null;
   }
 
+  if (!rosters || rosters.length === 0) {
+    return (
+      <div className="min-h-screen p-4 flex flex-col items-center justify-center">
+        <h2 className="text-2xl font-bold mb-4 text-center">
+          Loading Rosters...
+        </h2>
+        <p className="text-gray-600 text-center mb-4">
+          Loading player rosters for {selectedGame.awayTeam || selectedGame.awayTeamId} vs {selectedGame.homeTeam || selectedGame.homeTeamId}
+        </p>
+        <div className="text-center">
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+          >
+            Back to Game Selection
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Handler for submitting attendance for all teams
   const handleSubmitAllAttendance = async (e) => {
     e.preventDefault();

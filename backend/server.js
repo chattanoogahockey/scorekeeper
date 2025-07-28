@@ -11,6 +11,12 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// SIMPLE TEST ROUTE
+app.get('/api/test', (req, res) => {
+  console.log('🔥 TEST ENDPOINT HIT!');
+  res.json({ message: 'Test endpoint works!' });
+});
+
 // Utility function for error handling
 function handleError(res, error) {
   console.error('API Error:', error);
@@ -39,10 +45,6 @@ app.get('/api/debug/env', (req, res) => {
     totalEnvVars: Object.keys(process.env).length
   });
 });
-
-// Serve static frontend files
-const frontendDist = path.resolve(__dirname, '../frontend/dist');
-app.use(express.static(frontendDist));
 
 // Add graceful shutdown logic from server-new.js
 process.on('SIGTERM', () => {
@@ -192,7 +194,7 @@ app.get('/api/game-events', async (req, res) => {
   const { gameId, eventType } = req.query;
 
   try {
-    const container = getGoalsContainer();
+    // const container = getGameEventsContainer(); // Removed gameEvents
     let querySpec;
     
     if (!gameId && !eventType) {
@@ -241,7 +243,7 @@ app.post('/api/game-events', async (req, res) => {
   }
 
   try {
-    const container = getGoalsContainer();
+    // const container = getGameEventsContainer(); // Removed gameEvents
     const gameEvent = {
       id: `${gameId}-${eventType}-${Date.now()}`,
       gameId,
@@ -261,26 +263,7 @@ app.post('/api/game-events', async (req, res) => {
   }
 });
 
-// Add other unique routes from app.js as needed
-// ...
-
-// Catch-all route to serve index.html for SPA (after all API routes)
-app.get('*', (req, res) => {
-  res.sendFile(path.join(frontendDist, 'index.html'));
-});
-
-// Centralized error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-const server = app.listen(process.env.PORT || 8080, () => {
-  console.log(`Server is running on port ${process.env.PORT || 8080}`);
-  console.log('Deployment completed successfully');
-});
-
-// Add the /api/goals POST endpoint for creating goals
+// Add the `/api/goals` POST endpoint for creating goals
 app.post('/api/goals', async (req, res) => {
   const { gameId, period, team, player, assist, time, shotType, goalType, breakaway } = req.body;
 
@@ -306,9 +289,155 @@ app.post('/api/goals', async (req, res) => {
       recordedAt: new Date().toISOString()
     };
     await container.items.create(goal);
-    res.json({ success: true, goal });
+    
+    // Get total goals for this team in this game (simplified response)
+    const { resources: teamGoals } = await container.items.query({
+      query: "SELECT * FROM c WHERE c.gameId = @gameId AND c.scoringTeam = @team",
+      parameters: [
+        { name: "@gameId", value: gameId },
+        { name: "@team", value: team }
+      ]
+    }).fetchAll();
+    
+    // Return response matching frontend expectations
+    res.json({ 
+      success: true, 
+      goal,
+      event: {
+        scoringTeamGoalsFor: teamGoals.length,
+        scoringTeamGoalsAgainst: 0, // Simplified for now
+        scorerGoalsInGame: teamGoals.filter(g => g.scorer === player).length
+      }
+    });
   } catch (error) {
     console.error('Error creating goal:', error);
     res.status(500).json({ error: 'Failed to create goal' });
   }
+});
+
+// Health check endpoint for debugging production issues
+app.get('/api/health', (req, res) => {
+  console.log('🔥 HEALTH ENDPOINT HIT!');
+  const envVars = {
+    COSMOS_DB_URI: !!process.env.COSMOS_DB_URI,
+    COSMOS_DB_KEY: !!process.env.COSMOS_DB_KEY,
+    COSMOS_DB_NAME: !!process.env.COSMOS_DB_NAME,
+    COSMOS_DB_GAMES_CONTAINER: process.env.COSMOS_DB_GAMES_CONTAINER,
+    COSMOS_DB_ROSTERS_CONTAINER: process.env.COSMOS_DB_ROSTERS_CONTAINER,
+    COSMOS_DB_ATTENDANCE_CONTAINER: process.env.COSMOS_DB_ATTENDANCE_CONTAINER,
+    COSMOS_DB_GOALS_CONTAINER: process.env.COSMOS_DB_GOALS_CONTAINER,
+    NODE_ENV: process.env.NODE_ENV,
+    PORT: process.env.PORT
+  };
+  
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    environment: envVars,
+    endpoints: {
+      goals: '/api/goals',
+      games: '/api/games', 
+      playerStats: '/api/player-stats',
+      health: '/api/health'
+    }
+  });
+});
+
+// Player Stats API endpoint for AI announcer
+app.get('/api/player-stats', async (req, res) => {
+  const { playerName, teamName, playerId, refresh } = req.query;
+  
+  try {
+    const { getDatabase } = await import('./cosmosClient.js');
+    const database = await getDatabase();
+    const playerStatsContainer = database.container('playerStats');
+    
+    // If refresh is requested, recalculate stats
+    if (refresh === 'true') {
+      console.log('Refreshing player stats...');
+      const { default: calculateStats } = await import('./calculateStats.js');
+      await calculateStats();
+    }
+    
+    let querySpec;
+    
+    if (playerId) {
+      // Get specific player by ID
+      querySpec = {
+        query: "SELECT * FROM c WHERE c.playerId = @playerId",
+        parameters: [{ name: "@playerId", value: playerId }]
+      };
+    } else if (playerName && teamName) {
+      // Get specific player by name and team
+      querySpec = {
+        query: "SELECT * FROM c WHERE c.playerName = @playerName AND c.teamName = @teamName",
+        parameters: [
+          { name: "@playerName", value: playerName },
+          { name: "@teamName", value: teamName }
+        ]
+      };
+    } else if (teamName) {
+      // Get all players for a team
+      querySpec = {
+        query: "SELECT * FROM c WHERE c.teamName = @teamName",
+        parameters: [{ name: "@teamName", value: teamName }]
+      };
+    } else {
+      // Get all player stats
+      querySpec = {
+        query: "SELECT * FROM c"
+      };
+    }
+    
+    const { resources: playerStats } = await playerStatsContainer.items.query(querySpec).fetchAll();
+    
+    // Add AI announcer ready insights
+    const enrichedStats = playerStats.map(player => ({
+      ...player,
+      announcer: {
+        quickFacts: [
+          `${player.playerName} has ${player.attendance?.attendancePercentage || 0}% attendance this season`,
+          `Attended ${player.attendance?.gamesAttended || 0} of ${player.attendance?.totalTeamGames || 0} games`,
+          player.insights?.reliability ? `Reliability: ${player.insights.reliability}` : null
+        ].filter(Boolean),
+        soundBites: player.insights?.announcements || [],
+        metrics: {
+          attendance: player.attendance?.attendancePercentage || 0,
+          gamesPlayed: player.attendance?.gamesAttended || 0,
+          reliability: player.insights?.reliability || 'Unknown'
+        }
+      }
+    }));
+    
+    res.status(200).json(enrichedStats);
+  } catch (error) {
+    console.error('Error fetching player stats:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch player stats',
+      message: error.message 
+    });
+  }
+});
+
+// Add other unique routes from app.js as needed
+// ...
+
+// Centralized error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// Serve static frontend files (after all API routes)
+const frontendDist = path.resolve(__dirname, '../frontend/dist');
+app.use(express.static(frontendDist));
+
+// Catch-all route to serve index.html for SPA (MUST be last!)
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
+});
+
+const server = app.listen(process.env.PORT || 8080, () => {
+  console.log(`🚀 NEW SERVER.JS is running on port ${process.env.PORT || 8080}`);
+  console.log('Deployment completed successfully');
 });

@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
-import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoalsContainer } from './cosmosClient.js';
+import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoalsContainer, getPenaltiesContainer } from './cosmosClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -315,6 +315,105 @@ app.post('/api/goals', async (req, res) => {
   }
 });
 
+// Add the `/api/penalties` POST endpoint for creating penalties
+app.post('/api/penalties', async (req, res) => {
+  const { gameId, period, team, player, penaltyType, penaltyLength, time, details } = req.body;
+
+  if (!gameId || !team || !player || !period || !time || !penaltyType || !penaltyLength) {
+    return res.status(400).json({
+      error: 'Invalid payload. Required: gameId, team, player, period, time, penaltyType, penaltyLength.'
+    });
+  }
+
+  try {
+    const container = getPenaltiesContainer();
+    const penalty = {
+      id: `${gameId}-penalty-${Date.now()}`,
+      gameId,
+      period,
+      penalizedTeam: team,
+      penalizedPlayer: player,
+      penaltyType,
+      penaltyLength,
+      time,
+      details: details || {},
+      recordedAt: new Date().toISOString()
+    };
+    
+    const { resource } = await container.items.create(penalty);
+    
+    // Get total penalties for this team in this game (simplified response)
+    const { resources: teamPenalties } = await container.items.query({
+      query: "SELECT * FROM c WHERE c.gameId = @gameId AND c.penalizedTeam = @team",
+      parameters: [
+        { name: "@gameId", value: gameId },
+        { name: "@team", value: team }
+      ]
+    }).fetchAll();
+    
+    // Return response matching frontend expectations
+    res.json({ 
+      success: true, 
+      penalty: resource,
+      summary: {
+        penalizedTeamTotalPenalties: teamPenalties.length,
+        playerPenaltiesInGame: teamPenalties.filter(p => p.penalizedPlayer === player).length
+      }
+    });
+  } catch (error) {
+    console.error('Error creating penalty:', error);
+    res.status(500).json({ error: 'Failed to create penalty' });
+  }
+});
+
+// GET endpoint for retrieving penalties
+app.get('/api/penalties', async (req, res) => {
+  const { gameId, team, playerId } = req.query;
+
+  try {
+    const container = getPenaltiesContainer();
+    let querySpec;
+    
+    if (!gameId && !team && !playerId) {
+      // Return all penalties
+      querySpec = {
+        query: 'SELECT * FROM c ORDER BY c.recordedAt DESC',
+        parameters: [],
+      };
+    } else {
+      // Build dynamic query based on provided filters
+      let conditions = [];
+      let parameters = [];
+      
+      if (gameId) {
+        conditions.push('c.gameId = @gameId');
+        parameters.push({ name: '@gameId', value: gameId });
+      }
+      
+      if (team) {
+        conditions.push('c.penalizedTeam = @team');
+        parameters.push({ name: '@team', value: team });
+      }
+      
+      if (playerId) {
+        conditions.push('c.penalizedPlayer = @playerId');
+        parameters.push({ name: '@playerId', value: playerId });
+      }
+      
+      querySpec = {
+        query: `SELECT * FROM c WHERE ${conditions.join(' AND ')} ORDER BY c.recordedAt DESC`,
+        parameters: parameters,
+      };
+    }
+
+    const { resources: penalties } = await container.items.query(querySpec).fetchAll();
+    res.status(200).json(penalties);
+  } catch (error) {
+    console.error('Error fetching penalties:', error);
+    res.status(500).json({ error: 'Failed to fetch penalties' });
+  }
+});
+
 // Health check endpoint for debugging production issues
 app.get('/api/health', (req, res) => {
   console.log('🔥 HEALTH ENDPOINT HIT!');
@@ -326,6 +425,7 @@ app.get('/api/health', (req, res) => {
     COSMOS_DB_ROSTERS_CONTAINER: process.env.COSMOS_DB_ROSTERS_CONTAINER,
     COSMOS_DB_ATTENDANCE_CONTAINER: process.env.COSMOS_DB_ATTENDANCE_CONTAINER,
     COSMOS_DB_GOALS_CONTAINER: process.env.COSMOS_DB_GOALS_CONTAINER,
+    COSMOS_DB_PENALTIES_CONTAINER: process.env.COSMOS_DB_PENALTIES_CONTAINER,
     NODE_ENV: process.env.NODE_ENV,
     PORT: process.env.PORT
   };
@@ -336,6 +436,7 @@ app.get('/api/health', (req, res) => {
     environment: envVars,
     endpoints: {
       goals: '/api/goals',
+      penalties: '/api/penalties',
       games: '/api/games', 
       playerStats: '/api/player-stats',
       health: '/api/health'

@@ -110,6 +110,10 @@ export function getGoalsContainer() {
   return getContainer('COSMOS_DB_GOALS_CONTAINER');
 }
 
+export function getPenaltiesContainer() {
+  return getContainer('COSMOS_DB_PENALTIES_CONTAINER');
+}
+
 export function getPlayerStatsContainer() {
   return database.container('playerStats');
 }

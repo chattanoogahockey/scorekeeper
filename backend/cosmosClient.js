@@ -106,8 +106,9 @@ export function getAttendanceContainer() {
   return getContainer('COSMOS_DB_ATTENDANCE_CONTAINER');
 }
 
-export function getGameEventsContainer() {
-  return getContainer('COSMOS_DB_GAME_EVENTS_CONTAINER');
+
+export function getGoalsContainer() {
+  return getContainer('COSMOS_DB_GOALS_CONTAINER');
 }
 
 export function getPlayerStatsContainer() {

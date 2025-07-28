@@ -147,7 +147,7 @@ app.get('/api/rosters', async (req, res) => {
     if (!teamName && !season && !division) {
       // Return all rosters
       querySpec = {
-        query: 'SELECT * FROM c ORDER BY c.teamName, c.jerseyNumber',
+        query: 'SELECT * FROM c',
         parameters: [],
       };
     } else {
@@ -171,7 +171,7 @@ app.get('/api/rosters', async (req, res) => {
       }
       
       querySpec = {
-        query: `SELECT * FROM c WHERE ${conditions.join(' AND ')} ORDER BY c.teamName, c.jerseyNumber`,
+        query: `SELECT * FROM c WHERE ${conditions.join(' AND ')}`,
         parameters: parameters,
       };
     }

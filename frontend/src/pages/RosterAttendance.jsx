@@ -68,7 +68,7 @@ export default function RosterAttendance() {
       }
 
       const submitData = {
-        gameId: selectedGame.gameId,
+        gameId: selectedGame.gameId || selectedGame.id || `game-${Date.now()}`,
         attendance: attendanceData,
         totalRoster: rosters.map(team => ({
           teamName: team.teamName,
@@ -78,6 +78,7 @@ export default function RosterAttendance() {
       };
       
       console.log('📤 Submitting attendance data:', submitData);
+      console.log('🎯 Selected game object:', selectedGame);
 
       // Submit attendance for all teams in one call
       const response = await axios.post('/api/attendance', submitData);
@@ -122,7 +123,7 @@ export default function RosterAttendance() {
                   const isSub = player.position === 'Sub' || player.name === 'Sub';
                   const isDisabled = submitted;
                   return (
-                    <label key={player.name} className={`flex items-center space-x-2 p-2 rounded ${isSub ? 'bg-yellow-50 border border-yellow-200' : ''}`}>
+                    <label key={player.name} className="flex items-center space-x-2 p-2 rounded">
                       <input
                         type="checkbox"
                         name={`attendance-${teamName}`}
@@ -131,8 +132,8 @@ export default function RosterAttendance() {
                         disabled={isDisabled}
                         className="h-4 w-4"
                       />
-                      <span className={isSub ? 'font-semibold text-yellow-700' : ''}>
-                        {isSub ? '🔄 Sub' : player.name}
+                      <span>
+                        {isSub ? 'Sub' : player.name}
                       </span>
                     </label>
                   );

@@ -47,6 +47,7 @@ async function calculatePlayerStats() {
         // Calculate attendance for this player
         let gamesAttended = 0;
         let totalTeamGamesWithAttendance = 0;
+        let attendanceHistory = [];
         
         attendanceRecords.forEach(record => {
           // Check if this attendance record is for the player's team
@@ -55,9 +56,17 @@ async function calculatePlayerStats() {
             totalTeamGamesWithAttendance++;
             
             // Check if player attended
-            if (teamAttendance.playersPresent.includes(playerName)) {
+            const attended = teamAttendance.playersPresent.includes(playerName);
+            if (attended) {
               gamesAttended++;
             }
+            
+            // Add to attendance history
+            attendanceHistory.push({
+              gameId: record.gameId,
+              date: record.recordedAt,
+              attended: attended
+            });
           }
         });
         
@@ -72,7 +81,8 @@ async function calculatePlayerStats() {
           totalScheduledGames: teamGames.length,
           attendancePercentage,
           position: player.position || 'Player',
-          jerseyNumber: player.jerseyNumber || 'N/A'
+          jerseyNumber: player.jerseyNumber || 'N/A',
+          attendanceHistory: attendanceHistory
         };
         
         playerStats.push(stats);
@@ -138,7 +148,7 @@ async function calculatePlayerStats() {
                       playerStat.attendancePercentage >= 60 ? 'Good' : 
                       playerStat.attendancePercentage >= 40 ? 'Moderate' : 'Low',
           announcements: generateAnnouncements(playerStat),
-          trend: calculateTrend(attendanceHistory),
+          trend: calculateTrend(playerStat.attendanceHistory),
           aiContext: {
             personality: getPlayerPersonality(playerStat.attendancePercentage, playerStat.gamesAttended),
             storylines: generateStorylines(playerStat),

@@ -34,8 +34,7 @@ const {
   COSMOS_DB_TEAMS_CONTAINER,
   COSMOS_DB_ROSTERS_CONTAINER,
   COSMOS_DB_ATTENDANCE_CONTAINER,
-  COSMOS_DB_GOAL_EVENTS_CONTAINER,
-  COSMOS_DB_PENALTY_EVENTS_CONTAINER,
+  COSMOS_DB_GAME_EVENTS_CONTAINER,
 } = process.env;
 
 // Debugging: Log critical environment variables to verify they are loaded
@@ -103,16 +102,8 @@ export function getAttendanceContainer() {
   return getContainer('COSMOS_DB_ATTENDANCE_CONTAINER');
 }
 
-export function getGoalEventsContainer() {
-  return getContainer('COSMOS_DB_GOAL_EVENTS_CONTAINER');
-}
-
-export function getPenaltyEventsContainer() {
-  return getContainer('COSMOS_DB_PENALTY_EVENTS_CONTAINER');
-}
-
 export function getGameEventsContainer() {
-  return getContainer('COSMOS_DB_ATTENDANCE_CONTAINER'); // Using gameEvents container for all game events
+  return getContainer('COSMOS_DB_GAME_EVENTS_CONTAINER');
 }
 
 export async function testDatabaseConnection() {

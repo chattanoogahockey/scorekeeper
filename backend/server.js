@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
-import { getGamesContainer, getAttendanceContainer, getRostersContainer } from './cosmosClient.js';
+import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGameEventsContainer } from './cosmosClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -133,6 +133,128 @@ app.get('/api/games', async (req, res) => {
   } catch (error) {
     console.error('Error fetching games:', error);
     res.status(500).json({ error: 'Failed to fetch games' });
+  }
+});
+
+// Add the `/api/rosters` endpoint
+app.get('/api/rosters', async (req, res) => {
+  const { teamName, season, division } = req.query;
+
+  try {
+    const container = getRostersContainer();
+    let querySpec;
+    
+    if (!teamName && !season && !division) {
+      // Return all rosters
+      querySpec = {
+        query: 'SELECT * FROM c ORDER BY c.teamName, c.jerseyNumber',
+        parameters: [],
+      };
+    } else {
+      // Build dynamic query based on provided filters
+      let conditions = [];
+      let parameters = [];
+      
+      if (teamName) {
+        conditions.push('c.teamName = @teamName');
+        parameters.push({ name: '@teamName', value: teamName });
+      }
+      
+      if (season) {
+        conditions.push('c.season = @season');
+        parameters.push({ name: '@season', value: season });
+      }
+      
+      if (division) {
+        conditions.push('c.division = @division');
+        parameters.push({ name: '@division', value: division });
+      }
+      
+      querySpec = {
+        query: `SELECT * FROM c WHERE ${conditions.join(' AND ')} ORDER BY c.teamName, c.jerseyNumber`,
+        parameters: parameters,
+      };
+    }
+
+    const { resources: rosters } = await container.items.query(querySpec).fetchAll();
+    res.status(200).json(rosters);
+  } catch (error) {
+    console.error('Error fetching rosters:', error);
+    res.status(500).json({ error: 'Failed to fetch rosters' });
+  }
+});
+
+// Add the `/api/game-events` endpoint for goals, assists, penalties, etc.
+app.get('/api/game-events', async (req, res) => {
+  const { gameId, eventType } = req.query;
+
+  try {
+    const container = getGameEventsContainer();
+    let querySpec;
+    
+    if (!gameId && !eventType) {
+      // Return all game events
+      querySpec = {
+        query: 'SELECT * FROM c ORDER BY c.timestamp DESC',
+        parameters: [],
+      };
+    } else {
+      // Build dynamic query based on provided filters
+      let conditions = [];
+      let parameters = [];
+      
+      if (gameId) {
+        conditions.push('c.gameId = @gameId');
+        parameters.push({ name: '@gameId', value: gameId });
+      }
+      
+      if (eventType) {
+        conditions.push('c.eventType = @eventType');
+        parameters.push({ name: '@eventType', value: eventType });
+      }
+      
+      querySpec = {
+        query: `SELECT * FROM c WHERE ${conditions.join(' AND ')} ORDER BY c.timestamp DESC`,
+        parameters: parameters,
+      };
+    }
+
+    const { resources: events } = await container.items.query(querySpec).fetchAll();
+    res.status(200).json(events);
+  } catch (error) {
+    console.error('Error fetching game events:', error);
+    res.status(500).json({ error: 'Failed to fetch game events' });
+  }
+});
+
+// Add the `/api/game-events` POST endpoint for creating game events
+app.post('/api/game-events', async (req, res) => {
+  const { gameId, eventType, playerId, playerName, teamName, timestamp, details } = req.body;
+  
+  if (!gameId || !eventType || !teamName) {
+    return res.status(400).json({ 
+      error: 'Invalid payload. Expected: { gameId, eventType, teamName, ... }' 
+    });
+  }
+
+  try {
+    const container = getGameEventsContainer();
+    const gameEvent = {
+      id: `${gameId}-${eventType}-${Date.now()}`,
+      gameId,
+      eventType, // 'goal', 'assist', 'penalty', 'substitution', etc.
+      playerId,
+      playerName,
+      teamName,
+      timestamp: timestamp || new Date().toISOString(),
+      details: details || {},
+      recordedAt: new Date().toISOString()
+    };
+    
+    const { resource } = await container.items.create(gameEvent);
+    res.status(201).json(resource);
+  } catch (error) {
+    handleError(res, error);
   }
 });
 

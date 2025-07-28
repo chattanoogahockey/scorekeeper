@@ -66,9 +66,12 @@ process.on('SIGINT', () => {
 // Add unique routes from app.js
 app.post('/api/attendance', async (req, res) => {
   const { gameId, attendance, totalRoster } = req.body;
+  console.log('Received attendance POST:', JSON.stringify(req.body, null, 2));
   if (!gameId || !attendance || !totalRoster) {
+    console.error('❌ Invalid attendance payload:', JSON.stringify(req.body, null, 2));
     return res.status(400).json({ 
-      error: 'Invalid payload. Expected: { gameId, attendance, totalRoster }' 
+      error: 'Invalid payload. Expected: { gameId, attendance, totalRoster }',
+      received: req.body
     });
   }
   try {

@@ -83,7 +83,7 @@ export default function LeagueGameSelection() {
             players: awayPlayers.map(player => ({
               name: player.fullName || `${player.firstName} ${player.lastName}`,
               jerseyNumber: player.jerseyNumber,
-              position: 'Player' // Default position, can be updated later
+              position: player.position || 'Player' // Use actual position from roster
             }))
           });
         }
@@ -101,7 +101,7 @@ export default function LeagueGameSelection() {
             players: homePlayers.map(player => ({
               name: player.fullName || `${player.firstName} ${player.lastName}`,
               jerseyNumber: player.jerseyNumber,
-              position: 'Player' // Default position, can be updated later
+              position: player.position || 'Player' // Use actual position from roster
             }))
           });
         }

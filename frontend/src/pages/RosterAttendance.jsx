@@ -119,21 +119,20 @@ export default function RosterAttendance() {
               <h3 className="text-xl font-semibold mb-2">{teamName}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                 {teamRoster.players.map((player) => {
-                  const defaultChecked = player.position !== 'Sub';
+                  const isSub = player.position === 'Sub' || player.name === 'Sub';
                   const isDisabled = submitted;
-                  const isSub = player.position === 'Sub' || player.name.includes('Sub');
                   return (
                     <label key={player.name} className={`flex items-center space-x-2 p-2 rounded ${isSub ? 'bg-yellow-50 border border-yellow-200' : ''}`}>
                       <input
                         type="checkbox"
                         name={`attendance-${teamName}`}
                         value={player.name}
-                        defaultChecked={defaultChecked}
+                        defaultChecked={isSub ? false : true}
                         disabled={isDisabled}
                         className="h-4 w-4"
                       />
                       <span className={isSub ? 'font-semibold text-yellow-700' : ''}>
-                        {isSub ? '🔄 ' : ''}{player.name}
+                        {isSub ? '🔄 Sub' : player.name}
                       </span>
                     </label>
                   );

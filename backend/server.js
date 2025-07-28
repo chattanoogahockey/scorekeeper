@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
-import { getGamesContainer, getAttendanceContainer } from './cosmosClient.js';
+import { getGamesContainer, getAttendanceContainer, getRostersContainer } from './cosmosClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -112,10 +112,21 @@ app.get('/api/games', async (req, res) => {
 
   try {
     const container = getGamesContainer();
-    const querySpec = {
-      query: 'SELECT * FROM c WHERE c.league = @league',
-      parameters: [{ name: '@league', value: league }],
-    };
+    let querySpec;
+    
+    if (league === 'all') {
+      // Return all games to extract leagues
+      querySpec = {
+        query: 'SELECT * FROM c',
+        parameters: [],
+      };
+    } else {
+      // Return games for specific league
+      querySpec = {
+        query: 'SELECT * FROM c WHERE c.league = @league',
+        parameters: [{ name: '@league', value: league }],
+      };
+    }
 
     const { resources: games } = await container.items.query(querySpec).fetchAll();
     res.status(200).json(games);

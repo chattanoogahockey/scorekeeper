@@ -14,8 +14,14 @@ export default function LeagueGameSelection() {
   useEffect(() => {
     // Reset context when visiting selection page
     reset();
-    axios.get('/api/leagues')
-      .then((res) => setLeagues(res.data))
+    // Load all games first, then extract unique leagues
+    axios.get('/api/games?league=all')
+      .then((res) => {
+        // Extract unique leagues from games data
+        const uniqueLeagues = [...new Set(res.data.map(game => game.league))]
+          .map(league => ({ id: league, name: league }));
+        setLeagues(uniqueLeagues);
+      })
       .catch((err) => console.error('Failed to load leagues', err));
   }, []);
 
@@ -38,9 +44,9 @@ export default function LeagueGameSelection() {
   const handleGameSelect = async (game) => {
     setSelectedGame(game);
     try {
-      // Load rosters for game using gameId from your data structure
-      const res = await axios.get('/api/rosters', { params: { gameId: game.gameId } });
-      setRosters(res.data || []);
+      // For now, set empty rosters - you can implement roster loading later
+      // based on your rosters container structure
+      setRosters([]);
     } catch (err) {
       console.error('Failed to load rosters', err);
     }

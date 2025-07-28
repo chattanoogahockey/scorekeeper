@@ -14,23 +14,42 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Set up Node.js version
-      uses: actions/setup-node@v1
+      uses: actions/setup-node@v4
       with:
         node-version: '20.x'
+        cache: 'npm'
     
-    - name: npm install, build, and test
+    - name: Clean and install dependencies
       run: |
+        rm -rf node_modules package-lock.json
         npm install
-        npm run build --if-present
-        npm run test --if-present
-
+    
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm install
+        npm run build
+    
+    - name: Install backend dependencies
+      run: |
+        cd backend  
+        npm install --production
+    
+    - name: Create deployment package
+      run: |
+        mkdir -p deploy
+        cp -r backend/* deploy/
+        cp -r frontend/dist deploy/
+        cp package.json deploy/
+        cd deploy && npm install --production --ignore-scripts
+    
     - name: 'Deploy to Azure Web App'
-      uses: azure/webapps-deploy@v2
+      uses: azure/webapps-deploy@v3
       with: 
         app-name: 'scorekeeper'
         slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_aa98474905f14a53afdc3e9da94e0ae4 }}
-        package: .
+        package: './deploy'

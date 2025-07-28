@@ -53,6 +53,7 @@ export default function RosterAttendance() {
     setError(null);
     
     try {
+      console.log('🔍 Starting attendance submission...');
       const attendanceData = {};
       
       // Collect attendance for each team
@@ -63,10 +64,10 @@ export default function RosterAttendance() {
         );
         const playersPresent = Array.from(checkedInputs).map((input) => input.value);
         attendanceData[teamName] = playersPresent;
+        console.log(`📋 ${teamName}: ${playersPresent.length} players present:`, playersPresent);
       }
 
-      // Submit attendance for all teams in one call
-      await axios.post('/api/attendance', {
+      const submitData = {
         gameId: selectedGame.gameId,
         attendance: attendanceData,
         totalRoster: rosters.map(team => ({
@@ -74,8 +75,14 @@ export default function RosterAttendance() {
           teamId: team.teamId,
           totalPlayers: team.players.map(p => p.name)
         }))
-      });
+      };
       
+      console.log('📤 Submitting attendance data:', submitData);
+
+      // Submit attendance for all teams in one call
+      const response = await axios.post('/api/attendance', submitData);
+      
+      console.log('✅ Attendance submission successful:', response.data);
       setAttendance(attendanceData);
       setSubmitted(true);
       
@@ -85,8 +92,13 @@ export default function RosterAttendance() {
       }, 1000);
       
     } catch (err) {
-      console.error('Failed to submit attendance', err);
-      setError('Failed to submit attendance. Please try again.');
+      console.error('❌ Failed to submit attendance:', err);
+      console.error('Error details:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      });
+      setError(`Failed to submit attendance. Please try again. Error: ${err.response?.data?.error || err.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -109,8 +121,9 @@ export default function RosterAttendance() {
                 {teamRoster.players.map((player) => {
                   const defaultChecked = player.position !== 'Sub';
                   const isDisabled = submitted;
+                  const isSub = player.position === 'Sub' || player.name.includes('Sub');
                   return (
-                    <label key={player.name} className="flex items-center space-x-2">
+                    <label key={player.name} className={`flex items-center space-x-2 p-2 rounded ${isSub ? 'bg-yellow-50 border border-yellow-200' : ''}`}>
                       <input
                         type="checkbox"
                         name={`attendance-${teamName}`}
@@ -119,8 +132,8 @@ export default function RosterAttendance() {
                         disabled={isDisabled}
                         className="h-4 w-4"
                       />
-                      <span>
-                        {player.name}
+                      <span className={isSub ? 'font-semibold text-yellow-700' : ''}>
+                        {isSub ? '🔄 ' : ''}{player.name}
                       </span>
                     </label>
                   );

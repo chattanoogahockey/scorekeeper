@@ -118,7 +118,7 @@ export default function LeagueGameSelection() {
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4">
-      <h1 className="text-3xl font-bold mb-6">Select Game v2.1</h1>
+      <h1 className="text-3xl font-bold mb-6">Select Game</h1>
       
       {loading && <p className="text-lg">Loading games...</p>}
       {error && <p className="text-red-500 text-lg">{error}</p>}

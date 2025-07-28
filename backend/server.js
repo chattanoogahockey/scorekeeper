@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
-import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGameEventsContainer } from './cosmosClient.js';
+import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoalsContainer } from './cosmosClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -192,7 +192,7 @@ app.get('/api/game-events', async (req, res) => {
   const { gameId, eventType } = req.query;
 
   try {
-    const container = getGameEventsContainer();
+    const container = getGoalsContainer();
     let querySpec;
     
     if (!gameId && !eventType) {
@@ -241,7 +241,7 @@ app.post('/api/game-events', async (req, res) => {
   }
 
   try {
-    const container = getGameEventsContainer();
+    const container = getGoalsContainer();
     const gameEvent = {
       id: `${gameId}-${eventType}-${Date.now()}`,
       gameId,
@@ -278,4 +278,37 @@ app.use((err, req, res, next) => {
 const server = app.listen(process.env.PORT || 8080, () => {
   console.log(`Server is running on port ${process.env.PORT || 8080}`);
   console.log('Deployment completed successfully');
+});
+
+// Add the /api/goals POST endpoint for creating goals
+app.post('/api/goals', async (req, res) => {
+  const { gameId, period, team, player, assist, time, shotType, goalType, breakaway } = req.body;
+
+  if (!gameId || !team || !player || !period || !time) {
+    return res.status(400).json({
+      error: 'Invalid payload. Required: gameId, team, player, period, time.'
+    });
+  }
+
+  try {
+    const container = getGoalsContainer();
+    const goal = {
+      id: `${gameId}-goal-${Date.now()}`,
+      gameId,
+      period,
+      scoringTeam: team,
+      scorer: player,
+      assists: assist ? [assist] : [],
+      time,
+      shotType: shotType || '',
+      goalType: goalType || '',
+      breakaway: breakaway || false,
+      recordedAt: new Date().toISOString()
+    };
+    await container.items.create(goal);
+    res.json({ success: true, goal });
+  } catch (error) {
+    console.error('Error creating goal:', error);
+    res.status(500).json({ error: 'Failed to create goal' });
+  }
 });

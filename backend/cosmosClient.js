@@ -34,7 +34,6 @@ const {
   COSMOS_DB_TEAMS_CONTAINER,
   COSMOS_DB_ROSTERS_CONTAINER,
   COSMOS_DB_ATTENDANCE_CONTAINER,
-  COSMOS_DB_GAME_EVENTS_CONTAINER,
 } = process.env;
 
 // Debugging: Log critical environment variables to verify they are loaded

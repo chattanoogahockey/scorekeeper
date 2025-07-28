@@ -111,7 +111,7 @@ export default function LeagueGameSelection() {
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4">
-      <h1 className="text-3xl font-bold mb-6">Select League & Game</h1>
+      <h1 className="text-3xl font-bold mb-6">Select Game</h1>
       
       {loading && <p className="text-lg">Loading games...</p>}
       {error && <p className="text-red-500 text-lg">{error}</p>}
@@ -135,9 +135,9 @@ export default function LeagueGameSelection() {
                   <span className="font-medium">Date:</span> {formatGameDate(game.gameDate || game.date)}
                 </p>
                 
-                {game.league && (
+                {game.division && (
                   <p className="text-gray-600">
-                    <span className="font-medium">League:</span> {game.league}
+                    <span className="font-medium">Division:</span> {game.division}
                   </p>
                 )}
                 

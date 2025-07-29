@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { GameContext } from '../contexts/GameContext.jsx';
 
 /**
@@ -57,30 +58,23 @@ export default function PenaltyRecord() {
     setSubmitting(true);
     
     try {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-      const response = await fetch(`${apiBaseUrl}/api/penalties`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          gameId: selectedGame.id || selectedGame.gameId,
-          team: formData.team,
-          player: formData.player,
-          period: formData.period,
-          time: formData.time,
-          penaltyType: formData.penaltyType,
-          penaltyLength: formData.penaltyLength,
-          details: { description: formData.details }
-        }),
-      });
+      const penaltyPayload = {
+        gameId: selectedGame.id || selectedGame.gameId,
+        team: formData.team,
+        player: formData.player,
+        period: formData.period,
+        time: formData.time,
+        penaltyType: formData.penaltyType,
+        penaltyLength: formData.penaltyLength,
+        details: { description: formData.details }
+      };
 
-      if (!response.ok) {
-        throw new Error(`Failed to record penalty: ${response.statusText}`);
-      }
+      console.log('📦 Penalty Payload:', JSON.stringify(penaltyPayload, null, 2));
+      console.log('🔗 Submitting to:', '/api/penalties');
+      
+      const response = await axios.post('/api/penalties', penaltyPayload);
 
-      const result = await response.json();
-      console.log('Penalty recorded successfully:', result);
+      console.log('✅ SUCCESS! Response:', response.data);
 
       // Create user-friendly penalty summary
       const penaltySummary = `Penalty Recorded!
@@ -104,8 +98,13 @@ Length: ${formData.penaltyLength} minutes`;
       });
 
     } catch (error) {
-      console.error('Error recording penalty:', error);
-      alert(`Error recording penalty: ${error.message}`);
+      console.error('❌ Failed to record penalty:', error);
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      alert(`Error recording penalty: ${error.response?.data?.error || error.message}`);
     } finally {
       setSubmitting(false);
     }

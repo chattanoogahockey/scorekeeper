@@ -1,5 +1,6 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import { GameContext } from '../contexts/GameContext.jsx';
 
 /**
@@ -555,10 +556,7 @@ export default function GoalRecord() {
               console.log('📡 Starting goal submission...');
               
               try {
-                // Send goal data to backend API
-                const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-                console.log('🌐 API Base URL:', apiBaseUrl);
-                
+                // Send goal data to backend API using axios (same as RosterAttendance)
                 const goalPayload = {
                   gameId: selectedGame.id || selectedGame.gameId,
                   team: formData.team,
@@ -572,27 +570,11 @@ export default function GoalRecord() {
                 };
                 
                 console.log('📦 Goal Payload:', JSON.stringify(goalPayload, null, 2));
-                console.log('🔗 Fetching:', `${apiBaseUrl}/api/goals`);
+                console.log('🔗 Submitting to:', '/api/goals');
                 
-                const response = await fetch(`${apiBaseUrl}/api/goals`, {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify(goalPayload),
-                });
+                const response = await axios.post('/api/goals', goalPayload);
 
-                console.log('📊 Response Status:', response.status);
-                console.log('📊 Response OK:', response.ok);
-
-                if (!response.ok) {
-                  const errorText = await response.text();
-                  console.error('❌ Error Response:', errorText);
-                  throw new Error(`HTTP ${response.status}: ${errorText}`);
-                }
-
-                const result = await response.json();
-                console.log('✅ SUCCESS! Result:', result);
+                console.log('✅ SUCCESS! Response:', response.data);
 
                 // Create user-friendly goal summary using the response data
                 const assistText = formData.assist ? ` (assist: ${formData.assist})` : '';
@@ -618,8 +600,13 @@ Shot Type: ${formData.shotType}`;
                 });
 
               } catch (error) {
-                console.error('Error recording goal:', error);
-                alert(`Error recording goal: ${error.message}`);
+                console.error('❌ Failed to record goal:', error);
+                console.error('Error details:', {
+                  message: error.message,
+                  response: error.response?.data,
+                  status: error.response?.status
+                });
+                alert(`Error recording goal: ${error.response?.data?.error || error.message}`);
               }
             }}
           >

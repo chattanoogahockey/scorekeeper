@@ -80,8 +80,17 @@ export default function RosterAttendance() {
       console.log('📤 Submitting attendance data:', submitData);
       console.log('🎯 Selected game object:', selectedGame);
 
+      // In development: uses proxy (/api/attendance)
+      // In production: uses full URL from environment variable
+      const apiUrl = import.meta.env.DEV 
+        ? '/api/attendance' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/attendance`;
+
+      console.log('🔗 Submitting to:', apiUrl);
+      console.log('🌍 Environment mode:', import.meta.env.DEV ? 'Development' : 'Production');
+
       // Submit attendance for all teams in one call
-      const response = await axios.post('/api/attendance', submitData);
+      const response = await axios.post(apiUrl, submitData);
       
       console.log('✅ Attendance submission successful:', response.data);
       setAttendance(attendanceData);

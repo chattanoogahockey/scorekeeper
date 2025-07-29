@@ -183,55 +183,6 @@ export default function GoalRecord() {
   // Check if form is complete
   const isFormComplete = formData.team && formData.player && formData.period && formData.time && formData.time !== '00:00' && formData.time !== '';
 
-  // Calculate goal context data (this would normally come from backend)
-  const calculateGoalData = () => {
-    // For now, we'll use placeholder values since we don't have access to current game state
-    // The backend will calculate these properly when we submit
-    const scoringTeamGoalsFor = 1; // Will be calculated by backend
-    const scoringTeamGoalsAgainst = 0; // Will be calculated by backend
-    const scorerGoalsInGame = 1; // Will be calculated by backend
-    
-    // Calculate goal description based on hypothetical score
-    let goalDescription = "Goal";
-    const totalGoals = scoringTeamGoalsFor + scoringTeamGoalsAgainst;
-    
-    if (totalGoals === 1) {
-      goalDescription = "First goal of the game";
-    } else if (scoringTeamGoalsFor === scoringTeamGoalsAgainst) {
-      goalDescription = "Tying goal";
-    } else if (scoringTeamGoalsFor > scoringTeamGoalsAgainst) {
-      goalDescription = "Go-ahead goal";
-    } else {
-      goalDescription = "Goal";
-    }
-    
-    // Build complete goal data matching Cosmos DB structure
-    return {
-      // Basic form data
-      gameId: selectedGame.id || selectedGame.gameId,
-      period: parseInt(formData.period),
-      scoringTeamId: formData.team,
-      scorerId: formData.player,
-      assistId: formData.assist || null,
-      goalTime: formData.time,
-      shotType: formData.shotType,
-      goalType: formData.goalType,
-      breakaway: formData.breakaway,
-      
-      // Calculated data (backend will recalculate these)
-      scoringTeamGoalsFor,
-      scoringTeamGoalsAgainst,
-      goalDescription,
-      scorerGoalsInGame,
-      
-      // Metadata
-      timestampRecorded: new Date().toISOString(),
-      timestampOccurred: new Date().toISOString(), // Approximate, could be adjusted
-      enteredBy: "scorekeeper-app",
-      status: "pending" // Will be finalized later
-    };
-  };
-
   return (
     <div className="min-h-screen bg-blue-50 p-4">
       <div className="max-w-md mx-auto">
@@ -556,7 +507,13 @@ export default function GoalRecord() {
               console.log('📡 Starting goal submission...');
               
               try {
-                // Send goal data to backend API using axios (same as RosterAttendance)
+                // Send goal data to backend API
+                // In development: uses proxy (/api/goals)
+                // In production: uses full URL from environment variable
+                const apiUrl = import.meta.env.DEV 
+                  ? '/api/goals' 
+                  : `${import.meta.env.VITE_API_BASE_URL}/api/goals`;
+                  
                 const goalPayload = {
                   gameId: selectedGame.id || selectedGame.gameId,
                   team: formData.team,
@@ -570,9 +527,10 @@ export default function GoalRecord() {
                 };
                 
                 console.log('📦 Goal Payload:', JSON.stringify(goalPayload, null, 2));
-                console.log('🔗 Submitting to:', '/api/goals');
+                console.log('🔗 Submitting to:', apiUrl);
+                console.log('🌍 Environment mode:', import.meta.env.DEV ? 'Development' : 'Production');
                 
-                const response = await axios.post('/api/goals', goalPayload);
+                const response = await axios.post(apiUrl, goalPayload);
 
                 console.log('✅ SUCCESS! Response:', response.data);
 

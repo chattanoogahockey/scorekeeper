@@ -58,6 +58,12 @@ export default function PenaltyRecord() {
     setSubmitting(true);
     
     try {
+      // In development: uses proxy (/api/penalties)
+      // In production: uses full URL from environment variable
+      const apiUrl = import.meta.env.DEV 
+        ? '/api/penalties' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/penalties`;
+        
       const penaltyPayload = {
         gameId: selectedGame.id || selectedGame.gameId,
         team: formData.team,
@@ -70,9 +76,10 @@ export default function PenaltyRecord() {
       };
 
       console.log('📦 Penalty Payload:', JSON.stringify(penaltyPayload, null, 2));
-      console.log('🔗 Submitting to:', '/api/penalties');
+      console.log('🔗 Submitting to:', apiUrl);
+      console.log('🌍 Environment mode:', import.meta.env.DEV ? 'Development' : 'Production');
       
-      const response = await axios.post('/api/penalties', penaltyPayload);
+      const response = await axios.post(apiUrl, penaltyPayload);
 
       console.log('✅ SUCCESS! Response:', response.data);
 

@@ -29,7 +29,7 @@ export default function Dashboard() {
     if (!selectedGame) return;
     const fetchEvents = async () => {
       try {
-        const res = await axios.get('/api/events', { params: { gameId: selectedGame.id } });
+        const res = await axios.get('/api/events', { params: { gameId: selectedGame.id || selectedGame.gameId } });
         setEvents(res.data);
       } catch (err) {
         console.error('Failed to fetch events', err);
@@ -87,7 +87,7 @@ export default function Dashboard() {
     setGoalError(null);
     try {
       await axios.post('/api/goals', {
-        gameId: selectedGame.id,
+        gameId: selectedGame.id || selectedGame.gameId,
         period: goalForm.period,
         scoringTeam: goalForm.scoringTeam,
         scorer: goalForm.scorer,
@@ -128,7 +128,7 @@ export default function Dashboard() {
     setPenaltyError(null);
     try {
       await axios.post('/api/penalties', {
-        gameId: selectedGame.id,
+        gameId: selectedGame.id || selectedGame.gameId,
         period: penaltyForm.period,
         team: penaltyForm.team,
         penalizedPlayer: penaltyForm.penalizedPlayer,
@@ -389,7 +389,7 @@ export default function Dashboard() {
       </div>
       {/* Announcer and DJ controls */}
       <div className="grid gap-8 md:grid-cols-2 mt-8">
-        <AnnouncerControls gameId={selectedGame.id} />
+        <AnnouncerControls gameId={selectedGame.id || selectedGame.gameId} />
         <DJPanel />
       </div>
       {/* Live event feed */}

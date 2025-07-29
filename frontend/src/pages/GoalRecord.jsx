@@ -207,7 +207,7 @@ export default function GoalRecord() {
     // Build complete goal data matching Cosmos DB structure
     return {
       // Basic form data
-      gameId: selectedGame.gameId,
+      gameId: selectedGame.id || selectedGame.gameId,
       period: parseInt(formData.period),
       scoringTeamId: formData.team,
       scorerId: formData.player,
@@ -528,37 +528,71 @@ export default function GoalRecord() {
                 : 'bg-gray-400 text-gray-700 cursor-not-allowed'
             }`}
             onClick={async () => {
-              const goalData = calculateGoalData();
-              console.log('Goal Data for Cosmos DB:', goalData);
+              console.log('🚀 GOAL SUBMIT BUTTON CLICKED');
+              console.log('🎮 Selected Game:', selectedGame);
+              console.log('📝 Form Data:', formData);
+              console.log('✅ Form Complete:', isFormComplete);
+              
+              // Add extra safety checks
+              if (!selectedGame) {
+                console.error('❌ No game selected');
+                alert('Error: No game selected. Please select a game first.');
+                return;
+              }
+              
+              if (!selectedGame.id && !selectedGame.gameId) {
+                console.error('❌ Game has no ID:', selectedGame);
+                alert('Error: Selected game has no ID');
+                return;
+              }
+              
+              if (!formData.team || !formData.player || !formData.period || !formData.time) {
+                console.error('❌ Missing required form data:', formData);
+                alert('Error: Please fill in all required fields');
+                return;
+              }
+              
+              console.log('📡 Starting goal submission...');
               
               try {
                 // Send goal data to backend API
                 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
+                console.log('🌐 API Base URL:', apiBaseUrl);
+                
+                const goalPayload = {
+                  gameId: selectedGame.id || selectedGame.gameId,
+                  team: formData.team,
+                  player: formData.player,
+                  period: formData.period,
+                  time: formData.time,
+                  assist: formData.assist || null,
+                  shotType: formData.shotType,
+                  goalType: formData.goalType,
+                  breakaway: formData.breakaway
+                };
+                
+                console.log('📦 Goal Payload:', JSON.stringify(goalPayload, null, 2));
+                console.log('🔗 Fetching:', `${apiBaseUrl}/api/goals`);
+                
                 const response = await fetch(`${apiBaseUrl}/api/goals`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
                   },
-                  body: JSON.stringify({
-                    gameId: selectedGame.gameId,
-                    team: formData.team,
-                    player: formData.player,
-                    period: formData.period,
-                    time: formData.time,
-                    assist: formData.assist || null,
-                    shotType: formData.shotType,
-                    goalType: formData.goalType,
-                    breakaway: formData.breakaway,
-                    goalDescription: goalData.goalDescription
-                  }),
+                  body: JSON.stringify(goalPayload),
                 });
 
+                console.log('📊 Response Status:', response.status);
+                console.log('📊 Response OK:', response.ok);
+
                 if (!response.ok) {
-                  throw new Error(`Failed to record goal: ${response.statusText}`);
+                  const errorText = await response.text();
+                  console.error('❌ Error Response:', errorText);
+                  throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
 
                 const result = await response.json();
-                console.log('Goal recorded successfully:', result);
+                console.log('✅ SUCCESS! Result:', result);
 
                 // Create user-friendly goal summary using the response data
                 const assistText = formData.assist ? ` (assist: ${formData.assist})` : '';

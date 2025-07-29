@@ -17,6 +17,12 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'Test endpoint works!' });
 });
 
+// SIMPLE GOALS TEST ROUTE
+app.get('/api/goals-test', (req, res) => {
+  console.log('🔥 GOALS TEST ENDPOINT HIT!');
+  res.json({ message: 'Goals test endpoint works!' });
+});
+
 // Utility function for error handling
 function handleError(res, error) {
   console.error('API Error:', error);
@@ -265,6 +271,9 @@ app.post('/api/game-events', async (req, res) => {
 
 // Add the `/api/goals` POST endpoint for creating goals
 app.post('/api/goals', async (req, res) => {
+  console.log('🔥 GOALS POST ENDPOINT HIT!');
+  console.log('Request body:', req.body);
+  
   const { gameId, period, team, player, assist, time, shotType, goalType, breakaway } = req.body;
 
   if (!gameId || !team || !player || !period || !time) {

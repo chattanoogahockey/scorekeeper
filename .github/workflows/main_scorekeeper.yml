@@ -46,8 +46,9 @@ jobs:
         # Copy built frontend to backend's static serving location
         mkdir -p deploy/frontend
         cp -r frontend/dist/* deploy/frontend/
-        # Copy root package.json
+        # Copy root package.json and web.config
         cp package.json deploy/
+        cp web.config deploy/
         cd deploy && npm install --production --ignore-scripts
     
     - name: 'Deploy to Azure Web App'

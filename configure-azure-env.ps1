@@ -13,8 +13,8 @@ $envVars = @{
     "COSMOS_DB_GAMES_CONTAINER" = "games"
     "COSMOS_DB_ROSTERS_CONTAINER" = "rosters"
     "COSMOS_DB_ATTENDANCE_CONTAINER" = "attendance"
-    "COSMOS_DB_GOAL_EVENTS_CONTAINER" = "goalEvents"
-    "COSMOS_DB_PENALTY_EVENTS_CONTAINER" = "penaltyEvents"
+    "COSMOS_DB_GOALS_CONTAINER" = "goals"
+    "COSMOS_DB_PENALTIES_CONTAINER" = "penalties"
 }
 
 Write-Host "Azure App Service Environment Variables Configuration" -ForegroundColor Green

@@ -4,6 +4,7 @@ import LeagueGameSelection from './pages/LeagueGameSelection.jsx';
 import RosterAttendance from './pages/RosterAttendance.jsx';
 import InGameMenu from './pages/InGameMenu.jsx';
 import GoalRecord from './pages/GoalRecord.jsx';
+import GoalRecordTest from './pages/GoalRecordTest.jsx';
 import PenaltyRecord from './pages/PenaltyRecord.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import { GameProvider } from './contexts/GameContext.jsx';
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/roster" element={<RosterAttendance />} />
         <Route path="/ingame" element={<InGameMenu />} />
         <Route path="/goal" element={<GoalRecord />} />
+        <Route path="/goal-test" element={<GoalRecordTest />} />
         <Route path="/penalty" element={<PenaltyRecord />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="*" element={<Navigate to="/" />} />

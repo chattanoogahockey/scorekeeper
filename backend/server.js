@@ -530,7 +530,7 @@ app.use((err, req, res, next) => {
 });
 
 // Serve static frontend files (after all API routes)
-const frontendDist = path.resolve(__dirname, '../frontend/dist');
+const frontendDist = path.resolve(__dirname, 'frontend');
 app.use(express.static(frontendDist));
 
 // Catch-all route to serve index.html for SPA (MUST be last!)

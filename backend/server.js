@@ -47,6 +47,29 @@ app.get('/api/goals-test', (req, res) => {
   res.json({ message: 'Goals test endpoint works!' });
 });
 
+// MINIMAL GOALS TEST - COPY OF ATTENDANCE LOGIC
+app.post('/api/goals-minimal', async (req, res) => {
+  console.log('🎯 MINIMAL GOALS POST ENDPOINT HIT!');
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
+  
+  try {
+    const container = getGoalsContainer();
+    const testGoal = {
+      id: `test-goal-${Date.now()}`,
+      eventType: 'goal',
+      gameId: req.body.gameId || 'test',
+      recordedAt: new Date().toISOString(),
+      test: true
+    };
+    
+    const { resource } = await container.items.create(testGoal);
+    res.status(201).json(resource);
+  } catch (error) {
+    console.error('❌ Goals minimal test error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Utility function for error handling
 function handleError(res, error) {
   console.error('API Error:', error);
@@ -279,15 +302,18 @@ app.post('/api/game-events', async (req, res) => {
 });
 
 // Add the `/api/goals` POST endpoint for creating goals
+// Add the `/api/goals` POST endpoint for creating goals - FIXED MAPPING
 app.post('/api/goals', async (req, res) => {
   console.log('🔥 GOALS POST ENDPOINT HIT!');
-  console.log('Request body:', req.body);
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
   
-  const { gameId, period, team, player, assist, time, shotType, goalType, breakaway } = req.body;
+  const { gameId, team, player, period, time, assist, shotType, goalType, breakaway } = req.body;
 
   if (!gameId || !team || !player || !period || !time) {
+    console.error('❌ Invalid goals payload:', JSON.stringify(req.body, null, 2));
     return res.status(400).json({
-      error: 'Invalid payload. Required: gameId, team, player, period, time.'
+      error: 'Invalid payload. Required: gameId, team, player, period, time.',
+      received: req.body
     });
   }
 
@@ -295,41 +321,30 @@ app.post('/api/goals', async (req, res) => {
     const container = getGoalsContainer();
     const goal = {
       id: `${gameId}-goal-${Date.now()}`,
+      eventType: 'goal',
       gameId,
       period,
-      scoringTeam: team,
-      scorer: player,
-      assists: assist ? [assist] : [],
+      scoringTeam: team,              // Map team -> scoringTeam
+      scorer: player,                 // Map player -> scorer  
+      assists: assist ? [assist] : [], // Map assist -> assists array
       time,
-      shotType: shotType || '',
-      goalType: goalType || '',
+      shotType: shotType || 'Wrist Shot',
+      goalType: goalType || 'Regular',
       breakaway: breakaway || false,
       recordedAt: new Date().toISOString()
     };
-    await container.items.create(goal);
     
-    // Get total goals for this team in this game (simplified response)
-    const { resources: teamGoals } = await container.items.query({
-      query: "SELECT * FROM c WHERE c.gameId = @gameId AND c.scoringTeam = @team",
-      parameters: [
-        { name: "@gameId", value: gameId },
-        { name: "@team", value: team }
-      ]
-    }).fetchAll();
+    console.log('💾 Creating goal record:', JSON.stringify(goal, null, 2));
+    const { resource } = await container.items.create(goal);
     
-    // Return response matching frontend expectations
-    res.json({ 
-      success: true, 
-      goal,
-      event: {
-        scoringTeamGoalsFor: teamGoals.length,
-        scoringTeamGoalsAgainst: 0, // Simplified for now
-        scorerGoalsInGame: teamGoals.filter(g => g.scorer === player).length
-      }
-    });
+    console.log('✅ Goal created successfully:', resource.id);
+    res.status(201).json(resource);
   } catch (error) {
-    console.error('Error creating goal:', error);
-    res.status(500).json({ error: 'Failed to create goal' });
+    console.error('❌ Error creating goal:', error);
+    res.status(500).json({ 
+      error: 'Failed to create goal',
+      message: error.message 
+    });
   }
 });
 

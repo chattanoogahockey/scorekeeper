@@ -11,10 +11,34 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Track server start time for diagnostics
+const startTime = Date.now();
+
 // SIMPLE TEST ROUTE
 app.get('/api/test', (req, res) => {
   console.log('🔥 TEST ENDPOINT HIT! - UPDATED');
   res.json({ message: 'Test endpoint works! - UPDATED' });
+});
+
+// HEALTH CHECK ENDPOINT for Azure
+app.get('/', (req, res) => {
+  console.log('🏥 HEALTH CHECK ENDPOINT HIT');
+  res.json({ 
+    status: 'healthy', 
+    message: 'Hockey Scorekeeper API is running',
+    timestamp: new Date().toISOString(),
+    port: process.env.PORT || 8080
+  });
+});
+
+app.get('/health', (req, res) => {
+  console.log('🏥 HEALTH CHECK /health ENDPOINT HIT');
+  res.json({ 
+    status: 'healthy', 
+    message: 'Hockey Scorekeeper API is running',
+    timestamp: new Date().toISOString(),
+    port: process.env.PORT || 8080
+  });
 });
 
 // SIMPLE GOALS TEST ROUTE
@@ -534,6 +558,8 @@ app.get('*', (req, res) => {
 
 const server = app.listen(process.env.PORT || 8080, () => {
   console.log(`🚀 NEW SERVER.JS is running on port ${process.env.PORT || 8080}`);
+  console.log('🏥 Health check available at / and /health');
+  console.log('🎯 API endpoints available at /api/*');
   console.log('Deployment completed successfully');
 });
 
@@ -545,17 +571,20 @@ server.on('error', (error) => {
 
 // Add graceful shutdown logic after server is created
 process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
+  console.log('🛑 SIGTERM received at', new Date().toISOString());
+  console.log('🔍 Server has been running for approximately', Math.floor((Date.now() - startTime) / 1000), 'seconds');
+  console.log('🛑 Shutting down gracefully...');
   server.close(() => {
-    console.log('Server closed');
+    console.log('✅ Server closed successfully');
     process.exit(0);
   });
 });
 
 process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully');
+  console.log('🛑 SIGINT received at', new Date().toISOString());
+  console.log('🛑 Shutting down gracefully...');
   server.close(() => {
-    console.log('Server closed');
+    console.log('✅ Server closed successfully');
     process.exit(0);
   });
 });

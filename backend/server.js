@@ -52,22 +52,7 @@ app.get('/api/debug/env', (req, res) => {
   });
 });
 
-// Add graceful shutdown logic from server-new.js
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
-
-process.on('SIGINT', () => {
-  console.log('SIGINT received, shutting down gracefully');
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
+// Note: Graceful shutdown handlers will be added after server creation
 
 
 // Consolidated routes and logic from app.js
@@ -550,4 +535,39 @@ app.get('*', (req, res) => {
 const server = app.listen(process.env.PORT || 8080, () => {
   console.log(`🚀 NEW SERVER.JS is running on port ${process.env.PORT || 8080}`);
   console.log('Deployment completed successfully');
+});
+
+// Handle server errors
+server.on('error', (error) => {
+  console.error('❌ Server error:', error);
+  process.exit(1);
+});
+
+// Add graceful shutdown logic after server is created
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully');
+  server.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  process.exit(1);
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
 });

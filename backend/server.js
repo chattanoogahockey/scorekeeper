@@ -13,8 +13,8 @@ app.use(cors());
 
 // SIMPLE TEST ROUTE
 app.get('/api/test', (req, res) => {
-  console.log('🔥 TEST ENDPOINT HIT!');
-  res.json({ message: 'Test endpoint works!' });
+  console.log('🔥 TEST ENDPOINT HIT! - UPDATED');
+  res.json({ message: 'Test endpoint works! - UPDATED' });
 });
 
 // SIMPLE GOALS TEST ROUTE

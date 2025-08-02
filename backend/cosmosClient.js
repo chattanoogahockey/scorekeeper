@@ -5,11 +5,11 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Change the working directory to the backend folder
-process.chdir(__dirname);
-console.log('Changed working directory to:', process.cwd());
+// NOTE: Removed process.chdir() as it may interfere with Azure environment variable access
+console.log('Backend directory:', __dirname);
+console.log('Current working directory:', process.cwd());
 
-// Ensure dotenv is configured after setting the working directory
+// Configure dotenv for local development (Azure App Service provides env vars directly)
 import dotenv from 'dotenv';
 dotenv.config({ path: './.env' });
 
@@ -34,6 +34,8 @@ const {
   COSMOS_DB_TEAMS_CONTAINER,
   COSMOS_DB_ROSTERS_CONTAINER,
   COSMOS_DB_ATTENDANCE_CONTAINER,
+  COSMOS_DB_GOALS_CONTAINER,
+  COSMOS_DB_PENALTIES_CONTAINER,
 } = process.env;
 
 // Debugging: Log critical environment variables to verify they are loaded
@@ -49,6 +51,11 @@ console.log('Environment Variables:', {
   COSMOS_DB_URI: process.env.COSMOS_DB_URI,
   COSMOS_DB_KEY: process.env.COSMOS_DB_KEY,
   COSMOS_DB_NAME: process.env.COSMOS_DB_NAME,
+  COSMOS_DB_GOALS_CONTAINER: process.env.COSMOS_DB_GOALS_CONTAINER,
+  COSMOS_DB_PENALTIES_CONTAINER: process.env.COSMOS_DB_PENALTIES_CONTAINER,
+  COSMOS_DB_GAMES_CONTAINER: process.env.COSMOS_DB_GAMES_CONTAINER,
+  COSMOS_DB_ROSTERS_CONTAINER: process.env.COSMOS_DB_ROSTERS_CONTAINER,
+  COSMOS_DB_ATTENDANCE_CONTAINER: process.env.COSMOS_DB_ATTENDANCE_CONTAINER,
 });
 
 // Support multiple environment variable naming conventions

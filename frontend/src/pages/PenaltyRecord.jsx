@@ -17,9 +17,57 @@ export default function PenaltyRecord() {
     penaltyType: '',
     penaltyLength: '2',
     period: '1',
-    time: '',
+    time: '00:00',     // NEW default time
     details: ''
   });
+
+  // Handle time button press (copy from GoalRecord.jsx)
+  const handleTimeButtonPress = (digit) => {
+    const currentTime = formData.time || '00:00';
+    let currentDigits = currentTime === '00:00'
+      ? ''
+      : currentTime.replace(/:/g, '').replace(/^0+/, '');
+    if (currentDigits.length >= 4) return;
+    const newDigits = currentDigits + digit;
+    let formatted;
+    if (newDigits.length === 1) formatted = `00:0${newDigits}`;
+    else if (newDigits.length === 2) formatted = `00:${newDigits}`;
+    else if (newDigits.length === 3) formatted = `0${newDigits.charAt(0)}:${newDigits.slice(1)}`;
+    else formatted = `${newDigits.slice(0,2)}:${newDigits.slice(2)}`;
+    const [mins, secs] = formatted.split(':').map(Number);
+    if (mins > 20 || secs > 59) return;
+    setFormData(prev => ({ ...prev, time: formatted }));
+  };
+
+  const clearTime = () => setFormData(prev => ({ ...prev, time: '00:00' }));
+
+  const backspaceTime = () => {
+    const current = formData.time || '00:00';
+    if (current === '00:00') return;
+    let digits = current.replace(/:/g, '').replace(/^0+/, '');
+    if (digits.length <= 1) {
+      setFormData(prev => ({ ...prev, time: '00:00' }));
+      return;
+    }
+    digits = digits.slice(0, -1);
+    let formatted;
+    if (digits.length === 1) formatted = `00:0${digits}`;
+    else if (digits.length === 2) formatted = `00:${digits}`;
+    else formatted = `0${digits.charAt(0)}:${digits.slice(1)}`;
+    setFormData(prev => ({ ...prev, time: formatted }));
+  };
+
+  // Define penalty types and lengths for button selectors
+  const penaltyTypes = [
+    'Tripping','Slashing','High-sticking','Cross-checking','Interference',
+    'Roughing','Boarding','Checking from behind','Unsportsmanlike conduct','Delay of game'
+  ];
+  const penaltyLengths = ['2','4','5','10','20'];
+
+  // Form completion validation
+  const isFormComplete = formData.team && formData.player && formData.period && 
+                        formData.time && formData.time !== '00:00' && 
+                        formData.penaltyType && formData.penaltyLength;
 
   if (!selectedGame) {
     navigate('/');
@@ -78,6 +126,7 @@ export default function PenaltyRecord() {
       console.log('📦 Penalty Payload:', JSON.stringify(penaltyPayload, null, 2));
       console.log('🔗 Submitting to:', apiUrl);
       console.log('🌍 Environment mode:', import.meta.env.DEV ? 'Development' : 'Production');
+      console.log('🔧 VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
       
       const response = await axios.post(apiUrl, penaltyPayload);
 
@@ -100,18 +149,35 @@ Length: ${formData.penaltyLength} minutes`;
         penaltyType: '',
         penaltyLength: '2',
         period: '1',
-        time: '',
+        time: '00:00',
         details: ''
       });
 
+      // Navigate back to in-game menu after short delay
+      setTimeout(() => {
+        navigate('/ingame');
+      }, 1000);
+
     } catch (error) {
-      console.error('❌ Failed to record penalty:', error);
-      console.error('Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      alert(`Error recording penalty: ${error.response?.data?.error || error.message}`);
+      console.error('❌ ERROR submitting penalty:', error);
+      
+      // Enhanced error handling with specific messages from backend
+      let errorMessage = 'Unknown error occurred';
+      
+      if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
+        if (error.response.data.details) {
+          errorMessage += `\n\nDetails: ${error.response.data.details}`;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      console.log('🔗 Failed URL:', apiUrl);
+      console.log('📱 Status:', error.response?.status);
+      console.log('💬 Backend response:', error.response?.data);
+      
+      alert(`Failed to record penalty:\n\n${errorMessage}`);
     } finally {
       setSubmitting(false);
     }
@@ -199,76 +265,110 @@ Length: ${formData.penaltyLength} minutes`;
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Penalty Type
               </label>
-              <select 
-                value={formData.penaltyType}
-                onChange={(e) => setFormData(prev => ({ ...prev, penaltyType: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-md text-lg"
-                required
-              >
-                <option value="">Select penalty...</option>
-                <option value="Tripping">Tripping</option>
-                <option value="Slashing">Slashing</option>
-                <option value="High-sticking">High-sticking</option>
-                <option value="Cross-checking">Cross-checking</option>
-                <option value="Interference">Interference</option>
-                <option value="Roughing">Roughing</option>
-                <option value="Boarding">Boarding</option>
-                <option value="Checking from behind">Checking from behind</option>
-                <option value="Unsportsmanlike conduct">Unsportsmanlike conduct</option>
-                <option value="Delay of game">Delay of game</option>
-                <option value="Too many men">Too many men</option>
-                <option value="Fighting">Fighting</option>
-              </select>
+              <div className="grid grid-cols-2 gap-2">
+                {penaltyTypes.map(type => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, penaltyType: type }))}
+                    className={`py-2 px-2 border-2 rounded-lg text-xs font-medium transition-colors ${
+                      formData.penaltyType === type 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Penalty Length
+                Penalty Length (minutes)
               </label>
-              <select 
-                value={formData.penaltyLength}
-                onChange={(e) => setFormData(prev => ({ ...prev, penaltyLength: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-md text-lg"
-                required
-              >
-                <option value="2">2 minutes</option>
-                <option value="4">4 minutes</option>
-                <option value="5">5 minutes</option>
-                <option value="10">10 minutes</option>
-                <option value="game">Game misconduct</option>
-              </select>
+              <div className="flex space-x-2">
+                {penaltyLengths.map(len => (
+                  <button
+                    key={len}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, penaltyLength: len }))}
+                    className={`py-2 px-4 border-2 rounded-lg text-sm font-medium transition-colors ${
+                      formData.penaltyLength === len 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                    }`}
+                  >
+                    {len}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Period
               </label>
-              <select 
-                value={formData.period}
-                onChange={(e) => setFormData(prev => ({ ...prev, period: e.target.value }))}
-                className="w-full p-3 border border-gray-300 rounded-md text-lg"
-                required
-              >
-                <option value="1">1st Period</option>
-                <option value="2">2nd Period</option>
-                <option value="3">3rd Period</option>
-                <option value="OT">Overtime</option>
-              </select>
+              <div className="flex space-x-2">
+                {[1,2,3].map(period => (
+                  <button
+                    key={period}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, period: period.toString() }))}
+                    className={`py-2 px-4 border-2 rounded-lg text-sm font-medium transition-colors ${
+                      formData.period === period.toString() 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                    }`}
+                  >
+                    {period}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Time (MM:SS)
+                Time in Period
               </label>
-              <input
-                type="text"
-                value={formData.time}
-                onChange={(e) => setFormData(prev => ({ ...prev, time: e.target.value }))}
-                placeholder="10:30"
-                pattern="[0-9]{1,2}:[0-9]{2}"
-                className="w-full p-3 border border-gray-300 rounded-md text-lg"
-                required
-              />
+              {/* Time Entry Number Pad */}
+              <div className="grid grid-cols-3 gap-2 text-center mb-4">
+                {[1,2,3,4,5,6,7,8,9].map(num => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => handleTimeButtonPress(num.toString())}
+                    className="py-4 bg-gray-100 rounded-lg text-lg font-semibold hover:bg-blue-200 transition-colors"
+                  >
+                    {num}
+                  </button>
+                ))}
+                <button 
+                  type="button"
+                  onClick={() => clearTime()} 
+                  className="py-4 bg-red-100 rounded-lg font-semibold text-red-700 hover:bg-red-200 transition-colors"
+                >
+                  CLR
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => handleTimeButtonPress('0')} 
+                  className="py-4 bg-gray-100 rounded-lg font-semibold hover:bg-blue-200 transition-colors"
+                >
+                  0
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => backspaceTime()} 
+                  className="py-4 bg-yellow-100 rounded-lg font-semibold text-yellow-700 hover:bg-yellow-200 transition-colors"
+                >
+                  ←
+                </button>
+              </div>
+              {/* Display current time */}
+              <div className="text-center text-3xl font-bold text-blue-600 bg-blue-50 py-4 rounded-lg border-2 border-blue-200">
+                {formData.time}
+              </div>
             </div>
 
             <div>
@@ -285,9 +385,9 @@ Length: ${formData.penaltyLength} minutes`;
 
             <button
               type="submit"
-              disabled={submitting || !formData.team || !formData.player || !formData.penaltyType || !formData.time}
+              disabled={!isFormComplete || submitting}
               className={`w-full font-bold py-4 px-6 rounded-lg text-xl transition-colors ${
-                (submitting || !formData.team || !formData.player || !formData.penaltyType || !formData.time)
+                (!isFormComplete || submitting)
                   ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
                   : 'bg-yellow-600 hover:bg-yellow-700 text-white'
               }`}

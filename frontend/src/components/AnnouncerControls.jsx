@@ -15,23 +15,56 @@ export default function AnnouncerControls({ gameId }) {
   const [error, setError] = useState(null);
 
   /**
-   * Fetch latest goal from the API and announce it.
+   * Announce the latest goal using AI-generated announcement
    */
   const announceLatestGoal = async () => {
     setLoading(true);
     setError(null);
+    setMessage('Generating announcement...');
+    
     try {
-      const { data: goal } = await axios.get('/api/lastGoal', { params: { gameId } });
-      if (!goal) {
-        setError('No goal recorded yet');
-        return;
+      const apiUrl = import.meta.env.DEV 
+        ? '/api/goals/announce-last' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/goals/announce-last`;
+      
+      const response = await axios.post(apiUrl, { gameId });
+      
+      if (response.data.success) {
+        const { announcement } = response.data;
+        setMessage(`Generated: "${announcement.text}"`);
+        
+        // Play the generated audio if available
+        if (announcement.audioPath) {
+          const audioUrl = import.meta.env.DEV 
+            ? `/api/audio/${announcement.audioPath}` 
+            : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
+          
+          const audio = new Audio(audioUrl);
+          
+          audio.onloadeddata = () => {
+            setMessage('Playing announcement...');
+          };
+          
+          audio.onended = () => {
+            setMessage('');
+          };
+          
+          audio.onerror = () => {
+            setError('Failed to play announcement audio');
+            setMessage('');
+          };
+          
+          await audio.play();
+        } else {
+          // No audio generated, just show the text
+          setMessage(`Announcement (text only): "${announcement.text}"`);
+          setTimeout(() => setMessage(''), 5000); // Clear after 5 seconds
+        }
       }
-      const assists = goal.assists && goal.assists.length > 0 ? `, assisted by ${goal.assists.join(' and ')}` : '';
-      const text = `Goal scored by ${goal.scorer} for the ${goal.scoringTeam}${assists}. It was a ${goal.goalType.toLowerCase()} on a ${goal.shotType.toLowerCase()}.`;
-      await playTTS(text);
     } catch (err) {
-      console.error(err);
-      setError('Failed to announce goal');
+      console.error('Error announcing latest goal:', err);
+      setError(err.response?.data?.error || 'Failed to announce latest goal');
+      setMessage('');
     } finally {
       setLoading(false);
     }
@@ -95,9 +128,9 @@ export default function AnnouncerControls({ gameId }) {
         <button
           onClick={announceLatestGoal}
           disabled={loading}
-          className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
         >
-          Announce Latest Goal
+          {loading ? 'Generating...' : 'Announce Latest Goal'}
         </button>
         <button
           onClick={announceLatestPenalty}

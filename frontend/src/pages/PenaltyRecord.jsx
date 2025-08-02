@@ -187,7 +187,7 @@ Length: ${formData.penaltyLength} minutes`;
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <h1 className="text-2xl font-bold text-gray-800 text-center">
-            ⚠️ Record Penalty
+            Record Penalty
           </h1>
         </div>
 

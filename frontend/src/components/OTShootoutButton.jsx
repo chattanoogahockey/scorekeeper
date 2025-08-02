@@ -73,7 +73,7 @@ const OTShootoutButton = ({ onGameCompleted }) => {
         onClick={handleOpenDialog}
         className="w-full bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2"
       >
-        <span className="text-2xl">🏒</span>
+        <span className="text-2xl font-bold">OT/SO</span>
         <span className="text-lg">OT/Shootout</span>
       </button>
 

@@ -93,7 +93,7 @@ export default function DJPanel() {
       </div>
       {isPlaying && (
         <p className="text-sm text-gray-500 mt-2 text-center">
-          🔊 Audio playing...
+          Audio playing...
         </p>
       )}
     </div>

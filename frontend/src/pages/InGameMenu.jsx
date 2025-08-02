@@ -134,33 +134,6 @@ export default function InGameMenu() {
     navigate('/');
   };
 
-  const handleClearAllData = async () => {
-    if (!confirm('⚠️ WARNING: This will delete ALL scoring data (goals, penalties, OT/Shootout, game submissions) but keep the game schedule and rosters. This action cannot be undone. Are you sure?')) {
-      return;
-    }
-    
-    if (!confirm('🚨 FINAL WARNING: This will reset all games back to unscored state. All scoring progress will be lost. Continue?')) {
-      return;
-    }
-    
-    try {
-      const apiUrl = import.meta.env.DEV 
-        ? '/api/clear-scoring-data' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/clear-scoring-data`;
-      
-      const response = await axios.delete(apiUrl);
-      
-      if (response.data.success) {
-        alert(`✅ Scoring data cleared! Deleted: ${response.data.deletedCounts.goals} goals, ${response.data.deletedCounts.penalties} penalties, ${response.data.deletedCounts.otShootout} OT/Shootout records, ${response.data.deletedCounts.gameSubmissions} game submissions. Game schedule and rosters preserved.`);
-        // Redirect to home since games are now available again
-        navigate('/');
-      }
-    } catch (error) {
-      console.error('Failed to clear data:', error);
-      alert(`Error clearing data: ${error.response?.data?.error || error.message}`);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-md mx-auto">
@@ -203,7 +176,7 @@ export default function InGameMenu() {
             onClick={handlePenaltyClick}
             className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-4 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
-            ⚠️ Record Penalty
+            Record Penalty
           </button>
         </div>
 
@@ -219,23 +192,10 @@ export default function InGameMenu() {
             disabled={isSubmittingGame}
             className="w-full bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
-            {isSubmittingGame ? '🔄 Submitting...' : '🏁 Submit Game'}
+            {isSubmittingGame ? 'Submitting...' : 'Submit Game'}
           </button>
           <p className="text-xs text-gray-500 text-center mt-1">
             This will finalize all game data
-          </p>
-        </div>
-
-        {/* Clear Testing Data Button */}
-        <div className="mb-4">
-          <button
-            onClick={handleClearAllData}
-            className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-2 px-4 rounded-lg shadow-lg text-sm transition-all duration-200"
-          >
-            🗑️ Clear Testing Data
-          </button>
-          <p className="text-xs text-red-500 text-center mt-1">
-            ⚠️ Deletes ALL game data permanently
           </p>
         </div>
 
@@ -268,7 +228,7 @@ export default function InGameMenu() {
                   }`}>
                     {event.eventType === 'goal' ? (
                       <>
-                        <div className="font-medium">⚽ GOAL - {event.scorer}</div>
+                        <div className="font-medium">GOAL - {event.scorer}</div>
                         <div className="text-gray-500">{event.scoringTeam} • Period {event.period} • {event.time}</div>
                         {event.assists && event.assists.length > 0 && (
                           <div className="text-xs text-gray-400">Assist: {event.assists.join(', ')}</div>
@@ -276,7 +236,7 @@ export default function InGameMenu() {
                       </>
                     ) : (
                       <>
-                        <div className="font-medium">⚠️ {event.penaltyType} - {event.penalizedPlayer}</div>
+                        <div className="font-medium">{event.penaltyType} - {event.penalizedPlayer}</div>
                         <div className="text-gray-500">{event.penalizedTeam} • Period {event.period} • {event.time} • {event.penaltyLength} min</div>
                       </>
                     )}

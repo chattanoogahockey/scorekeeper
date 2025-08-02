@@ -21,6 +21,9 @@ export default function PenaltyRecord() {
     details: ''
   });
 
+  // Check if form is complete (like GoalRecord.jsx)
+  const isFormComplete = formData.team && formData.player && formData.penaltyType && formData.penaltyLength && formData.period && formData.time && formData.time !== '00:00';
+
   // Handle time button press (copy from GoalRecord.jsx)
   const handleTimeButtonPress = (digit) => {
     const currentTime = formData.time || '00:00';
@@ -63,11 +66,6 @@ export default function PenaltyRecord() {
     'Roughing','Boarding','Checking from behind','Unsportsmanlike conduct','Delay of game'
   ];
   const penaltyLengths = ['2','4','5','10','20'];
-
-  // Form completion validation
-  const isFormComplete = formData.team && formData.player && formData.period && 
-                        formData.time && formData.time !== '00:00' && 
-                        formData.penaltyType && formData.penaltyLength;
 
   if (!selectedGame) {
     navigate('/');
@@ -188,12 +186,6 @@ Length: ${formData.penaltyLength} minutes`;
       <div className="max-w-md mx-auto">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
-          <button
-            onClick={() => navigate('/ingame')}
-            className="text-blue-600 mb-2 flex items-center"
-          >
-            ← Back to Menu
-          </button>
           <h1 className="text-2xl font-bold text-gray-800 text-center">
             ⚠️ Record Penalty
           </h1>
@@ -202,6 +194,29 @@ Length: ${formData.penaltyLength} minutes`;
         {/* Penalty Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
           <div className="space-y-4">
+            {/* Period - Moved to top */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Period
+              </label>
+              <div className="flex space-x-2">
+                {[1,2,3].map(period => (
+                  <button
+                    key={period}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, period: period.toString() }))}
+                    className={`py-2 px-4 border-2 rounded-lg text-sm font-medium transition-colors ${
+                      formData.period === period.toString() 
+                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                    }`}
+                  >
+                    {period}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Penalized Team
@@ -305,40 +320,23 @@ Length: ${formData.penaltyLength} minutes`;
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Period
-              </label>
-              <div className="flex space-x-2">
-                {[1,2,3].map(period => (
-                  <button
-                    key={period}
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, period: period.toString() }))}
-                    className={`py-2 px-4 border-2 rounded-lg text-sm font-medium transition-colors ${
-                      formData.period === period.toString() 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
-                    }`}
-                  >
-                    {period}
-                  </button>
-                ))}
-              </div>
-            </div>
-
+            {/* Time in Period - Display above number pad like goals */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Time in Period
               </label>
-              {/* Time Entry Number Pad */}
-              <div className="grid grid-cols-3 gap-2 text-center mb-4">
+              {/* Display current time */}
+              <div className="text-center text-3xl font-bold text-blue-600 bg-blue-50 py-4 rounded-lg border-2 border-blue-200 mb-4">
+                {formData.time}
+              </div>
+              {/* Smaller Time Entry Number Pad */}
+              <div className="grid grid-cols-3 gap-1 text-center">
                 {[1,2,3,4,5,6,7,8,9].map(num => (
                   <button
                     key={num}
                     type="button"
                     onClick={() => handleTimeButtonPress(num.toString())}
-                    className="py-4 bg-gray-100 rounded-lg text-lg font-semibold hover:bg-blue-200 transition-colors"
+                    className="py-2 bg-gray-100 rounded-lg text-sm font-semibold hover:bg-blue-200 transition-colors"
                   >
                     {num}
                   </button>
@@ -346,50 +344,35 @@ Length: ${formData.penaltyLength} minutes`;
                 <button 
                   type="button"
                   onClick={() => clearTime()} 
-                  className="py-4 bg-red-100 rounded-lg font-semibold text-red-700 hover:bg-red-200 transition-colors"
+                  className="py-2 bg-red-100 rounded-lg font-semibold text-red-700 hover:bg-red-200 transition-colors text-sm"
                 >
                   CLR
                 </button>
                 <button 
                   type="button"
                   onClick={() => handleTimeButtonPress('0')} 
-                  className="py-4 bg-gray-100 rounded-lg font-semibold hover:bg-blue-200 transition-colors"
+                  className="py-2 bg-gray-100 rounded-lg font-semibold hover:bg-blue-200 transition-colors text-sm"
                 >
                   0
                 </button>
                 <button 
                   type="button"
                   onClick={() => backspaceTime()} 
-                  className="py-4 bg-yellow-100 rounded-lg font-semibold text-yellow-700 hover:bg-yellow-200 transition-colors"
+                  className="py-2 bg-yellow-100 rounded-lg font-semibold text-yellow-700 hover:bg-yellow-200 transition-colors text-sm"
                 >
                   ←
                 </button>
               </div>
-              {/* Display current time */}
-              <div className="text-center text-3xl font-bold text-blue-600 bg-blue-50 py-4 rounded-lg border-2 border-blue-200">
-                {formData.time}
-              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Additional Details (Optional)
-              </label>
-              <textarea
-                value={formData.details}
-                onChange={(e) => setFormData(prev => ({ ...prev, details: e.target.value }))}
-                placeholder="Additional description of the penalty..."
-                className="w-full p-3 border border-gray-300 rounded-md text-lg h-20 resize-none"
-              />
-            </div>
-
+            {/* Green submit button when form is complete */}
             <button
               type="submit"
               disabled={!isFormComplete || submitting}
               className={`w-full font-bold py-4 px-6 rounded-lg text-xl transition-colors ${
                 (!isFormComplete || submitting)
                   ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
-                  : 'bg-yellow-600 hover:bg-yellow-700 text-white'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
               }`}
             >
               {submitting ? 'Recording...' : 'Record Penalty'}

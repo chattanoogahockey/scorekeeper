@@ -14,7 +14,7 @@ app.use(cors());
 // Track server start time for diagnostics
 const startTime = Date.now();
 
-// Enhanced startup logging for debugging
+// Enhanced startup logging
 console.log('🚀 Starting Hockey Scorekeeper API...');
 console.log('📁 Working directory:', process.cwd());
 console.log('🔧 Environment variables:');
@@ -28,50 +28,14 @@ console.log('  COSMOS_DB_ATTENDANCE_CONTAINER:', process.env.COSMOS_DB_ATTENDANC
 console.log('  COSMOS_DB_URI:', process.env.COSMOS_DB_URI ? 'SET' : 'NOT SET');
 console.log('  COSMOS_DB_KEY:', process.env.COSMOS_DB_KEY ? 'SET' : 'NOT SET');
 
-// SIMPLE TEST ROUTE
-app.get('/api/test', (req, res) => {
-  console.log('🔥 TEST ENDPOINT HIT! - UPDATED');
-  res.json({ message: 'Test endpoint works! - UPDATED' });
-});
-
 // HEALTH CHECK ENDPOINT for Azure (only at /health, not root)
 app.get('/health', (req, res) => {
-  console.log('🏥 HEALTH CHECK /health ENDPOINT HIT');
   res.json({ 
     status: 'healthy', 
     message: 'Hockey Scorekeeper API is running',
     timestamp: new Date().toISOString(),
     port: process.env.PORT || 8080
   });
-});
-
-// SIMPLE GOALS TEST ROUTE
-app.get('/api/goals-test', (req, res) => {
-  console.log('🔥 GOALS TEST ENDPOINT HIT!');
-  res.json({ message: 'Goals test endpoint works!' });
-});
-
-// MINIMAL GOALS TEST - COPY OF ATTENDANCE LOGIC
-app.post('/api/goals-minimal', async (req, res) => {
-  console.log('🎯 MINIMAL GOALS POST ENDPOINT HIT!');
-  console.log('Request body:', JSON.stringify(req.body, null, 2));
-  
-  try {
-    const container = getGoalsContainer();
-    const testGoal = {
-      id: `test-goal-${Date.now()}`,
-      eventType: 'goal',
-      gameId: req.body.gameId || 'test',
-      recordedAt: new Date().toISOString(),
-      test: true
-    };
-    
-    const { resource } = await container.items.create(testGoal);
-    res.status(201).json(resource);
-  } catch (error) {
-    console.error('❌ Goals minimal test error:', error);
-    res.status(500).json({ error: error.message });
-  }
 });
 
 // Utility function for error handling
@@ -83,31 +47,7 @@ function handleError(res, error) {
   });
 }
 
-// Consolidated features from server-new.js
-
-// Add debugging endpoints from server-new.js
-app.get('/api/debug/env', (req, res) => {
-  const cosmosVars = Object.keys(process.env)
-    .filter(key => key.includes('COSMOS'))
-    .reduce((obj, key) => {
-      obj[key] = process.env[key] ? 'SET (' + process.env[key].substring(0, 20) + '...)' : 'NOT SET';
-      return obj;
-    }, {});
-
-  res.json({
-    nodeEnv: process.env.NODE_ENV,
-    port: process.env.PORT,
-    websitesPort: process.env.WEBSITES_PORT,
-    cosmosVars,
-    totalEnvVars: Object.keys(process.env).length
-  });
-});
-
-// Note: Graceful shutdown handlers will be added after server creation
-
-
-// Consolidated routes and logic from app.js
-// Add unique routes from app.js
+// Main API endpoints
 app.post('/api/attendance', async (req, res) => {
   const { gameId, attendance, totalRoster } = req.body;
   console.log('Received attendance POST:', JSON.stringify(req.body, null, 2));
@@ -306,15 +246,12 @@ app.post('/api/game-events', async (req, res) => {
 });
 
 // Add the `/api/goals` POST endpoint for creating goals
-// Add the `/api/goals` POST endpoint for creating goals - FIXED MAPPING
 app.post('/api/goals', async (req, res) => {
-  console.log('🔥 GOALS POST ENDPOINT HIT!');
-  console.log('Request body:', JSON.stringify(req.body, null, 2));
+  console.log('🎯 Recording goal...');
   
   const { gameId, team, player, period, time, assist, shotType, goalType, breakaway } = req.body;
 
   if (!gameId || !team || !player || !period || !time) {
-    console.error('❌ Invalid goals payload:', JSON.stringify(req.body, null, 2));
     return res.status(400).json({
       error: 'Invalid payload. Required: gameId, team, player, period, time.',
       received: req.body
@@ -328,9 +265,9 @@ app.post('/api/goals', async (req, res) => {
       eventType: 'goal',
       gameId,
       period,
-      scoringTeam: team,              // Map team -> scoringTeam
-      scorer: player,                 // Map player -> scorer  
-      assists: assist ? [assist] : [], // Map assist -> assists array
+      scoringTeam: team,
+      scorer: player,
+      assists: assist ? [assist] : [],
       time,
       shotType: shotType || 'Wrist Shot',
       goalType: goalType || 'Regular',
@@ -338,39 +275,18 @@ app.post('/api/goals', async (req, res) => {
       recordedAt: new Date().toISOString()
     };
     
-    console.log('💾 Creating goal record:', JSON.stringify(goal, null, 2));
     const { resource } = await container.items.create(goal);
-    
-    console.log('✅ Goal created successfully:', resource.id);
+    console.log('✅ Goal recorded successfully');
     res.status(201).json(resource);
   } catch (error) {
-    console.error('❌ Error creating goal:', error);
-    
-    // Enhanced error handling with specific Azure Cosmos DB error details
-    let statusCode = 500;
-    let errorMessage = 'Failed to create goal';
-    
-    if (error.code === 404) {
-      statusCode = 404;
-      errorMessage = 'Goals container not found. Please check Azure configuration.';
-    } else if (error.code === 400) {
-      statusCode = 400;
-      errorMessage = 'Invalid request data or partition key mismatch.';
-    } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-      statusCode = 503;
-      errorMessage = 'Unable to connect to Cosmos DB. Please check network connectivity.';
-    }
-    
-    res.status(statusCode).json({ 
-      error: errorMessage,
-      details: error.message,
-      code: error.code
-    });
+    console.error('❌ Error creating goal:', error.message);
+    handleError(res, error);
   }
 });
 
 // Add the `/api/penalties` POST endpoint for creating penalties
 app.post('/api/penalties', async (req, res) => {
+  console.log('⚠️ Recording penalty...');
   const { gameId, period, team, player, penaltyType, penaltyLength, time, details } = req.body;
 
   if (!gameId || !team || !player || !period || !time || !penaltyType || !penaltyLength) {
@@ -395,48 +311,15 @@ app.post('/api/penalties', async (req, res) => {
     };
     
     const { resource } = await container.items.create(penalty);
+    console.log('✅ Penalty recorded successfully');
     
-    // Get total penalties for this team in this game (simplified response)
-    const { resources: teamPenalties } = await container.items.query({
-      query: "SELECT * FROM c WHERE c.gameId = @gameId AND c.penalizedTeam = @team",
-      parameters: [
-        { name: "@gameId", value: gameId },
-        { name: "@team", value: team }
-      ]
-    }).fetchAll();
-    
-    // Return response matching frontend expectations
     res.json({ 
       success: true, 
-      penalty: resource,
-      summary: {
-        penalizedTeamTotalPenalties: teamPenalties.length,
-        playerPenaltiesInGame: teamPenalties.filter(p => p.penalizedPlayer === player).length
-      }
+      penalty: resource
     });
   } catch (error) {
-    console.error('Error creating penalty:', error);
-    
-    // Enhanced error handling with specific Azure Cosmos DB error details
-    let statusCode = 500;
-    let errorMessage = 'Failed to create penalty';
-    
-    if (error.code === 404) {
-      statusCode = 404;
-      errorMessage = 'Penalties container not found. Please check Azure configuration.';
-    } else if (error.code === 400) {
-      statusCode = 400;
-      errorMessage = 'Invalid request data or partition key mismatch.';
-    } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-      statusCode = 503;
-      errorMessage = 'Unable to connect to Cosmos DB. Please check network connectivity.';
-    }
-    
-    res.status(statusCode).json({ 
-      error: errorMessage,
-      details: error.message,
-      code: error.code
-    });
+    console.error('❌ Error creating penalty:', error.message);
+    handleError(res, error);
   }
 });
 
@@ -490,7 +373,6 @@ app.get('/api/penalties', async (req, res) => {
 
 // Health check endpoint for debugging production issues
 app.get('/api/health', (req, res) => {
-  console.log('🔥 HEALTH ENDPOINT HIT!');
   const envVars = {
     COSMOS_DB_URI: !!process.env.COSMOS_DB_URI,
     COSMOS_DB_KEY: !!process.env.COSMOS_DB_KEY,
@@ -613,10 +495,10 @@ app.get('*', (req, res) => {
 });
 
 const server = app.listen(process.env.PORT || 8080, () => {
-  console.log(`🚀 NEW SERVER.JS is running on port ${process.env.PORT || 8080}`);
-  console.log('🏥 Health check available at / and /health');
+  console.log(`🚀 Hockey Scorekeeper API running on port ${process.env.PORT || 8080}`);
+  console.log('🏥 Health check available at /health');
   console.log('🎯 API endpoints available at /api/*');
-  console.log('Deployment completed successfully');
+  console.log('✅ Deployment completed successfully');
 });
 
 // Handle server errors

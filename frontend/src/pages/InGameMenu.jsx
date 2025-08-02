@@ -13,9 +13,6 @@ export default function InGameMenu() {
   const { selectedGame } = useContext(GameContext);
   const navigate = useNavigate();
   
-  // State for current time/date
-  const [currentTime, setCurrentTime] = useState(new Date());
-  
   // State for events feed
   const [events, setEvents] = useState([]);
   const [eventsError, setEventsError] = useState(null);
@@ -23,14 +20,6 @@ export default function InGameMenu() {
   // State for current game score
   const [currentScore, setCurrentScore] = useState({ away: 0, home: 0 });
   const [isSubmittingGame, setIsSubmittingGame] = useState(false);
-
-  // Update time every second
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   // Poll events every 10 seconds
   useEffect(() => {
@@ -145,21 +134,6 @@ export default function InGameMenu() {
     navigate('/');
   };
 
-  const formatCurrentTime = () => {
-    return currentTime.toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit'
-    });
-  };
-
-  const formatCurrentDate = () => {
-    return currentTime.toLocaleDateString([], { 
-      weekday: 'short',
-      month: 'short', 
-      day: 'numeric'
-    });
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-md mx-auto">
@@ -186,11 +160,6 @@ export default function InGameMenu() {
                 <div className="text-2xl">{currentScore.home}</div>
               </div>
             </div>
-          </div>
-          
-          <div className="flex justify-between items-center text-sm text-gray-500">
-            <span>{selectedGame.date || selectedGame.gameDate || 'Date TBD'}</span>
-            <span className="font-mono">{formatCurrentTime()} • {formatCurrentDate()}</span>
           </div>
         </div>
 

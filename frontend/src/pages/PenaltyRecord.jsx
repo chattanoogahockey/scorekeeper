@@ -194,30 +194,8 @@ Length: ${formData.penaltyLength} minutes`;
         {/* Penalty Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
           <div className="space-y-4">
-            {/* Period and Team on same row */}
+            {/* Penalized Team and Period on same row */}
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Period
-                </label>
-                <div className="flex space-x-1">
-                  {[1,2,3].map(period => (
-                    <button
-                      key={period}
-                      type="button"
-                      onClick={() => setFormData(prev => ({ ...prev, period: period.toString() }))}
-                      className={`py-2 px-3 border-2 rounded-lg text-sm font-medium transition-colors ${
-                        formData.period === period.toString() 
-                          ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                          : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
-                      }`}
-                    >
-                      {period}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Penalized Team
@@ -247,6 +225,28 @@ Length: ${formData.penaltyLength} minutes`;
                   >
                     {selectedGame.homeTeam}
                   </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Period
+                </label>
+                <div className="flex space-x-1">
+                  {[1,2,3].map(period => (
+                    <button
+                      key={period}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, period: period.toString() }))}
+                      className={`py-2 px-3 border-2 rounded-lg text-sm font-medium transition-colors ${
+                        formData.period === period.toString() 
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                      }`}
+                    >
+                      {period}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>

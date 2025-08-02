@@ -134,6 +134,33 @@ export default function InGameMenu() {
     navigate('/');
   };
 
+  const handleClearAllData = async () => {
+    if (!confirm('⚠️ WARNING: This will delete ALL scoring data (goals, penalties, OT/Shootout, game submissions) but keep the game schedule and rosters. This action cannot be undone. Are you sure?')) {
+      return;
+    }
+    
+    if (!confirm('🚨 FINAL WARNING: This will reset all games back to unscored state. All scoring progress will be lost. Continue?')) {
+      return;
+    }
+    
+    try {
+      const apiUrl = import.meta.env.DEV 
+        ? '/api/clear-scoring-data' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/clear-scoring-data`;
+      
+      const response = await axios.delete(apiUrl);
+      
+      if (response.data.success) {
+        alert(`✅ Scoring data cleared! Deleted: ${response.data.deletedCounts.goals} goals, ${response.data.deletedCounts.penalties} penalties, ${response.data.deletedCounts.otShootout} OT/Shootout records, ${response.data.deletedCounts.gameSubmissions} game submissions. Game schedule and rosters preserved.`);
+        // Redirect to home since games are now available again
+        navigate('/');
+      }
+    } catch (error) {
+      console.error('Failed to clear data:', error);
+      alert(`Error clearing data: ${error.response?.data?.error || error.message}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-md mx-auto">
@@ -174,7 +201,7 @@ export default function InGameMenu() {
 
           <button
             onClick={handlePenaltyClick}
-            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-4 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
+            className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-4 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
             ⚠️ Record Penalty
           </button>
@@ -196,6 +223,19 @@ export default function InGameMenu() {
           </button>
           <p className="text-xs text-gray-500 text-center mt-1">
             This will finalize all game data
+          </p>
+        </div>
+
+        {/* Clear Testing Data Button */}
+        <div className="mb-4">
+          <button
+            onClick={handleClearAllData}
+            className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-2 px-4 rounded-lg shadow-lg text-sm transition-all duration-200"
+          >
+            🗑️ Clear Testing Data
+          </button>
+          <p className="text-xs text-red-500 text-center mt-1">
+            ⚠️ Deletes ALL game data permanently
           </p>
         </div>
 

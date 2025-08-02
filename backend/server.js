@@ -897,6 +897,65 @@ app.get('/api/otshootout', async (req, res) => {
   }
 });
 
+// DELETE endpoint for clearing scoring data (for testing)
+app.delete('/api/clear-scoring-data', async (req, res) => {
+  console.log('🗑️ Clearing scoring data for testing (keeping rosters and game schedule)...');
+  
+  try {
+    const goalsContainer = getGoalsContainer();
+    const penaltiesContainer = getPenaltiesContainer();
+    const otShootoutContainer = getOTShootoutContainer();
+    const gamesContainer = getGamesContainer();
+    
+    // Get all scoring-related items (not rosters or original game schedule)
+    const [goals, penalties, otShootout, gameSubmissions] = await Promise.all([
+      goalsContainer.items.query('SELECT * FROM c').fetchAll(),
+      penaltiesContainer.items.query('SELECT * FROM c').fetchAll(),
+      otShootoutContainer.items.query('SELECT * FROM c').fetchAll(),
+      // Only get submission/completion records, not original games
+      gamesContainer.items.query('SELECT * FROM c WHERE c.eventType = "game-submission" OR c.eventType = "game-completion"').fetchAll()
+    ]);
+    
+    // Delete all scoring items
+    const deletePromises = [];
+    
+    goals.resources.forEach(goal => {
+      deletePromises.push(goalsContainer.item(goal.id, goal.gameId).delete());
+    });
+    
+    penalties.resources.forEach(penalty => {
+      deletePromises.push(penaltiesContainer.item(penalty.id, penalty.gameId).delete());
+    });
+    
+    otShootout.resources.forEach(item => {
+      deletePromises.push(otShootoutContainer.item(item.id, item.gameId).delete());
+    });
+    
+    gameSubmissions.resources.forEach(submission => {
+      deletePromises.push(gamesContainer.item(submission.id, submission.gameId).delete());
+    });
+    
+    await Promise.all(deletePromises);
+    
+    console.log(`✅ Cleared ${goals.resources.length} goals, ${penalties.resources.length} penalties, ${otShootout.resources.length} OT/Shootout records, and ${gameSubmissions.resources.length} game submissions`);
+    console.log('📅 Game schedule and rosters preserved');
+    
+    res.status(200).json({
+      success: true,
+      message: 'Scoring data cleared successfully (game schedule and rosters preserved)',
+      deletedCounts: {
+        goals: goals.resources.length,
+        penalties: penalties.resources.length,
+        otShootout: otShootout.resources.length,
+        gameSubmissions: gameSubmissions.resources.length
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error clearing scoring data:', error.message);
+    handleError(res, error);
+  }
+});
+
 // Health check endpoint for debugging production issues
 app.get('/api/health', (req, res) => {
   const envVars = {

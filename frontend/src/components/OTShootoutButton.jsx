@@ -6,8 +6,7 @@ const OTShootoutButton = ({ onGameCompleted }) => {
   const { selectedGameId, homeTeam, awayTeam } = useGameContext();
   const [showDialog, setShowDialog] = useState(false);
   const [selectedWinner, setSelectedWinner] = useState('');
-  const [gameType, setGameType] = useState('overtime');
-  const [finalScore, setFinalScore] = useState({ home: '', away: '' });
+  const [gameType, setGameType] = useState('shootout');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -23,8 +22,7 @@ const OTShootoutButton = ({ onGameCompleted }) => {
   const handleCloseDialog = () => {
     setShowDialog(false);
     setSelectedWinner('');
-    setGameType('overtime');
-    setFinalScore({ home: '', away: '' });
+    setGameType('shootout');
     setError('');
   };
 
@@ -42,12 +40,6 @@ const OTShootoutButton = ({ onGameCompleted }) => {
         gameId: selectedGameId,
         winner: selectedWinner,
         gameType,
-        finalScore: {
-          home: parseInt(finalScore.home) || 0,
-          away: parseInt(finalScore.away) || 0,
-          homeTeam,
-          awayTeam
-        },
         submittedBy: 'Scorekeeper'
       };
 
@@ -79,7 +71,7 @@ const OTShootoutButton = ({ onGameCompleted }) => {
       {/* OT/Shootout Button */}
       <button
         onClick={handleOpenDialog}
-        className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2"
+        className="w-full bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105 flex items-center justify-center gap-2"
       >
         <span className="text-2xl">🏒</span>
         <span className="text-lg">OT/Shootout</span>
@@ -114,22 +106,22 @@ const OTShootoutButton = ({ onGameCompleted }) => {
                   <label className="flex items-center">
                     <input
                       type="radio"
-                      value="overtime"
-                      checked={gameType === 'overtime'}
-                      onChange={(e) => setGameType(e.target.value)}
-                      className="mr-2"
-                    />
-                    <span className="text-gray-700">Overtime</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
                       value="shootout"
                       checked={gameType === 'shootout'}
                       onChange={(e) => setGameType(e.target.value)}
                       className="mr-2"
                     />
                     <span className="text-gray-700">Shootout</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      value="overtime"
+                      checked={gameType === 'overtime'}
+                      onChange={(e) => setGameType(e.target.value)}
+                      className="mr-2"
+                    />
+                    <span className="text-gray-700">Overtime</span>
                   </label>
                 </div>
               </div>
@@ -160,38 +152,6 @@ const OTShootoutButton = ({ onGameCompleted }) => {
                     />
                     <span className="font-medium text-gray-900">{awayTeam}</span>
                   </label>
-                </div>
-              </div>
-
-              {/* Final Score (Optional) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Final Score (Optional)
-                </label>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-500 mb-1">{homeTeam}</label>
-                    <input
-                      type="number"
-                      value={finalScore.home}
-                      onChange={(e) => setFinalScore(prev => ({ ...prev, home: e.target.value }))}
-                      className="w-full border rounded-md px-3 py-2 text-center"
-                      placeholder="0"
-                      min="0"
-                    />
-                  </div>
-                  <span className="text-gray-500 font-bold">-</span>
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-500 mb-1">{awayTeam}</label>
-                    <input
-                      type="number"
-                      value={finalScore.away}
-                      onChange={(e) => setFinalScore(prev => ({ ...prev, away: e.target.value }))}
-                      className="w-full border rounded-md px-3 py-2 text-center"
-                      placeholder="0"
-                      min="0"
-                    />
-                  </div>
                 </div>
               </div>
             </div>

@@ -19,7 +19,12 @@ export default function LeagueGameSelection() {
     setLoading(true);
     axios.get('/api/games?league=all')
       .then((res) => {
-        setGames(res.data);
+        // Filter out completed/submitted games
+        const availableGames = res.data.filter(game => {
+          // Hide games that have been submitted or completed
+          return !game.status || (game.status !== 'completed' && game.status !== 'submitted');
+        });
+        setGames(availableGames);
         setError(null);
       })
       .catch((err) => {
@@ -220,8 +225,7 @@ export default function LeagueGameSelection() {
           {games.map((game) => (
             <div
               key={game.id || game.gameId}
-              className="border rounded-lg shadow-md p-6 cursor-pointer hover:bg-gray-50 hover:shadow-lg transition-all duration-200"
-              onClick={() => handleGameSelect(game)}
+              className="border rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200"
             >
               <div className="mb-3">
                 <h3 className="text-xl font-semibold text-gray-800">
@@ -229,7 +233,7 @@ export default function LeagueGameSelection() {
                 </h3>
               </div>
               
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2 text-sm mb-4">
                 <p className="text-gray-600">
                   <span className="font-medium">Date:</span> {formatGameDate(game.gameDate || game.date)}
                 </p>
@@ -249,6 +253,16 @@ export default function LeagueGameSelection() {
                     <span className="font-medium">Location:</span> {game.location}
                   </p>
                 )}
+              </div>
+              
+              {/* Centered Select Game Button */}
+              <div className="flex justify-center">
+                <button
+                  onClick={() => handleGameSelect(game)}
+                  className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-2 px-6 rounded-lg shadow-lg transition-all duration-200"
+                >
+                  Select Game
+                </button>
               </div>
             </div>
           ))}

@@ -1,14 +1,45 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 
 /**
  * DJPanel provides simple sound effect controls. When the user presses a
  * button, a preloaded audio file plays through the browser. Audio files
- * should be placed in `public/sounds`.
+ * should be placed in `public/sounds`. Only one sound can play at a time.
  */
 export default function DJPanel() {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const currentAudioRef = useRef(null);
+
   const playSound = (filename, extension = 'wav') => {
+    // If audio is already playing, ignore the new request
+    if (isPlaying) {
+      console.log('Audio already playing, ignoring request');
+      return;
+    }
+
+    // Stop any currently playing audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+    }
+
     const audio = new Audio(`/sounds/${filename}.${extension}`);
-    audio.play();
+    currentAudioRef.current = audio;
+    
+    setIsPlaying(true);
+    
+    // Reset playing state when audio ends or has an error
+    const resetPlaying = () => {
+      setIsPlaying(false);
+      currentAudioRef.current = null;
+    };
+    
+    audio.addEventListener('ended', resetPlaying);
+    audio.addEventListener('error', resetPlaying);
+    
+    audio.play().catch((error) => {
+      console.error('Error playing audio:', error);
+      resetPlaying();
+    });
   };
 
   return (
@@ -17,29 +48,54 @@ export default function DJPanel() {
       <div className="grid grid-cols-2 gap-2">
         <button
           onClick={() => playSound('goal_horn', 'mp3')}
-          className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+          disabled={isPlaying}
+          className={`px-4 py-2 text-white rounded transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+          }`}
         >
           Goal Horn
         </button>
         <button
           onClick={() => playSound('whistle')}
-          className="px-4 py-2 bg-teal-500 text-white rounded hover:bg-teal-600"
+          disabled={isPlaying}
+          className={`px-4 py-2 text-white rounded transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+          }`}
         >
           Whistle
         </button>
         <button
           onClick={() => playSound('dj_air_horn', 'mp3')}
-          className="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600"
+          disabled={isPlaying}
+          className={`px-4 py-2 text-white rounded transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+          }`}
         >
           Air Horn
         </button>
         <button
           onClick={() => playSound('buzzer')}
-          className="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600"
+          disabled={isPlaying}
+          className={`px-4 py-2 text-white rounded transition-all duration-200 ${
+            isPlaying 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+          }`}
         >
           Period Buzzer
         </button>
       </div>
+      {isPlaying && (
+        <p className="text-sm text-gray-500 mt-2 text-center">
+          🔊 Audio playing...
+        </p>
+      )}
     </div>
   );
 }

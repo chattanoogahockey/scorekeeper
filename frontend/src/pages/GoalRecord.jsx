@@ -659,6 +659,9 @@ Shot Type: ${formData.shotType}`;
                   breakaway: false
                 });
 
+                // Automatically navigate back to in-game menu
+                navigate('/ingame');
+
               } catch (error) {
                 console.error('❌ Failed to record goal:', error);
                 console.error('Error details:', {

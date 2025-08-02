@@ -63,6 +63,56 @@ export default function LeagueGameSelection() {
   const handleGameSelect = async (game) => {
     console.log('Selected game:', game);
     console.log('Build timestamp:', new Date().toISOString());
+    
+    // Check if this game has existing data (goals or penalties)
+    try {
+      const gameId = game.id || game.gameId;
+      
+      // Check for existing goals
+      const goalsResponse = await axios.get('/api/goals', { params: { gameId } });
+      const goals = goalsResponse.data || [];
+      
+      // Check for existing penalties
+      const penaltiesResponse = await axios.get('/api/penalties', { params: { gameId } });
+      const penalties = penaltiesResponse.data || [];
+      
+      const hasExistingData = goals.length > 0 || penalties.length > 0;
+      
+      if (hasExistingData) {
+        // Check if any data is already submitted (finalized)
+        const hasSubmittedData = goals.some(g => g.gameStatus === 'submitted') || 
+                               penalties.some(p => p.gameStatus === 'submitted');
+        
+        if (hasSubmittedData) {
+          alert('This game has already been submitted and finalized. You cannot continue scoring.');
+          return;
+        }
+        
+        // Ask user if they want to continue or start over
+        const continueGame = confirm(
+          `This game has existing data (${goals.length} goals, ${penalties.length} penalties).\n\n` +
+          'Do you want to:\n' +
+          '✅ YES - Continue where you left off\n' +
+          '❌ NO - Start over (this will clear existing data)'
+        );
+        
+        if (!continueGame) {
+          // User wants to start over - would need to implement data clearing
+          // For now, we'll just warn them
+          const confirmStartOver = confirm(
+            'Starting over will require manually clearing the existing data. ' +
+            'For now, please continue with existing data or contact an administrator to clear the game data.'
+          );
+          if (!confirmStartOver) {
+            return;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error checking existing game data:', error);
+      // Continue anyway if we can't check
+    }
+    
     setSelectedGame(game);
     setSelectedLeague(game.league);
     

@@ -87,41 +87,6 @@ export default function AnnouncerControls({ gameId }) {
     await audio.play();
   };
 
-  /**
-   * Announces start of given period.
-   */
-  const handleStartPeriod = async (period) => {
-    const text = `Start of period ${period}.`;
-    await announceMessage(text);
-  };
-
-  /**
-   * Announces end of game with final score computed from last events.
-   */
-  const announceEndGame = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      // Fetch all events to compute scores
-      const { data: events } = await axios.get('/api/events', { params: { gameId } });
-      let homeGoals = 0;
-      let awayGoals = 0;
-      events.forEach((ev) => {
-        if (ev.scoringTeam) {
-          if (ev.scoringTeam === selectedGame.homeTeam) homeGoals++;
-          if (ev.scoringTeam === selectedGame.awayTeam) awayGoals++;
-        }
-      });
-      const text = `That concludes the game. Final score, ${selectedGame.awayTeam} ${awayGoals}, ${selectedGame.homeTeam} ${homeGoals}.`;
-      await playTTS(text);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to announce end of game');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="border rounded shadow p-4">
       <h4 className="text-xl font-semibold mb-2">Announcer Controls</h4>
@@ -140,25 +105,6 @@ export default function AnnouncerControls({ gameId }) {
           className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
         >
           Announce Latest Penalty
-        </button>
-        <div className="grid grid-cols-2 gap-2">
-          {[1, 2, 3, 'OT'].map((p) => (
-            <button
-              key={p}
-              onClick={() => handleStartPeriod(p)}
-              disabled={loading}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            >
-              Start Period {p}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={announceEndGame}
-          disabled={loading}
-          className="w-full px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-        >
-          End Game Announcement
         </button>
       </div>
       {message && (

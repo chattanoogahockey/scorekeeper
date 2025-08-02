@@ -14,6 +14,17 @@ app.use(cors());
 // Track server start time for diagnostics
 const startTime = Date.now();
 
+// Enhanced startup logging for debugging
+console.log('🚀 Starting Hockey Scorekeeper API...');
+console.log('📁 Working directory:', process.cwd());
+console.log('🔧 Environment variables:');
+console.log('  NODE_ENV:', process.env.NODE_ENV);
+console.log('  PORT:', process.env.PORT);
+console.log('  COSMOS_DB_GOALS_CONTAINER:', process.env.COSMOS_DB_GOALS_CONTAINER || 'NOT SET');
+console.log('  COSMOS_DB_PENALTIES_CONTAINER:', process.env.COSMOS_DB_PENALTIES_CONTAINER || 'NOT SET');
+console.log('  COSMOS_DB_URI:', process.env.COSMOS_DB_URI ? 'SET' : 'NOT SET');
+console.log('  COSMOS_DB_KEY:', process.env.COSMOS_DB_KEY ? 'SET' : 'NOT SET');
+
 // SIMPLE TEST ROUTE
 app.get('/api/test', (req, res) => {
   console.log('🔥 TEST ENDPOINT HIT! - UPDATED');
@@ -341,9 +352,26 @@ app.post('/api/goals', async (req, res) => {
     res.status(201).json(resource);
   } catch (error) {
     console.error('❌ Error creating goal:', error);
-    res.status(500).json({ 
-      error: 'Failed to create goal',
-      message: error.message 
+    
+    // Enhanced error handling with specific Azure Cosmos DB error details
+    let statusCode = 500;
+    let errorMessage = 'Failed to create goal';
+    
+    if (error.code === 404) {
+      statusCode = 404;
+      errorMessage = 'Goals container not found. Please check Azure configuration.';
+    } else if (error.code === 400) {
+      statusCode = 400;
+      errorMessage = 'Invalid request data or partition key mismatch.';
+    } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+      statusCode = 503;
+      errorMessage = 'Unable to connect to Cosmos DB. Please check network connectivity.';
+    }
+    
+    res.status(statusCode).json({ 
+      error: errorMessage,
+      details: error.message,
+      code: error.code
     });
   }
 });
@@ -395,7 +423,27 @@ app.post('/api/penalties', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating penalty:', error);
-    res.status(500).json({ error: 'Failed to create penalty' });
+    
+    // Enhanced error handling with specific Azure Cosmos DB error details
+    let statusCode = 500;
+    let errorMessage = 'Failed to create penalty';
+    
+    if (error.code === 404) {
+      statusCode = 404;
+      errorMessage = 'Penalties container not found. Please check Azure configuration.';
+    } else if (error.code === 400) {
+      statusCode = 400;
+      errorMessage = 'Invalid request data or partition key mismatch.';
+    } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
+      statusCode = 503;
+      errorMessage = 'Unable to connect to Cosmos DB. Please check network connectivity.';
+    }
+    
+    res.status(statusCode).json({ 
+      error: errorMessage,
+      details: error.message,
+      code: error.code
+    });
   }
 });
 

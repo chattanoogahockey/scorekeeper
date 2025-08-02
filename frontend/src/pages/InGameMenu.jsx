@@ -220,7 +220,17 @@ export default function InGameMenu() {
 
         {/* Integrated Dashboard Components */}
         <div className="space-y-4">
-          {/* Recent Events Feed */}
+          {/* Announcer Controls */}
+          <div className="bg-white rounded-lg shadow-md">
+            <AnnouncerControls gameId={selectedGame.id || selectedGame.gameId} />
+          </div>
+
+          {/* DJ Panel */}
+          <div className="bg-white rounded-lg shadow-md">
+            <DJPanel />
+          </div>
+
+          {/* Recent Events Feed - Moved to bottom */}
           <div className="bg-white rounded-lg shadow-md p-4">
             <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
               📈 Live Game Feed
@@ -255,16 +265,6 @@ export default function InGameMenu() {
             ) : (
               <p className="text-gray-500 text-sm">No events recorded yet</p>
             )}
-          </div>
-
-          {/* Announcer Controls */}
-          <div className="bg-white rounded-lg shadow-md">
-            <AnnouncerControls gameId={selectedGame.id || selectedGame.gameId} />
-          </div>
-
-          {/* DJ Panel */}
-          <div className="bg-white rounded-lg shadow-md">
-            <DJPanel />
           </div>
         </div>
       </div>

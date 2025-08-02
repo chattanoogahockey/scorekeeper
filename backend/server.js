@@ -577,6 +577,29 @@ app.get('/api/goals', async (req, res) => {
   }
 });
 
+// DELETE endpoint for removing specific goal
+app.delete('/api/goals/:id', async (req, res) => {
+  console.log('🗑️ Deleting goal...');
+  const { id } = req.params;
+  const { gameId } = req.query;
+
+  if (!id || !gameId) {
+    return res.status(400).json({
+      error: 'Invalid request. Required: goal ID and gameId.'
+    });
+  }
+
+  try {
+    const container = getGoalsContainer();
+    await container.item(id, gameId).delete();
+    console.log('✅ Goal deleted successfully');
+    res.status(200).json({ success: true, message: 'Goal deleted' });
+  } catch (error) {
+    console.error('❌ Error deleting goal:', error.message);
+    handleError(res, error);
+  }
+});
+
 // Game submission endpoint
 app.post('/api/games/submit', async (req, res) => {
   console.log('🏁 Submitting game...');
@@ -709,6 +732,29 @@ app.get('/api/penalties', async (req, res) => {
   } catch (error) {
     console.error('Error fetching penalties:', error);
     res.status(500).json({ error: 'Failed to fetch penalties' });
+  }
+});
+
+// DELETE endpoint for removing specific penalty
+app.delete('/api/penalties/:id', async (req, res) => {
+  console.log('🗑️ Deleting penalty...');
+  const { id } = req.params;
+  const { gameId } = req.query;
+
+  if (!id || !gameId) {
+    return res.status(400).json({
+      error: 'Invalid request. Required: penalty ID and gameId.'
+    });
+  }
+
+  try {
+    const container = getPenaltiesContainer();
+    await container.item(id, gameId).delete();
+    console.log('✅ Penalty deleted successfully');
+    res.status(200).json({ success: true, message: 'Penalty deleted' });
+  } catch (error) {
+    console.error('❌ Error deleting penalty:', error.message);
+    handleError(res, error);
   }
 });
 

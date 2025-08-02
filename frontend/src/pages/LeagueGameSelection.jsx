@@ -89,7 +89,7 @@ export default function LeagueGameSelection() {
         }
         
         // Ask user if they want to continue or start over
-        const continueGame = confirm(
+        const continueGame = window.confirm(
           `This game has existing data (${goals.length} goals, ${penalties.length} penalties).\n\n` +
           'Do you want to:\n' +
           '✅ YES - Continue where you left off\n' +
@@ -97,13 +97,33 @@ export default function LeagueGameSelection() {
         );
         
         if (!continueGame) {
-          // User wants to start over - would need to implement data clearing
-          // For now, we'll just warn them
-          const confirmStartOver = confirm(
-            'Starting over will require manually clearing the existing data. ' +
-            'For now, please continue with existing data or contact an administrator to clear the game data.'
+          // User wants to start over - clear existing data
+          const confirmStartOver = window.confirm(
+            'Are you sure you want to start over? This will permanently delete all existing goals and penalties for this game.'
           );
+          
           if (!confirmStartOver) {
+            return; // User changed their mind
+          }
+          
+          // Clear existing data
+          try {
+            console.log('Clearing existing game data...');
+            
+            // Delete all goals for this game
+            for (const goal of goals) {
+              await axios.delete(`/api/goals/${goal.id}`, { params: { gameId } });
+            }
+            
+            // Delete all penalties for this game  
+            for (const penalty of penalties) {
+              await axios.delete(`/api/penalties/${penalty.id}`, { params: { gameId } });
+            }
+            
+            alert('Game data cleared successfully. Starting fresh.');
+          } catch (error) {
+            console.error('Error clearing game data:', error);
+            alert('Error clearing game data. Please try again or contact an administrator.');
             return;
           }
         }

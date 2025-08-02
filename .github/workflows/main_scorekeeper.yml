@@ -63,12 +63,3 @@ jobs:
         slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_aa98474905f14a53afdc3e9da94e0ae4 }}
         package: './deploy'
-        configuration-settings: |
-          COSMOS_DB_URI=https://scorekeeper-hockey.documents.azure.com:443/
-          COSMOS_DB_KEY=f2Q836HdubXRBLW1llBm6GkFwU3AMVGch6rHc9VbZzIv2bYomsl4yATgicMnWDLZhBS3pS00YcLtACDb2unQSg==
-          COSMOS_DB_NAME=scorekeeper
-          COSMOS_DB_GOALS_CONTAINER=goals
-          COSMOS_DB_PENALTIES_CONTAINER=penalties
-          COSMOS_DB_GAMES_CONTAINER=games
-          COSMOS_DB_ROSTERS_CONTAINER=rosters
-          COSMOS_DB_ATTENDANCE_CONTAINER=attendance

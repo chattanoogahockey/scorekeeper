@@ -43,6 +43,8 @@ jobs:
         mkdir -p deploy
         # Copy backend files to root of deploy
         cp -r backend/* deploy/
+        # CRITICAL: Copy backend node_modules to deploy
+        cp -r backend/node_modules deploy/node_modules
         # CRITICAL: Copy built frontend to where backend serves it
         rm -rf deploy/frontend
         mkdir -p deploy/frontend
@@ -53,8 +55,9 @@ jobs:
         # Verify frontend was copied correctly
         echo "Frontend files copied:"
         ls -la deploy/frontend/
-        # Install production dependencies in deploy directory
-        cd deploy && npm install --production --ignore-scripts
+        # Verify node_modules copied
+        echo "Backend dependencies copied:"
+        ls -la deploy/node_modules/ | head -10
     
     - name: 'Deploy to Azure Web App'
       uses: azure/webapps-deploy@v3

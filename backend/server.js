@@ -22,6 +22,9 @@ console.log('  NODE_ENV:', process.env.NODE_ENV);
 console.log('  PORT:', process.env.PORT);
 console.log('  COSMOS_DB_GOALS_CONTAINER:', process.env.COSMOS_DB_GOALS_CONTAINER || 'NOT SET');
 console.log('  COSMOS_DB_PENALTIES_CONTAINER:', process.env.COSMOS_DB_PENALTIES_CONTAINER || 'NOT SET');
+console.log('  COSMOS_DB_GAMES_CONTAINER:', process.env.COSMOS_DB_GAMES_CONTAINER || 'NOT SET');
+console.log('  COSMOS_DB_ROSTERS_CONTAINER:', process.env.COSMOS_DB_ROSTERS_CONTAINER || 'NOT SET');
+console.log('  COSMOS_DB_ATTENDANCE_CONTAINER:', process.env.COSMOS_DB_ATTENDANCE_CONTAINER || 'NOT SET');
 console.log('  COSMOS_DB_URI:', process.env.COSMOS_DB_URI ? 'SET' : 'NOT SET');
 console.log('  COSMOS_DB_KEY:', process.env.COSMOS_DB_KEY ? 'SET' : 'NOT SET');
 

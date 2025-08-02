@@ -34,17 +34,7 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'Test endpoint works! - UPDATED' });
 });
 
-// HEALTH CHECK ENDPOINT for Azure
-app.get('/', (req, res) => {
-  console.log('🏥 HEALTH CHECK ENDPOINT HIT');
-  res.json({ 
-    status: 'healthy', 
-    message: 'Hockey Scorekeeper API is running',
-    timestamp: new Date().toISOString(),
-    port: process.env.PORT || 8080
-  });
-});
-
+// HEALTH CHECK ENDPOINT for Azure (only at /health, not root)
 app.get('/health', (req, res) => {
   console.log('🏥 HEALTH CHECK /health ENDPOINT HIT');
   res.json({ 

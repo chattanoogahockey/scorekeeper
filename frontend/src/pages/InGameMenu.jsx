@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GameContext } from '../contexts/GameContext.jsx';
 import AnnouncerControls from '../components/AnnouncerControls.jsx';
 import DJPanel from '../components/DJPanel.jsx';
+import OTShootoutButton from '../components/OTShootoutButton.jsx';
 import axios from 'axios';
 
 /**
@@ -138,6 +139,12 @@ export default function InGameMenu() {
     }
   };
 
+  const handleGameCompleted = (gameId) => {
+    // Game was completed via OT/Shootout, redirect to home
+    console.log(`Game ${gameId} completed via OT/Shootout`);
+    navigate('/');
+  };
+
   const formatCurrentTime = () => {
     return currentTime.toLocaleTimeString([], { 
       hour: '2-digit', 
@@ -191,17 +198,22 @@ export default function InGameMenu() {
         <div className="grid grid-cols-2 gap-3 mb-4">
           <button
             onClick={handleGoalClick}
-            className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-4 rounded-lg shadow-lg text-lg transition-colors"
+            className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-4 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
             🥅 Record Goal
           </button>
 
           <button
             onClick={handlePenaltyClick}
-            className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 px-4 rounded-lg shadow-lg text-lg transition-colors"
+            className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-4 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
             ⚠️ Record Penalty
           </button>
+        </div>
+
+        {/* OT/Shootout Button */}
+        <div className="mb-4">
+          <OTShootoutButton onGameCompleted={handleGameCompleted} />
         </div>
 
         {/* Submit Game Button */}
@@ -209,7 +221,7 @@ export default function InGameMenu() {
           <button
             onClick={handleSubmitGame}
             disabled={isSubmittingGame}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-colors"
+            className="w-full bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
             {isSubmittingGame ? '🔄 Submitting...' : '🏁 Submit Game'}
           </button>

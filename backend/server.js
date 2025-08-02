@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
-import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoalsContainer, getPenaltiesContainer } from './cosmosClient.js';
+import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoalsContainer, getPenaltiesContainer, getOTShootoutContainer } from './cosmosClient.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -25,6 +25,7 @@ console.log('  COSMOS_DB_PENALTIES_CONTAINER:', process.env.COSMOS_DB_PENALTIES_
 console.log('  COSMOS_DB_GAMES_CONTAINER:', process.env.COSMOS_DB_GAMES_CONTAINER || 'NOT SET');
 console.log('  COSMOS_DB_ROSTERS_CONTAINER:', process.env.COSMOS_DB_ROSTERS_CONTAINER || 'NOT SET');
 console.log('  COSMOS_DB_ATTENDANCE_CONTAINER:', process.env.COSMOS_DB_ATTENDANCE_CONTAINER || 'NOT SET');
+console.log('  COSMOS_DB_OTSHOOTOUT_CONTAINER:', process.env.COSMOS_DB_OTSHOOTOUT_CONTAINER || 'NOT SET');
 console.log('  COSMOS_DB_URI:', process.env.COSMOS_DB_URI ? 'SET' : 'NOT SET');
 console.log('  COSMOS_DB_KEY:', process.env.COSMOS_DB_KEY ? 'SET' : 'NOT SET');
 
@@ -755,6 +756,144 @@ app.delete('/api/penalties/:id', async (req, res) => {
   } catch (error) {
     console.error('❌ Error deleting penalty:', error.message);
     handleError(res, error);
+  }
+});
+
+// OT/Shootout endpoints
+app.post('/api/otshootout', async (req, res) => {
+  console.log('🏒 Recording OT/Shootout result...');
+  const { gameId, winner, gameType, finalScore, submittedBy } = req.body;
+
+  if (!gameId || !winner || !gameType) {
+    return res.status(400).json({
+      error: 'Invalid payload. Required: gameId, winner, gameType.'
+    });
+  }
+
+  try {
+    const container = getOTShootoutContainer();
+    const goalsContainer = getGoalsContainer();
+    const penaltiesContainer = getPenaltiesContainer();
+    const gamesContainer = getGamesContainer();
+    
+    // Get existing goals and penalties for context
+    const goalsQuery = {
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId',
+      parameters: [{ name: '@gameId', value: gameId }]
+    };
+    const { resources: goals } = await goalsContainer.items.query(goalsQuery).fetchAll();
+    
+    const penaltiesQuery = {
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId',
+      parameters: [{ name: '@gameId', value: gameId }]
+    };
+    const { resources: penalties } = await penaltiesContainer.items.query(penaltiesQuery).fetchAll();
+    
+    // Create OT/Shootout record
+    const otShootoutRecord = {
+      id: `${gameId}-otshootout-${Date.now()}`,
+      eventType: 'ot-shootout',
+      gameId,
+      winner,
+      gameType, // 'overtime' or 'shootout'
+      finalScore: finalScore || {},
+      recordedAt: new Date().toISOString(),
+      gameStatus: 'completed', // Game is now completed
+      submittedBy: submittedBy || 'Scorekeeper',
+      
+      // Game summary for analytics
+      gameSummary: {
+        totalGoals: goals.length,
+        totalPenalties: penalties.length,
+        goalsByTeam: goals.reduce((acc, goal) => {
+          acc[goal.scoringTeam] = (acc[goal.scoringTeam] || 0) + 1;
+          return acc;
+        }, {}),
+        penaltiesByTeam: penalties.reduce((acc, penalty) => {
+          acc[penalty.penalizedTeam] = (acc[penalty.penalizedTeam] || 0) + 1;
+          return acc;
+        }, {}),
+        totalPIM: penalties.reduce((sum, p) => sum + parseInt(p.penaltyLength || 0), 0)
+      }
+    };
+    
+    const { resource } = await container.items.create(otShootoutRecord);
+    
+    // Mark all goals and penalties as completed
+    for (const goal of goals) {
+      const updatedGoal = {
+        ...goal,
+        gameStatus: 'completed',
+        completedAt: new Date().toISOString(),
+        completedBy: submittedBy || 'Scorekeeper'
+      };
+      await goalsContainer.item(goal.id, goal.gameId).replace(updatedGoal);
+    }
+    
+    for (const penalty of penalties) {
+      const updatedPenalty = {
+        ...penalty,
+        gameStatus: 'completed',
+        completedAt: new Date().toISOString(),
+        completedBy: submittedBy || 'Scorekeeper'
+      };
+      await penaltiesContainer.item(penalty.id, penalty.gameId).replace(updatedPenalty);
+    }
+    
+    // Create final game completion record
+    const gameCompletionRecord = {
+      id: `${gameId}-completion-${Date.now()}`,
+      gameId,
+      eventType: 'game-completion',
+      completionType: 'ot-shootout',
+      completedAt: new Date().toISOString(),
+      completedBy: submittedBy || 'Scorekeeper',
+      winner,
+      gameType,
+      finalScore: finalScore || {},
+      totalGoals: goals.length,
+      totalPenalties: penalties.length
+    };
+    
+    await gamesContainer.items.create(gameCompletionRecord);
+    
+    console.log('✅ OT/Shootout result recorded and game completed');
+    
+    res.status(201).json({
+      success: true,
+      otShootoutRecord: resource,
+      message: `${gameType} winner recorded. Game completed automatically.`
+    });
+  } catch (error) {
+    console.error('❌ Error recording OT/Shootout:', error.message);
+    handleError(res, error);
+  }
+});
+
+app.get('/api/otshootout', async (req, res) => {
+  const { gameId } = req.query;
+
+  try {
+    const container = getOTShootoutContainer();
+    let querySpec;
+    
+    if (!gameId) {
+      querySpec = {
+        query: 'SELECT * FROM c ORDER BY c.recordedAt DESC',
+        parameters: [],
+      };
+    } else {
+      querySpec = {
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt DESC',
+        parameters: [{ name: '@gameId', value: gameId }],
+      };
+    }
+
+    const { resources: otShootoutRecords } = await container.items.query(querySpec).fetchAll();
+    res.status(200).json(otShootoutRecords);
+  } catch (error) {
+    console.error('Error fetching OT/Shootout records:', error);
+    res.status(500).json({ error: 'Failed to fetch OT/Shootout records' });
   }
 });
 

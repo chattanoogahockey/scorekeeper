@@ -36,6 +36,7 @@ const {
   COSMOS_DB_ATTENDANCE_CONTAINER,
   COSMOS_DB_GOALS_CONTAINER,
   COSMOS_DB_PENALTIES_CONTAINER,
+  COSMOS_DB_OTSHOOTOUT_CONTAINER,
 } = process.env;
 
 // Debugging: Log critical environment variables to verify they are loaded
@@ -56,6 +57,7 @@ console.log('Environment Variables:', {
   COSMOS_DB_GAMES_CONTAINER: process.env.COSMOS_DB_GAMES_CONTAINER,
   COSMOS_DB_ROSTERS_CONTAINER: process.env.COSMOS_DB_ROSTERS_CONTAINER,
   COSMOS_DB_ATTENDANCE_CONTAINER: process.env.COSMOS_DB_ATTENDANCE_CONTAINER,
+  COSMOS_DB_OTSHOOTOUT_CONTAINER: process.env.COSMOS_DB_OTSHOOTOUT_CONTAINER,
 });
 
 // Support multiple environment variable naming conventions
@@ -119,6 +121,10 @@ export function getGoalsContainer() {
 
 export function getPenaltiesContainer() {
   return getContainer('COSMOS_DB_PENALTIES_CONTAINER');
+}
+
+export function getOTShootoutContainer() {
+  return getContainer('COSMOS_DB_OTSHOOTOUT_CONTAINER');
 }
 
 export function getPlayerStatsContainer() {

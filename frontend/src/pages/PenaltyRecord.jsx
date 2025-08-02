@@ -194,107 +194,109 @@ Length: ${formData.penaltyLength} minutes`;
         {/* Penalty Form */}
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6">
           <div className="space-y-4">
-            {/* Period - Moved to top */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Period
-              </label>
-              <div className="flex space-x-2">
-                {[1,2,3].map(period => (
+            {/* Period and Team on same row */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Period
+                </label>
+                <div className="flex space-x-1">
+                  {[1,2,3].map(period => (
+                    <button
+                      key={period}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, period: period.toString() }))}
+                      className={`py-2 px-3 border-2 rounded-lg text-sm font-medium transition-colors ${
+                        formData.period === period.toString() 
+                          ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                          : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                      }`}
+                    >
+                      {period}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Penalized Team
+                </label>
+                <div className="grid grid-cols-2 gap-1">
                   <button
-                    key={period}
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, period: period.toString() }))}
-                    className={`py-2 px-4 border-2 rounded-lg text-sm font-medium transition-colors ${
-                      formData.period === period.toString() 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                    onClick={() => setFormData(prev => ({ ...prev, team: selectedGame.awayTeam, player: '' }))}
+                    className={`py-2 px-2 border-2 rounded-lg font-medium transition-colors ${
+                      formData.team === selectedGame.awayTeam
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
                         : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
                     }`}
+                    style={{ fontSize: '12px' }}
                   >
-                    {period}
+                    {selectedGame.awayTeam}
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, team: selectedGame.homeTeam, player: '' }))}
+                    className={`py-2 px-2 border-2 rounded-lg font-medium transition-colors ${
+                      formData.team === selectedGame.homeTeam
+                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
+                    }`}
+                    style={{ fontSize: '12px' }}
+                  >
+                    {selectedGame.homeTeam}
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Penalized Team
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, team: selectedGame.awayTeam, player: '' }))}
-                  className={`py-3 px-3 border-2 rounded-lg font-medium transition-colors ${
-                    formData.team === selectedGame.awayTeam
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
-                  }`}
-                  style={{ fontSize: '14px' }}
+            {/* Smaller Penalized Player and Penalty Type (same row) */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Penalized Player
+                </label>
+                <select
+                  value={formData.player}
+                  onChange={(e) => setFormData(prev => ({ ...prev, player: e.target.value }))}
+                  disabled={!formData.team || availablePlayers.length === 0}
+                  className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                  required
                 >
-                  {selectedGame.awayTeam}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, team: selectedGame.homeTeam, player: '' }))}
-                  className={`py-3 px-3 border-2 rounded-lg font-medium transition-colors ${
-                    formData.team === selectedGame.homeTeam
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
-                  }`}
-                  style={{ fontSize: '14px' }}
-                >
-                  {selectedGame.homeTeam}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Penalized Player
-              </label>
-              <select
-                value={formData.player}
-                onChange={(e) => setFormData(prev => ({ ...prev, player: e.target.value }))}
-                disabled={!formData.team || availablePlayers.length === 0}
-                className="w-full p-3 border border-gray-300 rounded-md text-lg"
-                required
-              >
-                <option value="">
-                  {!formData.team 
-                    ? 'Select team first' 
-                    : availablePlayers.length === 0 
-                      ? 'Loading...' 
-                      : 'Choose player'
-                  }
-                </option>
+                  <option value="">
+                    {!formData.team 
+                      ? 'Select team first' 
+                      : availablePlayers.length === 0 
+                        ? 'Loading...' 
+                        : 'Choose player'
+                    }
+                  </option>
                 {availablePlayers.map((player) => (
                   <option key={player.playerId} value={player.name}>
                     {player.number ? `#${player.number} ` : ''}{player.name}
                   </option>
                 ))}
-              </select>
-            </div>
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Penalty Type
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                {penaltyTypes.map(type => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, penaltyType: type }))}
-                    className={`py-2 px-2 border-2 rounded-lg text-xs font-medium transition-colors ${
-                      formData.penaltyType === type 
-                        ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Penalty Type
+                </label>
+                <select
+                  value={formData.penaltyType}
+                  onChange={(e) => setFormData(prev => ({ ...prev, penaltyType: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 rounded-md text-sm"
+                  required
+                >
+                  <option value="">Select penalty type</option>
+                  {penaltyTypes.map(type => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

@@ -10,6 +10,8 @@ export default function GoalRecord() {
   const { selectedGame, rosters } = useContext(GameContext);
   const navigate = useNavigate();
   const [availablePlayers, setAvailablePlayers] = useState([]);
+  const [currentScore, setCurrentScore] = useState({ away: 0, home: 0 });
+  const [existingGoals, setExistingGoals] = useState([]);
   const [formData, setFormData] = useState({
     team: '',
     player: '',
@@ -25,6 +27,85 @@ export default function GoalRecord() {
     navigate('/');
     return null;
   }
+
+  // Fetch existing goals to calculate current score
+  useEffect(() => {
+    const fetchExistingGoals = async () => {
+      try {
+        const apiUrl = import.meta.env.DEV 
+          ? '/api/goals' 
+          : `${import.meta.env.VITE_API_BASE_URL}/api/goals`;
+        
+        const response = await axios.get(apiUrl, {
+          params: { gameId: selectedGame.id || selectedGame.gameId }
+        });
+        
+        const goals = response.data || [];
+        setExistingGoals(goals);
+        
+        // Calculate current score
+        const awayScore = goals.filter(g => g.scoringTeam === selectedGame.awayTeam).length;
+        const homeScore = goals.filter(g => g.scoringTeam === selectedGame.homeTeam).length;
+        setCurrentScore({ away: awayScore, home: homeScore });
+        
+      } catch (error) {
+        console.error('Error fetching existing goals:', error);
+        // Set default score if fetch fails
+        setCurrentScore({ away: 0, home: 0 });
+      }
+    };
+
+    if (selectedGame) {
+      fetchExistingGoals();
+    }
+  }, [selectedGame]);
+
+  // Function to determine goal context for AI announcer
+  const determineGoalContext = (scoringTeam) => {
+    const awayTeam = selectedGame.awayTeam;
+    const homeTeam = selectedGame.homeTeam;
+    const isAwayTeamScoring = scoringTeam === awayTeam;
+    
+    // Calculate score after this goal
+    const newAwayScore = currentScore.away + (isAwayTeamScoring ? 1 : 0);
+    const newHomeScore = currentScore.home + (isAwayTeamScoring ? 0 : 1);
+    
+    // Total goals before this one
+    const totalGoals = currentScore.away + currentScore.home;
+    
+    // First goal of the game
+    if (totalGoals === 0) {
+      return "First goal of game";
+    }
+    
+    // Tying goal (score becomes tied)
+    if (newAwayScore === newHomeScore) {
+      return "Tying goal";
+    }
+    
+    // Go-ahead goal (from tied to leading)
+    if (currentScore.away === currentScore.home) {
+      return "Go-ahead goal";
+    }
+    
+    // Game-winning goal scenarios (extending lead significantly)
+    const leadDifference = Math.abs(newAwayScore - newHomeScore);
+    if (leadDifference >= 3) {
+      return "Insurance goal";
+    }
+    
+    // Comeback goal (reducing opponent's lead)
+    const previousLead = Math.abs(currentScore.away - currentScore.home);
+    const newLead = Math.abs(newAwayScore - newHomeScore);
+    if (previousLead > newLead && previousLead >= 2) {
+      return "Comeback goal";
+    }
+    
+    // Power play goal or short-handed goal could be determined here with more context
+    
+    // Default case
+    return leadDifference === 1 ? "Go-ahead goal" : "Goal";
+  };
 
   // Initialize with first team (away team) by default
   useEffect(() => {
@@ -514,6 +595,8 @@ export default function GoalRecord() {
                   ? '/api/goals' 
                   : `${import.meta.env.VITE_API_BASE_URL}/api/goals`;
                   
+                const goalContext = determineGoalContext(formData.team);
+                
                 const goalPayload = {
                   gameId: selectedGame.id || selectedGame.gameId,
                   team: formData.team,
@@ -523,7 +606,26 @@ export default function GoalRecord() {
                   assist: formData.assist || null,
                   shotType: formData.shotType,
                   goalType: formData.goalType,
-                  breakaway: formData.breakaway
+                  breakaway: formData.breakaway,
+                  // Enhanced data for AI announcer
+                  gameContext: {
+                    goalContext: goalContext,
+                    scoreBeforeGoal: {
+                      away: currentScore.away,
+                      home: currentScore.home,
+                      awayTeam: selectedGame.awayTeam,
+                      homeTeam: selectedGame.homeTeam
+                    },
+                    scoreAfterGoal: {
+                      away: currentScore.away + (formData.team === selectedGame.awayTeam ? 1 : 0),
+                      home: currentScore.home + (formData.team === selectedGame.homeTeam ? 1 : 0),
+                      awayTeam: selectedGame.awayTeam,
+                      homeTeam: selectedGame.homeTeam
+                    },
+                    totalGoalsInGame: existingGoals.length + 1,
+                    period: formData.period,
+                    timeInPeriod: formData.time
+                  }
                 };
                 
                 console.log('📦 Goal Payload:', JSON.stringify(goalPayload, null, 2));

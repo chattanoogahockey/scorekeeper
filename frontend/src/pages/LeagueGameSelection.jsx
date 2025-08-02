@@ -9,6 +9,7 @@ export default function LeagueGameSelection() {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     // Reset context when visiting selection page
@@ -28,6 +29,15 @@ export default function LeagueGameSelection() {
       .finally(() => {
         setLoading(false);
       });
+  }, []);
+
+  // Real-time clock update
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
   }, []);
 
   const formatGameDate = (dateString) => {
@@ -118,7 +128,19 @@ export default function LeagueGameSelection() {
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4">
-      <h1 className="text-3xl font-bold mb-6">Select Game</h1>
+      <div className="w-full max-w-4xl mb-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Select Game</h1>
+          <div className="text-right">
+            <div className="text-lg font-semibold">
+              {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <div className="text-sm text-gray-600">
+              {currentTime.toLocaleDateString()}
+            </div>
+          </div>
+        </div>
+      </div>
       
       {loading && <p className="text-lg">Loading games...</p>}
       {error && <p className="text-red-500 text-lg">{error}</p>}

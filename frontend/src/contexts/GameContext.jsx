@@ -1,10 +1,21 @@
-import React, { createContext, useState } from 'react';
+import React, { createContext, useState, useContext } from 'react';
 
 /**
  * GameContext holds high-level state shared across pages, such as the
  * currently selected league, game, rosters, and attendance information.
  */
 export const GameContext = createContext(null);
+
+/**
+ * Custom hook to use the GameContext
+ */
+export const useGameContext = () => {
+  const context = useContext(GameContext);
+  if (!context) {
+    throw new Error('useGameContext must be used within a GameProvider');
+  }
+  return context;
+};
 
 export function GameProvider({ children }) {
   const [selectedLeague, setSelectedLeague] = useState(null);
@@ -16,6 +27,11 @@ export function GameProvider({ children }) {
   const bothAttendanceSubmitted =
     rosters.length > 0 &&
     rosters.every((team) => attendance[team.teamName] && attendance[team.teamName].length >= 0);
+
+  // Derived properties for OTShootoutButton
+  const selectedGameId = selectedGame?.id || selectedGame?.gameId;
+  const homeTeam = selectedGame?.homeTeam || selectedGame?.homeTeamId;
+  const awayTeam = selectedGame?.awayTeam || selectedGame?.awayTeamId;
 
   const reset = () => {
     setSelectedLeague(null);
@@ -31,6 +47,9 @@ export function GameProvider({ children }) {
         setSelectedLeague,
         selectedGame,
         setSelectedGame,
+        selectedGameId,
+        homeTeam,
+        awayTeam,
         rosters,
         setRosters,
         attendance,

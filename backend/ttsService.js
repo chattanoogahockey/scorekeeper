@@ -8,6 +8,12 @@ const __dirname = path.dirname(__filename);
 
 /**
  * Google Cloud Text-to-Speech service for generating high-quality announcer voices
+ * 
+ * Voice Configuration:
+ * - Studio-O: Primary announcer voice for goals and general commentary (expressive, engaging)
+ * - Studio-M: Secondary voice for penalties and serious announcements (authoritative, clear)
+ * 
+ * Studio voices are Google's most advanced TTS technology with human-like quality
  */
 class TTSService {
   constructor() {
@@ -55,22 +61,22 @@ class TTSService {
       const filename = `${gameId}-${type}-${timestamp}.mp3`;
       const filePath = path.join(this.audioDir, filename);
 
-      // Configure the TTS request for an exciting announcer voice
+      // Configure the TTS request for Studio-O announcer voice
       const request = {
         input: { text: text },
-        // Use a voice that sounds like a sports announcer
+        // Use Google's most advanced Studio voice for maximum realism
         voice: {
           languageCode: 'en-US',
-          name: 'en-US-Neural2-D', // Male voice, good for sports announcing
+          name: 'en-US-Studio-O', // Studio-O: Premium male voice, perfect for sports announcing
           ssmlGender: 'MALE',
         },
-        // Configure audio format
+        // Configure audio for maximum realism and excitement
         audioConfig: {
           audioEncoding: 'MP3',
-          speakingRate: 1.1, // Slightly faster for excitement
-          pitch: 0.5, // Slightly lower pitch for authority
-          volumeGainDb: 2.0, // Boost volume for stadium feel
-          effectsProfileId: ['headphone-class-device'], // Optimize for headphones
+          speakingRate: 1.1, // Optimal pace for clear, exciting announcements
+          pitch: 0.8, // Slightly elevated for energy while maintaining authority
+          volumeGainDb: 4.0, // Stadium-level volume for impact
+          effectsProfileId: ['large-home-entertainment-class-device'], // Best quality/realism
         },
       };
 
@@ -108,15 +114,15 @@ class TTSService {
         input: { text: text },
         voice: {
           languageCode: 'en-US',
-          name: 'en-US-Neural2-A', // Different voice for penalties
+          name: 'en-US-Studio-M', // Studio-M: Authoritative male voice, perfect for penalties
           ssmlGender: 'MALE',
         },
         audioConfig: {
           audioEncoding: 'MP3',
-          speakingRate: 0.95, // Slightly slower for seriousness
-          pitch: -0.5, // Lower pitch for authority
-          volumeGainDb: 1.5,
-          effectsProfileId: ['headphone-class-device'],
+          speakingRate: 0.95, // Deliberate pace for serious announcements
+          pitch: -0.5, // Lower pitch for authority while maintaining clarity
+          volumeGainDb: 3.2, // Clear, commanding volume
+          effectsProfileId: ['large-home-entertainment-class-device'], // Maximum realism
         },
       };
 

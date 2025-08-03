@@ -4,6 +4,9 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoalsContainer, getPenaltiesContainer, getOTShootoutContainer } from './cosmosClient.js';
 
+// Import TTS service
+const ttsService = require('./ttsService.js');
+
 // Conditionally import announcer service to prevent startup failures
 let createGoalAnnouncement = null;
 let generateGoalAnnouncement = null;
@@ -746,12 +749,15 @@ app.post('/api/goals/announce-last', async (req, res) => {
           period: 1 // Default to first period for scoreless games
         });
         
+        // Generate TTS audio for scoreless commentary
+        const audioPath = await ttsService.generateSpeech(scorelessCommentary, gameId, 'scoreless');
+        
         return res.status(200).json({
           success: true,
           scoreless: true,
           announcement: {
             text: scorelessCommentary,
-            audioPath: null
+            audioPath: audioPath
           },
           gameData: {
             homeTeam: game.homeTeam,
@@ -799,6 +805,9 @@ app.post('/api/goals/announce-last', async (req, res) => {
     // Generate the announcement
     const announcementText = await generateGoalAnnouncement(goalData, playerStats);
     
+    // Generate TTS audio for goal announcement
+    const audioPath = await ttsService.generateSpeech(announcementText, gameId, 'goal');
+    
     console.log('✅ Goal announcement generated successfully');
     
     res.status(200).json({
@@ -806,7 +815,7 @@ app.post('/api/goals/announce-last', async (req, res) => {
       goal: lastGoal,
       announcement: {
         text: announcementText,
-        audioPath: null // No audio for now
+        audioPath: audioPath
       },
       goalData,
       playerStats
@@ -910,6 +919,9 @@ app.post('/api/penalties/announce-last', async (req, res) => {
     // Generate the announcement
     const announcementText = await generatePenaltyAnnouncement(penaltyData, gameContext);
     
+    // Generate TTS audio for penalty announcement (using special penalty voice)
+    const audioPath = await ttsService.generatePenaltySpeech(announcementText, gameId);
+    
     console.log('✅ Penalty announcement generated successfully');
     
     res.status(200).json({
@@ -917,7 +929,7 @@ app.post('/api/penalties/announce-last', async (req, res) => {
       penalty: lastPenalty,
       announcement: {
         text: announcementText,
-        audioPath: null // No audio for now
+        audioPath: audioPath
       },
       penaltyData,
       gameContext
@@ -1029,6 +1041,7 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
   try {
     const goalsContainer = getGoalsContainer();
     const penaltiesContainer = getPenaltiesContainer();
+    const gamesContainer = getGamesContainer();
     
     // Get all goals for this game
     const { resources: goals } = await goalsContainer.items
@@ -1045,6 +1058,14 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
         parameters: [{ name: "@gameId", value: gameId }]
       })
       .fetchAll();
+      
+    // Get game submission records
+    const { resources: submissions } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId AND (c.eventType = 'game-submission' OR c.eventType = 'game-completion')",
+        parameters: [{ name: "@gameId", value: gameId }]
+      })
+      .fetchAll();
     
     // Delete all goals
     for (const goal of goals) {
@@ -1056,14 +1077,20 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
       await penaltiesContainer.item(penalty.id, penalty.gameId).delete();
     }
     
-    console.log(`✅ Reset complete: Deleted ${goals.length} goals and ${penalties.length} penalties for game ${gameId}`);
+    // Delete submission records to remove from admin panel
+    for (const submission of submissions) {
+      await gamesContainer.item(submission.id, submission.gameId).delete();
+    }
+    
+    console.log(`✅ Reset complete: Deleted ${goals.length} goals, ${penalties.length} penalties, and ${submissions.length} submission records for game ${gameId}`);
     
     res.status(200).json({
       success: true,
-      message: `Game data reset successfully. Deleted ${goals.length} goals and ${penalties.length} penalties.`,
+      message: `Game data reset successfully. Game removed from completed games list.`,
       deletedItems: {
         goals: goals.length,
-        penalties: penalties.length
+        penalties: penalties.length,
+        submissions: submissions.length
       }
     });
   } catch (error) {

@@ -212,9 +212,11 @@ export default function LeagueGameSelection() {
             >
               ← Back to Menu
             </button>
+          </div>
+          <div className="flex-1 text-center">
             <h1 className="text-2xl font-bold">Select Game</h1>
           </div>
-          <div className="text-right">
+          <div className="text-right">"
             <div className="text-lg font-semibold">
               {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>

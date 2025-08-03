@@ -14,6 +14,13 @@ export default function AnnouncerControls({ gameId }) {
   const [penaltyLoading, setPenaltyLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
+  
+  // Audio progress state
+  const [audioProgress, setAudioProgress] = useState({ 
+    current: 0, 
+    duration: 0, 
+    isPlaying: false 
+  });
 
   // Use gameId prop if provided, otherwise use context
   const currentGameId = gameId || selectedGameId;
@@ -31,18 +38,45 @@ export default function AnnouncerControls({ gameId }) {
       utterance.pitch = 1.0;
       utterance.volume = 0.8;
       
+      // Estimate duration (rough calculation: ~150 words per minute)
+      const wordCount = text.split(' ').length;
+      const estimatedDuration = (wordCount / 150) * 60; // seconds
+      
       utterance.onstart = () => {
         setMessage('🔊 Playing AI announcement...');
+        setAudioProgress({ current: 0, duration: estimatedDuration, isPlaying: true });
+        
+        // Update progress simulation for TTS (since we can't get real progress)
+        const progressInterval = setInterval(() => {
+          setAudioProgress(prev => {
+            if (prev.current >= prev.duration) {
+              clearInterval(progressInterval);
+              return prev;
+            }
+            return { ...prev, current: prev.current + 0.1 };
+          });
+        }, 100);
+        
+        // Store interval ID to clear it later
+        utterance.progressInterval = progressInterval;
       };
       
       utterance.onend = () => {
         setMessage('');
+        setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+        if (utterance.progressInterval) {
+          clearInterval(utterance.progressInterval);
+        }
       };
       
       utterance.onerror = (event) => {
         console.error('Speech synthesis error:', event);
         setError('Text-to-speech failed');
         setMessage('');
+        setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+        if (utterance.progressInterval) {
+          clearInterval(utterance.progressInterval);
+        }
       };
       
       speechSynthesis.speak(utterance);
@@ -90,16 +124,26 @@ export default function AnnouncerControls({ gameId }) {
           
           const audio = new Audio(audioUrl);
           
-          audio.onloadeddata = () => {
+          audio.onloadedmetadata = () => {
             setMessage(scoreless ? 'Playing scoreless commentary...' : 'Playing goal announcement...');
+            setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
+          };
+          
+          audio.ontimeupdate = () => {
+            setAudioProgress(prev => ({
+              ...prev,
+              current: audio.currentTime
+            }));
           };
           
           audio.onended = () => {
             setMessage('');
+            setAudioProgress({ current: 0, duration: 0, isPlaying: false });
           };
           
           audio.onerror = () => {
             setError('Failed to play announcement audio, falling back to text-to-speech');
+            setAudioProgress({ current: 0, duration: 0, isPlaying: false });
             // Fallback to browser TTS
             speakText(announcement.text);
           };
@@ -158,16 +202,26 @@ export default function AnnouncerControls({ gameId }) {
           
           const audio = new Audio(audioUrl);
           
-          audio.onloadeddata = () => {
+          audio.onloadedmetadata = () => {
             setMessage('Playing penalty announcement...');
+            setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
+          };
+          
+          audio.ontimeupdate = () => {
+            setAudioProgress(prev => ({
+              ...prev,
+              current: audio.currentTime
+            }));
           };
           
           audio.onended = () => {
             setMessage('');
+            setAudioProgress({ current: 0, duration: 0, isPlaying: false });
           };
           
           audio.onerror = () => {
             setError('Failed to play announcement audio, falling back to text-to-speech');
+            setAudioProgress({ current: 0, duration: 0, isPlaying: false });
             // Fallback to browser TTS
             speakText(announcement.text);
           };
@@ -219,6 +273,25 @@ export default function AnnouncerControls({ gameId }) {
           {penaltyLoading ? 'Generating...' : 'AI Penalty Announcement'}
         </button>
       </div>
+      
+      {/* Audio Progress Bar */}
+      {audioProgress.isPlaying && (
+        <div className="mt-3 p-2 bg-gray-50 rounded border">
+          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+            <span>🎵 Audio Progress</span>
+            <span>{Math.round(audioProgress.current)}s / {Math.round(audioProgress.duration)}s</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-blue-500 h-2 rounded-full transition-all duration-100"
+              style={{ 
+                width: `${Math.min((audioProgress.current / audioProgress.duration) * 100, 100)}%` 
+              }}
+            ></div>
+          </div>
+        </div>
+      )}
+      
       {message && (
         <p className="text-sm mt-3 italic text-gray-600">Latest announcement: {message}</p>
       )}

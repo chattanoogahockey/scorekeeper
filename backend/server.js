@@ -653,7 +653,24 @@ app.post('/api/goals/announce-last', async (req, res) => {
       .fetchAll();
 
     // Get game details for context
-    const { resource: game } = await gamesContainer.item(gameId, gameId).read();
+    let game;
+    try {
+      // Try direct lookup first (if gameId is the document id)
+      const { resource: directGame } = await gamesContainer.item(gameId, gameId).read();
+      game = directGame;
+    } catch (err) {
+      // If that fails, try query lookup
+      const { resources: gamesByQuery } = await gamesContainer.items
+        .query({
+          query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
+          parameters: [{ name: "@gameId", value: gameId }]
+        })
+        .fetchAll();
+      
+      if (gamesByQuery.length > 0) {
+        game = gamesByQuery[0];
+      }
+    }
     
     if (!game) {
       return res.status(404).json({
@@ -771,7 +788,24 @@ app.post('/api/penalties/announce-last', async (req, res) => {
       .fetchAll();
 
     // Get game details for context
-    const { resource: game } = await gamesContainer.item(gameId, gameId).read();
+    let game;
+    try {
+      // Try direct lookup first (if gameId is the document id)
+      const { resource: directGame } = await gamesContainer.item(gameId, gameId).read();
+      game = directGame;
+    } catch (err) {
+      // If that fails, try query lookup
+      const { resources: gamesByQuery } = await gamesContainer.items
+        .query({
+          query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
+          parameters: [{ name: "@gameId", value: gameId }]
+        })
+        .fetchAll();
+      
+      if (gamesByQuery.length > 0) {
+        game = gamesByQuery[0];
+      }
+    }
     
     if (!game) {
       return res.status(404).json({
@@ -922,6 +956,63 @@ app.post('/api/games/submit', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error submitting game:', error.message);
+    handleError(res, error);
+  }
+});
+
+// DELETE endpoint for resetting game data (admin function)
+app.delete('/api/games/:gameId/reset', async (req, res) => {
+  console.log('🗑️ Resetting game data...');
+  const { gameId } = req.params;
+
+  if (!gameId) {
+    return res.status(400).json({
+      error: 'Game ID is required'
+    });
+  }
+
+  try {
+    const goalsContainer = getGoalsContainer();
+    const penaltiesContainer = getPenaltiesContainer();
+    
+    // Get all goals for this game
+    const { resources: goals } = await goalsContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId",
+        parameters: [{ name: "@gameId", value: gameId }]
+      })
+      .fetchAll();
+    
+    // Get all penalties for this game
+    const { resources: penalties } = await penaltiesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId",
+        parameters: [{ name: "@gameId", value: gameId }]
+      })
+      .fetchAll();
+    
+    // Delete all goals
+    for (const goal of goals) {
+      await goalsContainer.item(goal.id, goal.gameId).delete();
+    }
+    
+    // Delete all penalties  
+    for (const penalty of penalties) {
+      await penaltiesContainer.item(penalty.id, penalty.gameId).delete();
+    }
+    
+    console.log(`✅ Reset complete: Deleted ${goals.length} goals and ${penalties.length} penalties for game ${gameId}`);
+    
+    res.status(200).json({
+      success: true,
+      message: `Game data reset successfully. Deleted ${goals.length} goals and ${penalties.length} penalties.`,
+      deletedItems: {
+        goals: goals.length,
+        penalties: penalties.length
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error resetting game:', error.message);
     handleError(res, error);
   }
 });

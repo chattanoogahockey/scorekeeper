@@ -205,7 +205,15 @@ export default function LeagueGameSelection() {
     <div className="min-h-screen flex flex-col items-center p-4">
       <div className="w-full max-w-4xl mb-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">Select Game</h1>
+          <div className="flex items-center">
+            <button
+              onClick={() => navigate('/')}
+              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg mr-4 transition-all duration-200"
+            >
+              ← Back to Menu
+            </button>
+            <h1 className="text-2xl font-bold">Select Game</h1>
+          </div>
           <div className="text-right">
             <div className="text-lg font-semibold">
               {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

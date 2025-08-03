@@ -220,6 +220,38 @@ export default function InGameMenu() {
     navigate('/');
   };
 
+  const handleCancelGame = async () => {
+    if (!confirm('Are you sure you want to cancel this game? This will delete ALL game data including goals and penalties. This action cannot be undone.')) {
+      return;
+    }
+    
+    if (!confirm('Final confirmation: Delete ALL data for this game and return to the menu?')) {
+      return;
+    }
+    
+    try {
+      const gameId = selectedGame.id || selectedGame.gameId;
+      
+      // Delete all goals for this game
+      const goalsResponse = await axios.get('/api/goals', { params: { gameId } });
+      for (const goal of goalsResponse.data || []) {
+        await axios.delete(`/api/goals/${goal.id}`, { params: { gameId } });
+      }
+      
+      // Delete all penalties for this game
+      const penaltiesResponse = await axios.get('/api/penalties', { params: { gameId } });
+      for (const penalty of penaltiesResponse.data || []) {
+        await axios.delete(`/api/penalties/${penalty.id}`, { params: { gameId } });
+      }
+      
+      alert('Game cancelled successfully. All data has been cleared.');
+      navigate('/'); // Go back to home
+    } catch (error) {
+      console.error('Failed to cancel game:', error);
+      alert(`Error cancelling game: ${error.response?.data?.error || error.message}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-md mx-auto">
@@ -271,19 +303,25 @@ export default function InGameMenu() {
           <OTShootoutButton onGameCompleted={handleGameCompleted} />
         </div>
 
-        {/* Submit Game Button */}
-        <div className="mb-4">
+        {/* Submit and Cancel Game Buttons */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
           <button
             onClick={handleSubmitGame}
             disabled={isSubmittingGame}
-            className="w-full bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
+            className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
             {isSubmittingGame ? 'Submitting...' : 'Submit Game'}
           </button>
-          <p className="text-xs text-gray-500 text-center mt-1">
-            This will finalize all game data
-          </p>
+          <button
+            onClick={handleCancelGame}
+            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
+          >
+            Cancel Game
+          </button>
         </div>
+        <p className="text-xs text-gray-500 text-center mb-4">
+          Submit finalizes data • Cancel deletes all game data
+        </p>
 
         {/* Integrated Dashboard Components */}
         <div className="space-y-4">

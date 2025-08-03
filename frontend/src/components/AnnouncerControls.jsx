@@ -9,17 +9,20 @@ import { GameContext } from '../contexts/GameContext.jsx';
  * synthesized speech via audio.
  */
 export default function AnnouncerControls({ gameId }) {
-  const { selectedGame } = useContext(GameContext);
+  const { selectedGame, selectedGameId } = useContext(GameContext);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
+
+  // Use gameId prop if provided, otherwise use context
+  const currentGameId = gameId || selectedGameId;
 
   /**
    * Announce the latest goal using AI-generated announcement
    * Or generate scoreless commentary if no goals yet
    */
   const announceLatestGoal = async () => {
-    if (!gameId) {
+    if (!currentGameId) {
       setError('No game selected. Please select a game first.');
       return;
     }
@@ -33,7 +36,7 @@ export default function AnnouncerControls({ gameId }) {
         ? '/api/goals/announce-last' 
         : `${import.meta.env.VITE_API_BASE_URL}/api/goals/announce-last`;
       
-      const response = await axios.post(apiUrl, { gameId });
+      const response = await axios.post(apiUrl, { gameId: currentGameId });
       
       if (response.data.success) {
         const { announcement, scoreless } = response.data;
@@ -91,7 +94,7 @@ export default function AnnouncerControls({ gameId }) {
    * Announce the latest penalty using AI-generated announcement
    */
   const announceLatestPenalty = async () => {
-    if (!gameId) {
+    if (!currentGameId) {
       setError('No game selected. Please select a game first.');
       return;
     }
@@ -105,7 +108,7 @@ export default function AnnouncerControls({ gameId }) {
         ? '/api/penalties/announce-last' 
         : `${import.meta.env.VITE_API_BASE_URL}/api/penalties/announce-last`;
       
-      const response = await axios.post(apiUrl, { gameId });
+      const response = await axios.post(apiUrl, { gameId: currentGameId });
       
       if (response.data.success) {
         const { announcement } = response.data;

@@ -14,8 +14,14 @@ export default function AdminPanel() {
 
   const fetchGames = async () => {
     try {
-      const response = await axios.get('/api/games');
-      setGames(response.data.filter(game => game.submitted));
+      const response = await axios.get('/api/games?league=all');
+      // Filter for games with status 'submitted' or 'completed'
+      setGames(response.data.filter(game => 
+        game.gameStatus === 'submitted' || 
+        game.gameStatus === 'completed' || 
+        game.status === 'submitted' || 
+        game.status === 'completed'
+      ));
       setLoading(false);
     } catch (error) {
       console.error('Error fetching games:', error);

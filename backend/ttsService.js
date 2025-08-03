@@ -95,7 +95,7 @@ class TTSService {
       let voiceConfig;
       let audioConfig;
 
-      // Attempt Studio-O first (premium quality)
+      // Attempt Studio-O first (premium quality male voice)
       try {
         voiceConfig = {
           languageCode: 'en-US',
@@ -105,9 +105,9 @@ class TTSService {
         
         audioConfig = {
           audioEncoding: 'MP3',
-          speakingRate: 1.0, // Natural pace for Studio voice
-          pitch: 0.0, // Let Studio voice natural expressiveness shine
-          volumeGainDb: 3.0, // Clear volume
+          speakingRate: 1.15, // Faster pace for more energy and excitement
+          pitch: 0.5, // Higher pitch for more energy and enthusiasm
+          volumeGainDb: 4.0, // Boost volume for stadium atmosphere
           effectsProfileId: ['large-home-entertainment-class-device'],
         };
 
@@ -183,19 +183,19 @@ class TTSService {
       let voiceConfig;
       let audioConfig;
 
-      // Attempt Studio-M first (premium authoritative voice)
+      // Attempt Studio-O first (same energetic male voice for consistency)
       try {
         voiceConfig = {
           languageCode: 'en-US',
-          name: 'en-US-Studio-M', // Studio-M: Authoritative male voice, perfect for penalties
+          name: 'en-US-Studio-O', // Studio-O: Same energetic male voice for consistency
           ssmlGender: 'MALE',
         };
         
         audioConfig = {
           audioEncoding: 'MP3',
-          speakingRate: 0.95, // Deliberate pace for serious announcements
-          pitch: -0.3, // Slightly lower for authority
-          volumeGainDb: 3.0, // Clear volume
+          speakingRate: 1.05, // Slightly slower than goals but still energetic
+          pitch: 0.2, // Lower than goals for authority but still energetic
+          volumeGainDb: 4.0, // Strong volume for penalty announcements
           effectsProfileId: ['large-home-entertainment-class-device'],
         };
 

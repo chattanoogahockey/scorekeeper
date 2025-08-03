@@ -9,6 +9,7 @@ export default function EditGame() {
   const [game, setGame] = useState(null);
   const [goals, setGoals] = useState([]);
   const [penalties, setPenalties] = useState([]);
+  const [teams, setTeams] = useState([]); // Available teams for dropdowns
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -63,6 +64,32 @@ export default function EditGame() {
       } catch (err) {
         console.log('No penalties found for this game');
         setPenalties([]);
+      }
+
+      // Fetch teams for dropdowns (get all teams from rosters)
+      try {
+        const teamsResponse = await axios.get('/api/rosters');
+        const allTeams = teamsResponse.data || [];
+        
+        // Get unique teams grouped by division
+        const teamsByDivision = allTeams.reduce((acc, roster) => {
+          if (!acc[roster.division]) {
+            acc[roster.division] = new Set();
+          }
+          acc[roster.division].add(roster.teamName);
+          return acc;
+        }, {});
+        
+        // Convert to array format for easier use
+        const formattedTeams = Object.keys(teamsByDivision).map(division => ({
+          division,
+          teams: Array.from(teamsByDivision[division]).sort()
+        }));
+        
+        setTeams(formattedTeams);
+      } catch (err) {
+        console.log('Could not fetch teams for dropdowns');
+        setTeams([]);
       }
 
     } catch (error) {
@@ -216,24 +243,40 @@ export default function EditGame() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Home Team
                 </label>
-                <input
-                  type="text"
+                <select
                   value={editedGame.homeTeam}
                   onChange={(e) => handleInputChange('homeTeam', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                >
+                  <option value="">Select Home Team</option>
+                  {teams.map(divisionGroup => (
+                    <optgroup key={divisionGroup.division} label={`${divisionGroup.division.toUpperCase()} DIVISION`}>
+                      {divisionGroup.teams.map(teamName => (
+                        <option key={teamName} value={teamName}>{teamName}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Away Team
                 </label>
-                <input
-                  type="text"
+                <select
                   value={editedGame.awayTeam}
                   onChange={(e) => handleInputChange('awayTeam', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                >
+                  <option value="">Select Away Team</option>
+                  {teams.map(divisionGroup => (
+                    <optgroup key={divisionGroup.division} label={`${divisionGroup.division.toUpperCase()} DIVISION`}>
+                      {divisionGroup.teams.map(teamName => (
+                        <option key={teamName} value={teamName}>{teamName}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
               </div>
               
               <div>

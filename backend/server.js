@@ -1038,11 +1038,14 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
     });
   }
 
+  console.log(`🔍 Attempting to reset game: ${gameId}`);
+
   try {
     const goalsContainer = getGoalsContainer();
     const penaltiesContainer = getPenaltiesContainer();
     const gamesContainer = getGamesContainer();
     
+    console.log('📊 Querying for goals...');
     // Get all goals for this game
     const { resources: goals } = await goalsContainer.items
       .query({
@@ -1051,6 +1054,9 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
       })
       .fetchAll();
     
+    console.log(`📊 Found ${goals.length} goals to delete`);
+    
+    console.log('🚨 Querying for penalties...');
     // Get all penalties for this game
     const { resources: penalties } = await penaltiesContainer.items
       .query({
@@ -1059,6 +1065,9 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
       })
       .fetchAll();
       
+    console.log(`🚨 Found ${penalties.length} penalties to delete`);
+      
+    console.log('📝 Querying for game submissions...');
     // Get game submission records
     const { resources: submissions } = await gamesContainer.items
       .query({
@@ -1067,19 +1076,39 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
       })
       .fetchAll();
     
+    console.log(`📝 Found ${submissions.length} submissions to delete`);
+    
     // Delete all goals
+    console.log('🗑️ Deleting goals...');
     for (const goal of goals) {
-      await goalsContainer.item(goal.id, goal.gameId).delete();
+      try {
+        await goalsContainer.item(goal.id, goal.gameId).delete();
+        console.log(`✅ Deleted goal: ${goal.id}`);
+      } catch (deleteError) {
+        console.error(`❌ Failed to delete goal ${goal.id}:`, deleteError.message);
+      }
     }
     
     // Delete all penalties  
+    console.log('🗑️ Deleting penalties...');
     for (const penalty of penalties) {
-      await penaltiesContainer.item(penalty.id, penalty.gameId).delete();
+      try {
+        await penaltiesContainer.item(penalty.id, penalty.gameId).delete();
+        console.log(`✅ Deleted penalty: ${penalty.id}`);
+      } catch (deleteError) {
+        console.error(`❌ Failed to delete penalty ${penalty.id}:`, deleteError.message);
+      }
     }
     
     // Delete submission records to remove from admin panel
+    console.log('🗑️ Deleting submissions...');
     for (const submission of submissions) {
-      await gamesContainer.item(submission.id, submission.gameId).delete();
+      try {
+        await gamesContainer.item(submission.id, submission.gameId).delete();
+        console.log(`✅ Deleted submission: ${submission.id}`);
+      } catch (deleteError) {
+        console.error(`❌ Failed to delete submission ${submission.id}:`, deleteError.message);
+      }
     }
     
     console.log(`✅ Reset complete: Deleted ${goals.length} goals, ${penalties.length} penalties, and ${submissions.length} submission records for game ${gameId}`);

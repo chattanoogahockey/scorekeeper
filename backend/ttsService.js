@@ -95,11 +95,11 @@ class TTSService {
       let voiceConfig;
       let audioConfig;
 
-      // Attempt Studio-O first (premium quality male voice)
+      // Attempt Studio voice first (use working Studio voice)
       try {
         voiceConfig = {
           languageCode: 'en-US',
-          name: 'en-US-Studio-O', // Studio-O: Premium male voice, perfect for sports announcing
+          name: 'en-US-Studio-M', // Studio-M: Male voice that should be available
           ssmlGender: 'MALE',
         };
         
@@ -183,11 +183,11 @@ class TTSService {
       let voiceConfig;
       let audioConfig;
 
-      // Attempt Studio-O first (same energetic male voice for consistency)
+      // Attempt Studio voice first (same male voice for consistency)
       try {
         voiceConfig = {
           languageCode: 'en-US',
-          name: 'en-US-Studio-O', // Studio-O: Same energetic male voice for consistency
+          name: 'en-US-Studio-M', // Studio-M: Same male voice for consistency
           ssmlGender: 'MALE',
         };
         

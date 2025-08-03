@@ -6,7 +6,7 @@ const openai = new OpenAI({
 });
 
 /**
- * Generate professional hockey goal announcement using OpenAI
+ * Generate professional roller hockey goal announcement using OpenAI
  */
 export async function generateGoalAnnouncement(goalData, playerStats = null) {
   try {
@@ -36,7 +36,7 @@ export async function generateGoalAnnouncement(goalData, playerStats = null) {
       `This is ${playerName}'s ${playerStats.goalsThisGame + 1}${getOrdinalSuffix(playerStats.goalsThisGame + 1)} goal of the game, and ${playerStats.seasonGoals + 1}${getOrdinalSuffix(playerStats.seasonGoals + 1)} of the season.` :
       '';
 
-    const prompt = `You are a professional hockey arena announcer. Create an exciting, energetic goal announcement for the following goal:
+    const prompt = `You are a professional roller hockey arena announcer. Create an exciting, energetic goal announcement for the following goal:
 
 Player: ${playerName}
 Team: ${teamName} 
@@ -47,9 +47,9 @@ ${assistText}
 Current Score: ${scoreText}
 ${statsText}
 
-Write this in the style of a professional hockey announcer - be energetic, clear, and exciting. Include the player name prominently, mention assists if any, and build excitement around the goal. Keep it concise but impactful (2-3 sentences max). Do not include any stage directions or formatting - just the announcement text that would be spoken.
+Write this in the style of a professional roller hockey announcer - be energetic, clear, and exciting. Include the player name prominently, mention assists if any, and build excitement around the goal. Keep it concise but impactful (2-3 sentences max). Do not include any stage directions or formatting - just the announcement text that would be spoken.
 
-Examples of professional hockey announcements:
+Examples of professional roller hockey announcements:
 - "GOAL! Scored by number 87, Sidney Crosby! Assisted by Malkin and Letang. That's his 15th of the season and gives Pittsburgh a 3-2 lead!"
 - "SCORES! What a snipe by Connor McDavid! Unassisted beauty puts Edmonton up 2-1 in the second period!"
 
@@ -60,7 +60,7 @@ Your announcement:`;
       messages: [
         {
           role: "system",
-          content: "You are a professional hockey arena announcer. Create exciting, energetic goal announcements that capture the excitement of live hockey."
+          content: "You are a professional roller hockey arena announcer. Create exciting, energetic goal announcements that capture the excitement of live roller hockey."
         },
         {
           role: "user",
@@ -85,7 +85,7 @@ export async function generateScorelessCommentary(gameData) {
   try {
     const { homeTeam, awayTeam, period } = gameData;
 
-    const prompt = `You are a professional hockey announcer during a scoreless game between ${homeTeam} and ${awayTeam}. We're in period ${period} and it's still 0-0. Generate exciting commentary about:
+    const prompt = `You are a professional roller hockey announcer during a scoreless game between ${homeTeam} and ${awayTeam}. We're in period ${period} and it's still 0-0. Generate exciting commentary about:
 
 - The defensive battle happening
 - Goaltending performances 
@@ -93,7 +93,7 @@ export async function generateScorelessCommentary(gameData) {
 - Building tension of a tight game
 - Historical context about these teams if possible
 
-Keep it engaging and create excitement even without goals. 2-3 sentences max. Sound like a real hockey announcer building drama.
+Keep it engaging and create excitement even without goals. 2-3 sentences max. Sound like a real roller hockey announcer building drama.
 
 Your commentary:`;
 
@@ -102,7 +102,7 @@ Your commentary:`;
       messages: [
         {
           role: "system", 
-          content: "You are a professional hockey announcer who can make even scoreless games exciting with your commentary about defensive play, goaltending, and game tension."
+          content: "You are a professional roller hockey announcer who can make even scoreless games exciting with your commentary about defensive play, goaltending, and game tension."
         },
         {
           role: "user",
@@ -136,7 +136,7 @@ export async function generateGoalFeedDescription(goalData, playerStats = null) 
     const goalsThisGame = playerStats?.goalsThisGame || 0;
     const seasonGoals = playerStats?.seasonGoals || 0;
 
-    const prompt = `Create a brief 1-2 sentence hockey goal description for a game feed. Be concise but informative:
+    const prompt = `Create a brief 1-2 sentence roller hockey goal description for a game feed. Be concise but informative:
 
 Player: ${playerName}
 Team: ${teamName}
@@ -156,7 +156,7 @@ Your description:`;
       messages: [
         {
           role: "system",
-          content: "You are writing brief, professional hockey goal descriptions for a game feed. Be concise and informative."
+          content: "You are writing brief, professional roller hockey goal descriptions for a game feed. Be concise and informative."
         },
         {
           role: "user", 
@@ -190,7 +190,7 @@ export async function generatePenaltyFeedDescription(penaltyData) {
       timeRemaining
     } = penaltyData;
 
-    const prompt = `Create a brief 1-2 sentence penalty description for a hockey game feed:
+    const prompt = `Create a brief 1-2 sentence penalty description for a roller hockey game feed:
 
 Player: ${penalizedPlayer}
 Team: ${team}
@@ -209,7 +209,7 @@ Your description:`;
       messages: [
         {
           role: "system",
-          content: "You are writing brief, professional hockey penalty descriptions for a game feed."
+          content: "You are writing brief, professional roller hockey penalty descriptions for a game feed."
         },
         {
           role: "user",
@@ -228,7 +228,7 @@ Your description:`;
 }
 
 /**
- * Generate professional hockey penalty announcement using OpenAI
+ * Generate professional roller hockey penalty announcement using OpenAI
  */
 export async function generatePenaltyAnnouncement(penaltyData, gameContext = null) {
   try {
@@ -243,7 +243,7 @@ export async function generatePenaltyAnnouncement(penaltyData, gameContext = nul
 
     const { homeTeam, awayTeam, currentScore } = gameContext || {};
 
-    const prompt = `You are a professional hockey arena announcer. Create a clear, authoritative penalty announcement for the following penalty:
+    const prompt = `You are a professional roller hockey arena announcer. Create a clear, authoritative penalty announcement for the following penalty:
 
 Player: ${playerName}
 Team: ${teamName}

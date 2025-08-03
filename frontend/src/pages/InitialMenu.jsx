@@ -32,7 +32,7 @@ export default function InitialMenu() {
           The Scorekeeper
         </h1>
         <p className="text-xl text-blue-700 mb-8">
-          Professional Hockey Scoring & Analytics
+          Professional Roller Hockey Scoring & Analytics
         </p>
       </div>
 

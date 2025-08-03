@@ -19,6 +19,40 @@ export default function AnnouncerControls({ gameId }) {
   const currentGameId = gameId || selectedGameId;
 
   /**
+   * Use browser text-to-speech to speak the announcement text
+   */
+  const speakText = (text) => {
+    if ('speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      speechSynthesis.cancel();
+      
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 0.9; // Slightly slower for clarity
+      utterance.pitch = 1.0;
+      utterance.volume = 0.8;
+      
+      utterance.onstart = () => {
+        setMessage('🔊 Playing AI announcement...');
+      };
+      
+      utterance.onend = () => {
+        setMessage('');
+      };
+      
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        setError('Text-to-speech failed');
+        setMessage('');
+      };
+      
+      speechSynthesis.speak(utterance);
+    } else {
+      setError('Text-to-speech not supported in this browser');
+      setTimeout(() => setMessage(''), 8000); // Just show text
+    }
+  };
+
+  /**
    * Announce the latest goal using AI-generated announcement
    * Or generate scoreless commentary if no goals yet
    */
@@ -48,7 +82,7 @@ export default function AnnouncerControls({ gameId }) {
           setMessage(`Goal Announcement: "${announcement.text}"`);
         }
         
-        // Play the generated audio if available
+        // Play the generated audio if available, otherwise use browser TTS
         if (announcement.audioPath) {
           const audioUrl = import.meta.env.DEV 
             ? `/api/audio/${announcement.audioPath}` 
@@ -65,14 +99,15 @@ export default function AnnouncerControls({ gameId }) {
           };
           
           audio.onerror = () => {
-            setError('Failed to play announcement audio');
-            setMessage('');
+            setError('Failed to play announcement audio, falling back to text-to-speech');
+            // Fallback to browser TTS
+            speakText(announcement.text);
           };
           
           await audio.play();
         } else {
-          // No audio generated, just show the text and clear after delay
-          setTimeout(() => setMessage(''), 8000); // Clear after 8 seconds for longer AI text
+          // No server audio available, use browser text-to-speech
+          speakText(announcement.text);
         }
       }
     } catch (err) {
@@ -115,7 +150,7 @@ export default function AnnouncerControls({ gameId }) {
         const { announcement } = response.data;
         setMessage(`Penalty Announcement: "${announcement.text}"`);
         
-        // Play the generated audio if available
+        // Play the generated audio if available, otherwise use browser TTS
         if (announcement.audioPath) {
           const audioUrl = import.meta.env.DEV 
             ? `/api/audio/${announcement.audioPath}` 
@@ -132,14 +167,15 @@ export default function AnnouncerControls({ gameId }) {
           };
           
           audio.onerror = () => {
-            setError('Failed to play announcement audio');
-            setMessage('');
+            setError('Failed to play announcement audio, falling back to text-to-speech');
+            // Fallback to browser TTS
+            speakText(announcement.text);
           };
           
           await audio.play();
         } else {
-          // No audio generated, just show the text and clear after delay
-          setTimeout(() => setMessage(''), 8000); // Clear after 8 seconds for longer AI text
+          // No server audio available, use browser text-to-speech
+          speakText(announcement.text);
         }
       }
     } catch (err) {

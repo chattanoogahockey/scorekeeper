@@ -303,7 +303,8 @@ app.post('/api/goals', async (req, res) => {
     // Calculate current score before this goal
     const scoreByTeam = {};
     existingGoals.forEach(goal => {
-      scoreByTeam[goal.scoringTeam] = (scoreByTeam[goal.scoringTeam] || 0) + 1;
+      const team = goal.teamName || goal.scoringTeam; // Handle both new and legacy field names
+      scoreByTeam[team] = (scoreByTeam[team] || 0) + 1;
     });
     
     const awayTeam = Object.keys(scoreByTeam).find(t => t !== team) || 'Unknown';
@@ -371,15 +372,21 @@ app.post('/api/goals', async (req, res) => {
       eventType: 'goal',
       gameId,
       period,
+      teamName: team,              // Changed from scoringTeam to teamName (for announcer)
+      playerName: player,          // Changed from scorer to playerName (for announcer) 
+      assistedBy: assist ? [assist] : [], // Changed from assists to assistedBy (for announcer)
+      timeRemaining: time,         // Changed from time to timeRemaining (for announcer)
+      shotType: shotType || 'Wrist Shot',
+      goalType: goalType || 'even strength', // Changed default to match announcer expectations
+      breakaway: breakaway || false,
+      recordedAt: new Date().toISOString(),
+      gameStatus: 'in-progress', // Will be updated when game is submitted
+      
+      // Keep legacy fields for backward compatibility
       scoringTeam: team,
       scorer: player,
       assists: assist ? [assist] : [],
       time,
-      shotType: shotType || 'Wrist Shot',
-      goalType: goalType || 'Regular',
-      breakaway: breakaway || false,
-      recordedAt: new Date().toISOString(),
-      gameStatus: 'in-progress', // Will be updated when game is submitted
       
       // Advanced Analytics
       analytics: {
@@ -445,13 +452,14 @@ app.post('/api/penalties', async (req, res) => {
     // Calculate current score at time of penalty
     const scoreByTeam = {};
     existingGoals.forEach(goal => {
-      scoreByTeam[goal.scoringTeam] = (scoreByTeam[goal.scoringTeam] || 0) + 1;
+      const team = goal.teamName || goal.scoringTeam; // Handle both new and legacy field names
+      scoreByTeam[team] = (scoreByTeam[team] || 0) + 1;
     });
     
     // Determine penalty context
     const penaltySequenceNumber = existingPenalties.length + 1;
-    const teamPenalties = existingPenalties.filter(p => p.penalizedTeam === team);
-    const playerPenalties = existingPenalties.filter(p => p.penalizedPlayer === player);
+    const teamPenalties = existingPenalties.filter(p => (p.teamName || p.penalizedTeam) === team);
+    const playerPenalties = existingPenalties.filter(p => (p.playerName || p.penalizedPlayer) === player);
     
     let penaltyContext = 'Regular penalty';
     if (penaltySequenceNumber === 1) {
@@ -467,7 +475,7 @@ app.post('/api/penalties', async (req, res) => {
     // Determine current strength situation
     const activePenalties = existingPenalties.filter(p => {
       const penaltyTime = new Date(p.recordedAt).getTime();
-      const penaltyDuration = parseInt(p.penaltyLength) * 60000;
+      const penaltyDuration = parseInt(p.length || p.penaltyLength) * 60000; // Handle both field names
       return Date.now() - penaltyTime < penaltyDuration;
     });
     
@@ -475,8 +483,8 @@ app.post('/api/penalties', async (req, res) => {
     let strengthSituationAfter = 'Penalty kill';
     
     if (activePenalties.length > 0) {
-      const teamActivePenalties = activePenalties.filter(p => p.penalizedTeam === team).length;
-      const opponentActivePenalties = activePenalties.filter(p => p.penalizedTeam !== team).length;
+      const teamActivePenalties = activePenalties.filter(p => (p.teamName || p.penalizedTeam) === team).length;
+      const opponentActivePenalties = activePenalties.filter(p => (p.teamName || p.penalizedTeam) !== team).length;
       
       if (teamActivePenalties > opponentActivePenalties) {
         strengthSituationBefore = 'Already shorthanded';
@@ -493,26 +501,33 @@ app.post('/api/penalties', async (req, res) => {
       const lastGoal = existingGoals[existingGoals.length - 1];
       const timeSinceLastGoal = Date.now() - new Date(lastGoal.recordedAt).getTime();
       if (timeSinceLastGoal < 120000) { // Within 2 minutes
-        previousEvent = `After goal by ${lastGoal.scoringTeam}`;
+        const teamName = lastGoal.teamName || lastGoal.scoringTeam; // Handle both field names
+        previousEvent = `After goal by ${teamName}`;
       }
     }
     
     // Calculate team totals
-    const teamTotalPIM = teamPenalties.reduce((sum, p) => sum + parseInt(p.penaltyLength || 0), 0);
-    const playerTotalPIM = playerPenalties.reduce((sum, p) => sum + parseInt(p.penaltyLength || 0), 0);
+    const teamTotalPIM = teamPenalties.reduce((sum, p) => sum + parseInt(p.length || p.penaltyLength || 0), 0);
+    const playerTotalPIM = playerPenalties.reduce((sum, p) => sum + parseInt(p.length || p.penaltyLength || 0), 0);
     
     const penalty = {
       id: `${gameId}-penalty-${Date.now()}`,
       gameId,
       period,
-      penalizedTeam: team,
-      penalizedPlayer: player,
+      teamName: team,              // Changed from penalizedTeam to teamName (for announcer)
+      playerName: player,          // Changed from penalizedPlayer to playerName (for announcer)
       penaltyType,
-      penaltyLength,
-      time,
+      length: penaltyLength,       // Changed from penaltyLength to length (for announcer)
+      timeRemaining: time,         // Changed from time to timeRemaining (for announcer)
       details: details || {},
       recordedAt: new Date().toISOString(),
       gameStatus: 'in-progress', // Will be updated when game is submitted
+      
+      // Keep legacy fields for backward compatibility
+      penalizedTeam: team,
+      penalizedPlayer: player,
+      penaltyLength,
+      time,
       
       // Advanced Analytics
       analytics: {
@@ -710,20 +725,21 @@ app.post('/api/goals/announce-last', async (req, res) => {
 
     const lastGoal = goals[0];
     
-    // Calculate current score after this goal
-    const homeGoals = goals.filter(g => g.team === game.homeTeam).length;
-    const awayGoals = goals.filter(g => g.team === game.awayTeam).length;
+    // Calculate current score after this goal (handle both new and legacy field names)
+    const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.homeTeam).length;
+    const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.awayTeam).length;
 
-    // Get all goals by this player in this game for stats
-    const playerGoalsThisGame = goals.filter(g => g.playerName === lastGoal.playerName).length;
+    // Get all goals by this player in this game for stats (handle both field names)
+    const playerName = lastGoal.playerName || lastGoal.scorer;
+    const playerGoalsThisGame = goals.filter(g => (g.playerName || g.scorer) === playerName).length;
 
     // Prepare goal data for announcement
     const goalData = {
-      playerName: lastGoal.playerName,
-      teamName: lastGoal.team,
+      playerName: lastGoal.playerName || lastGoal.scorer,
+      teamName: lastGoal.teamName || lastGoal.scoringTeam,
       period: lastGoal.period,
-      timeRemaining: lastGoal.timeRemaining,
-      assistedBy: lastGoal.assistedBy || [],
+      timeRemaining: lastGoal.timeRemaining || lastGoal.time,
+      assistedBy: lastGoal.assistedBy || lastGoal.assists || [],
       goalType: lastGoal.goalType || 'even strength',
       homeScore: homeGoals,
       awayScore: awayGoals,
@@ -821,7 +837,7 @@ app.post('/api/penalties/announce-last', async (req, res) => {
 
     const lastPenalty = penalties[0];
     
-    // Calculate current score for context
+    // Calculate current score for context (handle both new and legacy field names)
     const goalsContainer = getGoalsContainer();
     const { resources: goals } = await goalsContainer.items
       .query({
@@ -830,17 +846,17 @@ app.post('/api/penalties/announce-last', async (req, res) => {
       })
       .fetchAll();
 
-    const homeGoals = goals.filter(g => g.team === game.homeTeam).length;
-    const awayGoals = goals.filter(g => g.team === game.awayTeam).length;
+    const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.homeTeam).length;
+    const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.awayTeam).length;
 
-    // Prepare penalty data for announcement
+    // Prepare penalty data for announcement (handle both new and legacy field names)
     const penaltyData = {
-      playerName: lastPenalty.penalizedPlayer,
-      teamName: lastPenalty.team,
+      playerName: lastPenalty.playerName || lastPenalty.penalizedPlayer,
+      teamName: lastPenalty.teamName || lastPenalty.penalizedTeam,
       penaltyType: lastPenalty.penaltyType,
       period: lastPenalty.period,
-      timeRemaining: lastPenalty.timeRemaining,
-      length: lastPenalty.length || 2
+      timeRemaining: lastPenalty.timeRemaining || lastPenalty.time,
+      length: lastPenalty.length || lastPenalty.penaltyLength || 2
     };
 
     const gameContext = {

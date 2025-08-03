@@ -162,21 +162,21 @@ export default function AnnouncerControls({ gameId }) {
   return (
     <div className="border rounded shadow p-4">
       <h4 className="text-xl font-semibold mb-2">Announcer Controls</h4>
-      {!gameId && (
+      {!currentGameId && (
         <p className="text-yellow-600 mb-2 text-sm">⚠️ No game selected. Please select a game to use announcer features.</p>
       )}
       {error && <p className="text-red-500 mb-2">{error}</p>}
       <div className="space-y-2">
         <button
           onClick={announceLatestGoal}
-          disabled={loading || !gameId}
+          disabled={loading || !currentGameId}
           className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
         >
           {loading ? 'Generating...' : 'AI Commentary (Goal/Scoreless)'}
         </button>
         <button
           onClick={announceLatestPenalty}
-          disabled={loading || !gameId}
+          disabled={loading || !currentGameId}
           className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400"
         >
           {loading ? 'Generating...' : 'AI Penalty Announcement'}

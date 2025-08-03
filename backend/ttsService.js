@@ -1,6 +1,10 @@
-const textToSpeech = require('@google-cloud/text-to-speech');
-const fs = require('fs').promises;
-const path = require('path');
+import textToSpeech from '@google-cloud/text-to-speech';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /**
  * Google Cloud Text-to-Speech service for generating high-quality announcer voices
@@ -152,4 +156,5 @@ class TTSService {
   }
 }
 
-module.exports = new TTSService();
+const ttsServiceInstance = new TTSService();
+export default ttsServiceInstance;

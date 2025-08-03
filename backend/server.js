@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoalsContainer, getPenaltiesContainer, getOTShootoutContainer } from './cosmosClient.js';
 
 // Import TTS service
-const ttsService = require('./ttsService.js');
+import ttsService from './ttsService.js';
 
 // Conditionally import announcer service to prevent startup failures
 let createGoalAnnouncement = null;

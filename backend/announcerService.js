@@ -228,6 +228,61 @@ Your description:`;
 }
 
 /**
+ * Generate professional hockey penalty announcement using OpenAI
+ */
+export async function generatePenaltyAnnouncement(penaltyData, gameContext = null) {
+  try {
+    const { 
+      playerName, 
+      teamName, 
+      penaltyType, 
+      period, 
+      timeRemaining, 
+      length = 2
+    } = penaltyData;
+
+    const { homeTeam, awayTeam, currentScore } = gameContext || {};
+
+    const prompt = `You are a professional hockey arena announcer. Create a clear, authoritative penalty announcement for the following penalty:
+
+Player: ${playerName}
+Team: ${teamName}
+Penalty: ${penaltyType}
+Period: ${period}
+Time: ${timeRemaining}
+Penalty Length: ${length} minutes
+${gameContext ? `Score: ${homeTeam} ${currentScore?.home || 0}, ${awayTeam} ${currentScore?.away || 0}` : ''}
+
+Write this in the style of a professional hockey announcer - be clear, authoritative, and professional. State the penalty clearly and include the time. Keep it concise and official sounding (1-2 sentences). Do not include any stage directions or formatting - just the announcement text that would be spoken.
+
+Examples:
+- "Number 14, John Smith, two minutes for tripping"
+- "Interference penalty to Jake Wilson, that's two minutes in the box"`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional hockey arena announcer making penalty calls."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 50,
+      temperature: 0.7,
+    });
+
+    return completion.choices[0].message.content.trim();
+  } catch (error) {
+    console.error('Error generating penalty announcement:', error);
+    return `${playerName}, ${length} minutes for ${penaltyType}`;
+  }
+}
+
+/**
  * Helper function to get ordinal suffix (1st, 2nd, 3rd, etc.)
  */
 function getOrdinalSuffix(num) {
@@ -244,5 +299,6 @@ export default {
   generateGoalAnnouncement,
   generateScorelessCommentary,
   generateGoalFeedDescription,
-  generatePenaltyFeedDescription
+  generatePenaltyFeedDescription,
+  generatePenaltyAnnouncement
 };

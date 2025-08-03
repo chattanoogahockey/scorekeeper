@@ -10,6 +10,7 @@ let generateGoalAnnouncement = null;
 let generateScorelessCommentary = null;
 let generateGoalFeedDescription = null;
 let generatePenaltyFeedDescription = null;
+let generatePenaltyAnnouncement = null;
 
 try {
   const announcerModule = await import('./announcerService.js');
@@ -17,6 +18,7 @@ try {
   generateScorelessCommentary = announcerModule.generateScorelessCommentary;
   generateGoalFeedDescription = announcerModule.generateGoalFeedDescription;
   generatePenaltyFeedDescription = announcerModule.generatePenaltyFeedDescription;
+  generatePenaltyAnnouncement = announcerModule.generatePenaltyAnnouncement;
   console.log('✅ Announcer service loaded successfully');
 } catch (error) {
   console.log('⚠️ Announcer service not available:', error.message);
@@ -734,6 +736,105 @@ app.post('/api/goals/announce-last', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error announcing last goal:', error.message);
+    handleError(res, error);
+  }
+});
+
+// Penalty announcement endpoint
+app.post('/api/penalties/announce-last', async (req, res) => {
+  const { gameId } = req.body;
+
+  if (!gameId) {
+    return res.status(400).json({
+      error: 'Game ID is required'
+    });
+  }
+
+  // Check if announcer service is available
+  if (!generatePenaltyAnnouncement) {
+    return res.status(503).json({
+      error: 'Penalty announcer service not available. This feature requires additional dependencies.',
+      fallback: true
+    });
+  }
+
+  try {
+    const penaltiesContainer = getPenaltiesContainer();
+    const gamesContainer = getGamesContainer();
+    
+    // Get the most recent penalty for this game
+    const { resources: penalties } = await penaltiesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
+        parameters: [{ name: "@gameId", value: gameId }]
+      })
+      .fetchAll();
+
+    // Get game details for context
+    const { resource: game } = await gamesContainer.item(gameId, gameId).read();
+    
+    if (!game) {
+      return res.status(404).json({
+        error: 'Game not found.'
+      });
+    }
+
+    if (penalties.length === 0) {
+      return res.status(404).json({
+        error: 'No penalties found for this game.'
+      });
+    }
+
+    const lastPenalty = penalties[0];
+    
+    // Calculate current score for context
+    const goalsContainer = getGoalsContainer();
+    const { resources: goals } = await goalsContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId",
+        parameters: [{ name: "@gameId", value: gameId }]
+      })
+      .fetchAll();
+
+    const homeGoals = goals.filter(g => g.team === game.homeTeam).length;
+    const awayGoals = goals.filter(g => g.team === game.awayTeam).length;
+
+    // Prepare penalty data for announcement
+    const penaltyData = {
+      playerName: lastPenalty.penalizedPlayer,
+      teamName: lastPenalty.team,
+      penaltyType: lastPenalty.penaltyType,
+      period: lastPenalty.period,
+      timeRemaining: lastPenalty.timeRemaining,
+      length: lastPenalty.length || 2
+    };
+
+    const gameContext = {
+      homeTeam: game.homeTeam,
+      awayTeam: game.awayTeam,
+      currentScore: {
+        home: homeGoals,
+        away: awayGoals
+      }
+    };
+
+    // Generate the announcement
+    const announcementText = await generatePenaltyAnnouncement(penaltyData, gameContext);
+    
+    console.log('✅ Penalty announcement generated successfully');
+    
+    res.status(200).json({
+      success: true,
+      penalty: lastPenalty,
+      announcement: {
+        text: announcementText,
+        audioPath: null // No audio for now
+      },
+      penaltyData,
+      gameContext
+    });
+  } catch (error) {
+    console.error('❌ Error announcing last penalty:', error.message);
     handleError(res, error);
   }
 });

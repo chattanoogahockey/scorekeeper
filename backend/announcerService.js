@@ -1,22 +1,8 @@
 import OpenAI from 'openai';
-import textToSpeech from '@google-cloud/text-to-speech';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Initialize OpenAI
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-});
-
-// Initialize Google Cloud Text-to-Speech client
-// In Azure, this will use Application Default Credentials
-const ttsClient = new textToSpeech.TextToSpeechClient({
-  // Will automatically use environment credentials in Azure
-  // For local development, you may need to set GOOGLE_APPLICATION_CREDENTIALS
 });
 
 /**
@@ -93,101 +79,151 @@ Your announcement:`;
 }
 
 /**
- * Convert text to speech using Google Cloud TTS with Onyx-like voice
+ * Generate scoreless game commentary
  */
-export async function textToSpeech(text, outputPath = null) {
+export async function generateScorelessCommentary(gameData) {
   try {
-    // For local development without Google Cloud credentials, 
-    // we'll create a simple text response
-    if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && process.env.NODE_ENV === 'development') {
-      console.log('Google TTS not configured for local development, returning text only');
-      return {
-        audioPath: null,
-        audioData: null,
-        text: text
-      };
-    }
+    const { homeTeam, awayTeam, period } = gameData;
 
-    // Request configuration for realistic male announcer voice
-    const request = {
-      input: { text },
-      voice: {
-        languageCode: 'en-US',
-        name: 'en-US-Neural2-D', // Deep male voice similar to arena announcers
-        ssmlGender: 'MALE',
-      },
-      audioConfig: {
-        audioEncoding: 'MP3',
-        speakingRate: 1.1, // Slightly faster for excitement
-        pitch: -2.0, // Lower pitch for authority
-        volumeGainDb: 2.0, // Boost volume
-      },
-    };
+    const prompt = `You are a professional hockey announcer during a scoreless game between ${homeTeam} and ${awayTeam}. We're in period ${period} and it's still 0-0. Generate exciting commentary about:
 
-    const [response] = await ttsClient.synthesizeSpeech(request);
-    
-    if (!outputPath) {
-      // Generate timestamp-based filename
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      outputPath = path.join(__dirname, '..', 'audio-cache', `announcement-${timestamp}.mp3`);
-    }
+- The defensive battle happening
+- Goaltending performances 
+- Key saves or plays
+- Building tension of a tight game
+- Historical context about these teams if possible
 
-    // Ensure audio-cache directory exists
-    const audioDir = path.dirname(outputPath);
-    if (!fs.existsSync(audioDir)) {
-      fs.mkdirSync(audioDir, { recursive: true });
-    }
+Keep it engaging and create excitement even without goals. 2-3 sentences max. Sound like a real hockey announcer building drama.
 
-    // Write audio file
-    fs.writeFileSync(outputPath, response.audioContent, 'binary');
-    
-    return {
-      audioPath: outputPath,
-      audioData: response.audioContent
-    };
+Your commentary:`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system", 
+          content: "You are a professional hockey announcer who can make even scoreless games exciting with your commentary about defensive play, goaltending, and game tension."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 150,
+      temperature: 0.9,
+    });
+
+    return completion.choices[0].message.content.trim();
   } catch (error) {
-    console.error('Error generating speech:', error);
-    
-    // Fallback: return text without audio
-    console.log('Falling back to text-only response');
-    return {
-      audioPath: null,
-      audioData: null,
-      text: text,
-      error: error.message
-    };
+    console.error('Error generating scoreless commentary:', error);
+    throw new Error('Failed to generate commentary: ' + error.message);
   }
 }
 
 /**
- * Main function to create complete goal announcement
+ * Generate goal feed description for game feed
  */
-export async function createGoalAnnouncement(goalData, playerStats = null) {
+export async function generateGoalFeedDescription(goalData, playerStats = null) {
   try {
-    console.log('Generating goal announcement for:', goalData.playerName);
-    
-    // Generate announcement text
-    const announcementText = await generateGoalAnnouncement(goalData, playerStats);
-    console.log('Generated announcement:', announcementText);
-    
-    // Convert to speech
-    const audioResult = await textToSpeech(announcementText);
-    
-    if (audioResult.audioPath) {
-      console.log('Generated audio file:', audioResult.audioPath);
-    } else {
-      console.log('Audio generation skipped or failed, returning text only');
-    }
-    
-    return {
-      text: announcementText,
-      audioPath: audioResult.audioPath,
-      audioData: audioResult.audioData,
-      error: audioResult.error
-    };
+    const { 
+      playerName, 
+      teamName,
+      assistedBy = [],
+      goalType = 'even strength'
+    } = goalData;
+
+    const assistText = assistedBy.length > 0 ? `, assisted by ${assistedBy.join(' and ')}` : '';
+    const goalsThisGame = playerStats?.goalsThisGame || 0;
+    const seasonGoals = playerStats?.seasonGoals || 0;
+
+    const prompt = `Create a brief 1-2 sentence hockey goal description for a game feed. Be concise but informative:
+
+Player: ${playerName}
+Team: ${teamName}
+Goal Type: ${goalType}
+${assistedBy.length > 0 ? `Assists: ${assistedBy.join(', ')}` : 'Unassisted'}
+Goals this game: ${goalsThisGame + 1}
+Season goals: ${seasonGoals + 1}
+
+Write like a sports ticker or game feed - professional but brief. Focus on the player's performance.
+
+Example: "Steven Howell with the 2nd of the night for his sixth on the season"
+
+Your description:`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "You are writing brief, professional hockey goal descriptions for a game feed. Be concise and informative."
+        },
+        {
+          role: "user", 
+          content: prompt
+        }
+      ],
+      max_tokens: 50,
+      temperature: 0.7,
+    });
+
+    return completion.choices[0].message.content.trim();
   } catch (error) {
-    console.error('Error creating goal announcement:', error);
-    throw error;
+    console.error('Error generating goal feed description:', error);
+    // Fallback to simple description
+    const goals = playerStats ? playerStats.goalsThisGame + 1 : 1;
+    const season = playerStats ? playerStats.seasonGoals + 1 : 1;
+    return `${playerName} scores ${goals > 1 ? `his ${goals}${getOrdinalSuffix(goals)} of the game` : ''} for goal #${season} on the season`;
+  }
+}
+
+/**
+ * Generate penalty feed description
+ */
+export async function generatePenaltyFeedDescription(penaltyData) {
+  try {
+    const {
+      penalizedPlayer,
+      team,
+      penaltyType,
+      period,
+      timeRemaining
+    } = penaltyData;
+
+    const prompt = `Create a brief 1-2 sentence penalty description for a hockey game feed:
+
+Player: ${penalizedPlayer}
+Team: ${team}
+Penalty: ${penaltyType}
+Period: ${period}
+Time: ${timeRemaining}
+
+Write like a sports ticker - professional and brief.
+
+Example: "Jones heads to the box for interference, putting his team shorthanded"
+
+Your description:`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "You are writing brief, professional hockey penalty descriptions for a game feed."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      max_tokens: 50,
+      temperature: 0.7,
+    });
+
+    return completion.choices[0].message.content.trim();
+  } catch (error) {
+    console.error('Error generating penalty feed description:', error);
+    return `${penalizedPlayer} called for ${penaltyType}`;
   }
 }
 
@@ -206,6 +242,7 @@ function getOrdinalSuffix(num) {
 
 export default {
   generateGoalAnnouncement,
-  textToSpeech,
-  createGoalAnnouncement
+  generateScorelessCommentary,
+  generateGoalFeedDescription,
+  generatePenaltyFeedDescription
 };

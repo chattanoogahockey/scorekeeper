@@ -6,9 +6,17 @@ import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoal
 
 // Conditionally import announcer service to prevent startup failures
 let createGoalAnnouncement = null;
+let generateGoalAnnouncement = null;
+let generateScorelessCommentary = null;
+let generateGoalFeedDescription = null;
+let generatePenaltyFeedDescription = null;
+
 try {
   const announcerModule = await import('./announcerService.js');
-  createGoalAnnouncement = announcerModule.createGoalAnnouncement;
+  generateGoalAnnouncement = announcerModule.generateGoalAnnouncement;
+  generateScorelessCommentary = announcerModule.generateScorelessCommentary;
+  generateGoalFeedDescription = announcerModule.generateGoalFeedDescription;
+  generatePenaltyFeedDescription = announcerModule.generatePenaltyFeedDescription;
   console.log('✅ Announcer service loaded successfully');
 } catch (error) {
   console.log('⚠️ Announcer service not available:', error.message);
@@ -623,7 +631,7 @@ app.post('/api/goals/announce-last', async (req, res) => {
   }
 
   // Check if announcer service is available
-  if (!createGoalAnnouncement) {
+  if (!generateGoalAnnouncement) {
     return res.status(503).json({
       error: 'Announcer service not available. This feature requires additional dependencies.',
       fallback: true
@@ -642,14 +650,6 @@ app.post('/api/goals/announce-last', async (req, res) => {
       })
       .fetchAll();
 
-    if (goals.length === 0) {
-      return res.status(404).json({
-        error: 'No goals found for this game.'
-      });
-    }
-
-    const lastGoal = goals[0];
-    
     // Get game details for context
     const { resource: game } = await gamesContainer.item(gameId, gameId).read();
     
@@ -659,6 +659,38 @@ app.post('/api/goals/announce-last', async (req, res) => {
       });
     }
 
+    // If no goals, generate scoreless commentary
+    if (goals.length === 0) {
+      try {
+        const scorelessCommentary = await generateScorelessCommentary({
+          homeTeam: game.homeTeam,
+          awayTeam: game.awayTeam,
+          period: 1 // Default to first period for scoreless games
+        });
+        
+        return res.status(200).json({
+          success: true,
+          scoreless: true,
+          announcement: {
+            text: scorelessCommentary,
+            audioPath: null
+          },
+          gameData: {
+            homeTeam: game.homeTeam,
+            awayTeam: game.awayTeam,
+            homeScore: 0,
+            awayScore: 0
+          }
+        });
+      } catch (error) {
+        return res.status(500).json({
+          error: 'Failed to generate scoreless commentary'
+        });
+      }
+    }
+
+    const lastGoal = goals[0];
+    
     // Calculate current score after this goal
     const homeGoals = goals.filter(g => g.team === game.homeTeam).length;
     const awayGoals = goals.filter(g => g.team === game.awayTeam).length;
@@ -686,20 +718,16 @@ app.post('/api/goals/announce-last', async (req, res) => {
     };
 
     // Generate the announcement
-    const announcement = await createGoalAnnouncement(goalData, playerStats);
+    const announcementText = await generateGoalAnnouncement(goalData, playerStats);
     
     console.log('✅ Goal announcement generated successfully');
-    
-    // Extract just the filename for the audio path
-    const audioFileName = announcement.audioPath ? 
-      path.basename(announcement.audioPath) : null;
     
     res.status(200).json({
       success: true,
       goal: lastGoal,
       announcement: {
-        text: announcement.text,
-        audioPath: audioFileName, // Return just the filename
+        text: announcementText,
+        audioPath: null // No audio for now
       },
       goalData,
       playerStats
@@ -1167,6 +1195,51 @@ app.get('/api/player-stats', async (req, res) => {
       error: 'Failed to fetch player stats',
       message: error.message 
     });
+  }
+});
+
+// Game feed description endpoints
+app.post('/api/generate-goal-feed', async (req, res) => {
+  const { goalData, gameContext } = req.body;
+
+  if (!generateGoalFeedDescription) {
+    return res.status(503).json({
+      error: 'Feed description service not available.',
+      fallback: true
+    });
+  }
+
+  try {
+    const description = await generateGoalFeedDescription(goalData, gameContext);
+    res.status(200).json({
+      success: true,
+      description
+    });
+  } catch (error) {
+    console.error('Error generating goal feed description:', error);
+    res.status(500).json({ error: 'Failed to generate feed description' });
+  }
+});
+
+app.post('/api/generate-penalty-feed', async (req, res) => {
+  const { penaltyData, gameContext } = req.body;
+
+  if (!generatePenaltyFeedDescription) {
+    return res.status(503).json({
+      error: 'Feed description service not available.',
+      fallback: true
+    });
+  }
+
+  try {
+    const description = await generatePenaltyFeedDescription(penaltyData, gameContext);
+    res.status(200).json({
+      success: true,
+      description
+    });
+  } catch (error) {
+    console.error('Error generating penalty feed description:', error);
+    res.status(500).json({ error: 'Failed to generate feed description' });
   }
 });
 

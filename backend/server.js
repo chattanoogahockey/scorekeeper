@@ -3,7 +3,16 @@ import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoalsContainer, getPenaltiesContainer, getOTShootoutContainer } from './cosmosClient.js';
-import { createGoalAnnouncement } from './announcerService.js';
+
+// Conditionally import announcer service to prevent startup failures
+let createGoalAnnouncement = null;
+try {
+  const announcerModule = await import('./announcerService.js');
+  createGoalAnnouncement = announcerModule.createGoalAnnouncement;
+  console.log('✅ Announcer service loaded successfully');
+} catch (error) {
+  console.log('⚠️ Announcer service not available:', error.message);
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -610,6 +619,14 @@ app.post('/api/goals/announce-last', async (req, res) => {
   if (!gameId) {
     return res.status(400).json({
       error: 'Invalid request. Required: gameId.'
+    });
+  }
+
+  // Check if announcer service is available
+  if (!createGoalAnnouncement) {
+    return res.status(503).json({
+      error: 'Announcer service not available. This feature requires additional dependencies.',
+      fallback: true
     });
   }
 

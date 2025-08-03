@@ -13,9 +13,10 @@ export default function InGameMenu() {
   const { selectedGame } = useContext(GameContext);
   const navigate = useNavigate();
   
-  // State for events feed
+  // State for events feed with enhanced descriptions
   const [events, setEvents] = useState([]);
   const [eventsError, setEventsError] = useState(null);
+  const [loadingDescriptions, setLoadingDescriptions] = useState(new Set());
   
   // State for current game score
   const [currentScore, setCurrentScore] = useState({ away: 0, home: 0 });
@@ -77,6 +78,91 @@ export default function InGameMenu() {
     
     fetchEvents();
     fetchScore();
+    
+    // Generate AI descriptions for events
+    const generateEventDescriptions = async (eventsData) => {
+      const eventsWithDescriptions = [...eventsData];
+      
+      for (let i = 0; i < eventsWithDescriptions.length; i++) {
+        const event = eventsWithDescriptions[i];
+        
+        // Skip if already has AI description or currently loading
+        if (event.aiDescription || loadingDescriptions.has(`${event.id}-${event.eventType}`)) {
+          continue;
+        }
+        
+        try {
+          // Mark as loading
+          setLoadingDescriptions(prev => new Set([...prev, `${event.id}-${event.eventType}`]));
+          
+          if (event.eventType === 'goal') {
+            const goalFeedUrl = import.meta.env.DEV 
+              ? '/api/generate-goal-feed' 
+              : `${import.meta.env.VITE_API_BASE_URL}/api/generate-goal-feed`;
+            
+            const response = await axios.post(goalFeedUrl, {
+              goalData: {
+                playerName: event.scorer,
+                teamName: event.scoringTeam,
+                period: event.period,
+                time: event.time,
+                assists: event.assists || []
+              },
+              gameContext: {
+                homeTeam: selectedGame.homeTeam || selectedGame.homeTeamId,
+                awayTeam: selectedGame.awayTeam || selectedGame.awayTeamId,
+                currentScore: currentScore
+              }
+            });
+            
+            if (response.data.success) {
+              eventsWithDescriptions[i] = {
+                ...event,
+                aiDescription: response.data.description
+              };
+            }
+          } else if (event.eventType === 'penalty') {
+            const penaltyFeedUrl = import.meta.env.DEV 
+              ? '/api/generate-penalty-feed' 
+              : `${import.meta.env.VITE_API_BASE_URL}/api/generate-penalty-feed`;
+            
+            const response = await axios.post(penaltyFeedUrl, {
+              penaltyData: {
+                playerName: event.penalizedPlayer,
+                teamName: event.penalizedTeam,
+                penaltyType: event.penaltyType,
+                period: event.period,
+                time: event.time,
+                length: event.penaltyLength
+              },
+              gameContext: {
+                homeTeam: selectedGame.homeTeam || selectedGame.homeTeamId,
+                awayTeam: selectedGame.awayTeam || selectedGame.awayTeamId,
+                currentScore: currentScore
+              }
+            });
+            
+            if (response.data.success) {
+              eventsWithDescriptions[i] = {
+                ...event,
+                aiDescription: response.data.description
+              };
+            }
+          }
+        } catch (error) {
+          console.error('Failed to generate AI description for event:', error);
+        } finally {
+          // Remove from loading set
+          setLoadingDescriptions(prev => {
+            const newSet = new Set([...prev]);
+            newSet.delete(`${event.id}-${event.eventType}`);
+            return newSet;
+          });
+        }
+      }
+      
+      return eventsWithDescriptions;
+    };
     const interval = setInterval(() => {
       fetchEvents();
       fetchScore();
@@ -169,14 +255,14 @@ export default function InGameMenu() {
             onClick={handleGoalClick}
             className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-4 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
-            🥅 Record Goal
+            Goal
           </button>
 
           <button
             onClick={handlePenaltyClick}
             className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-4 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
-            Record Penalty
+            Penalty
           </button>
         </div>
 
@@ -233,11 +319,31 @@ export default function InGameMenu() {
                         {event.assists && event.assists.length > 0 && (
                           <div className="text-xs text-gray-400">Assist: {event.assists.join(', ')}</div>
                         )}
+                        {event.aiDescription && (
+                          <div className="text-xs text-blue-600 mt-1 italic">
+                            🤖 {event.aiDescription}
+                          </div>
+                        )}
+                        {loadingDescriptions.has(`${event.id}-${event.eventType}`) && (
+                          <div className="text-xs text-gray-400 mt-1">
+                            ⏳ Generating AI description...
+                          </div>
+                        )}
                       </>
                     ) : (
                       <>
                         <div className="font-medium">{event.penaltyType} - {event.penalizedPlayer}</div>
                         <div className="text-gray-500">{event.penalizedTeam} • Period {event.period} • {event.time} • {event.penaltyLength} min</div>
+                        {event.aiDescription && (
+                          <div className="text-xs text-blue-600 mt-1 italic">
+                            🤖 {event.aiDescription}
+                          </div>
+                        )}
+                        {loadingDescriptions.has(`${event.id}-${event.eventType}`) && (
+                          <div className="text-xs text-gray-400 mt-1">
+                            ⏳ Generating AI description...
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

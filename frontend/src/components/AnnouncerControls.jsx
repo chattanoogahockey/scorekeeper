@@ -16,8 +16,14 @@ export default function AnnouncerControls({ gameId }) {
 
   /**
    * Announce the latest goal using AI-generated announcement
+   * Or generate scoreless commentary if no goals yet
    */
   const announceLatestGoal = async () => {
+    if (!gameId) {
+      setError('No game selected. Please select a game first.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setMessage('Generating announcement...');
@@ -30,8 +36,13 @@ export default function AnnouncerControls({ gameId }) {
       const response = await axios.post(apiUrl, { gameId });
       
       if (response.data.success) {
-        const { announcement } = response.data;
-        setMessage(`Generated: "${announcement.text}"`);
+        const { announcement, scoreless } = response.data;
+        
+        if (scoreless) {
+          setMessage(`Scoreless Commentary: "${announcement.text}"`);
+        } else {
+          setMessage(`Goal Announcement: "${announcement.text}"`);
+        }
         
         // Play the generated audio if available
         if (announcement.audioPath) {
@@ -42,7 +53,7 @@ export default function AnnouncerControls({ gameId }) {
           const audio = new Audio(audioUrl);
           
           audio.onloadeddata = () => {
-            setMessage('Playing announcement...');
+            setMessage(scoreless ? 'Playing scoreless commentary...' : 'Playing goal announcement...');
           };
           
           audio.onended = () => {
@@ -56,14 +67,20 @@ export default function AnnouncerControls({ gameId }) {
           
           await audio.play();
         } else {
-          // No audio generated, just show the text
-          setMessage(`Announcement (text only): "${announcement.text}"`);
-          setTimeout(() => setMessage(''), 5000); // Clear after 5 seconds
+          // No audio generated, just show the text and clear after delay
+          setTimeout(() => setMessage(''), 8000); // Clear after 8 seconds for longer AI text
         }
       }
     } catch (err) {
       console.error('Error announcing latest goal:', err);
-      setError(err.response?.data?.error || 'Failed to announce latest goal');
+      
+      // Handle fallback when announcer service isn't available
+      if (err.response?.status === 503 && err.response?.data?.fallback) {
+        setError('AI announcer not available in current deployment');
+        setMessage('Using fallback: Goal announcement service temporarily unavailable');
+      } else {
+        setError(err.response?.data?.error || 'Failed to generate announcement');
+      }
       setMessage('');
     } finally {
       setLoading(false);
@@ -71,73 +88,95 @@ export default function AnnouncerControls({ gameId }) {
   };
 
   /**
-   * Fetch latest penalty from the API and announce it.
+   * Announce the latest penalty using AI-generated announcement
    */
   const announceLatestPenalty = async () => {
+    if (!gameId) {
+      setError('No game selected. Please select a game first.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
+    setMessage('Generating penalty announcement...');
+    
     try {
-      const { data: penalty } = await axios.get('/api/lastPenalty', { params: { gameId } });
-      if (!penalty) {
-        setError('No penalty recorded yet');
-        return;
+      const apiUrl = import.meta.env.DEV 
+        ? '/api/penalties/announce-last' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/penalties/announce-last`;
+      
+      const response = await axios.post(apiUrl, { gameId });
+      
+      if (response.data.success) {
+        const { announcement } = response.data;
+        setMessage(`Penalty Announcement: "${announcement.text}"`);
+        
+        // Play the generated audio if available
+        if (announcement.audioPath) {
+          const audioUrl = import.meta.env.DEV 
+            ? `/api/audio/${announcement.audioPath}` 
+            : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
+          
+          const audio = new Audio(audioUrl);
+          
+          audio.onloadeddata = () => {
+            setMessage('Playing penalty announcement...');
+          };
+          
+          audio.onended = () => {
+            setMessage('');
+          };
+          
+          audio.onerror = () => {
+            setError('Failed to play announcement audio');
+            setMessage('');
+          };
+          
+          await audio.play();
+        } else {
+          // No audio generated, just show the text and clear after delay
+          setTimeout(() => setMessage(''), 8000); // Clear after 8 seconds for longer AI text
+        }
       }
-      const text = `Penalty on ${penalty.penalizedPlayer} of the ${penalty.team} for ${penalty.penaltyType}. ${penalty.length} minutes.`;
-      await playTTS(text);
     } catch (err) {
-      console.error(err);
-      setError('Failed to announce penalty');
+      console.error('Error announcing latest penalty:', err);
+      
+      // Handle fallback when announcer service isn't available
+      if (err.response?.status === 503 && err.response?.data?.fallback) {
+        setError('AI penalty announcer not available in current deployment');
+        setMessage('Using fallback: Penalty announcement service temporarily unavailable');
+      } else if (err.response?.status === 404) {
+        setError('No penalties recorded yet for this game');
+      } else {
+        setError(err.response?.data?.error || 'Failed to generate penalty announcement');
+      }
+      setMessage('');
     } finally {
       setLoading(false);
     }
-  };
-
-  /**
-   * Announce generic message like start of period or end of game.
-   * @param {string} text
-   */
-  const announceMessage = async (text) => {
-    setLoading(true);
-    setError(null);
-    try {
-      await playTTS(text);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to announce');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  /**
-   * Plays TTS for given text by requesting the backend and creating audio element.
-   * @param {string} text
-   */
-  const playTTS = async (text) => {
-    setMessage(text);
-    const { data } = await axios.get('/api/tts', { params: { text } });
-    const audio = new Audio(data.url);
-    await audio.play();
   };
 
   return (
     <div className="border rounded shadow p-4">
       <h4 className="text-xl font-semibold mb-2">Announcer Controls</h4>
+      {!gameId && (
+        <p className="text-yellow-600 mb-2 text-sm">⚠️ No game selected. Please select a game to use announcer features.</p>
+      )}
       {error && <p className="text-red-500 mb-2">{error}</p>}
       <div className="space-y-2">
         <button
           onClick={announceLatestGoal}
-          disabled={loading}
+          disabled={loading || !gameId}
           className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
         >
-          {loading ? 'Generating...' : 'Announce Latest Goal'}
+          {loading ? 'Generating...' : 'AI Commentary (Goal/Scoreless)'}
         </button>
         <button
           onClick={announceLatestPenalty}
-          disabled={loading}
-          className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600"
+          disabled={loading || !gameId}
+          className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400"
         >
-          Announce Latest Penalty
+          {loading ? 'Generating...' : 'AI Penalty Announcement'}
         </button>
       </div>
       {message && (

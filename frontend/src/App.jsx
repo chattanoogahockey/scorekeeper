@@ -1,5 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import InitialMenu from './pages/InitialMenu.jsx';
+import AdminPanel from './pages/AdminPanel.jsx';
 import LeagueGameSelection from './pages/LeagueGameSelection.jsx';
 import RosterAttendance from './pages/RosterAttendance.jsx';
 import InGameMenu from './pages/InGameMenu.jsx';
@@ -15,7 +17,9 @@ export default function App() {
   return (
     <GameProvider>
       <Routes>
-        <Route path="/" element={<LeagueGameSelection />} />
+        <Route path="/" element={<InitialMenu />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/leagues" element={<LeagueGameSelection />} />
         <Route path="/roster" element={<RosterAttendance />} />
         <Route path="/ingame" element={<InGameMenu />} />
         <Route path="/goal" element={<GoalRecord />} />

@@ -24,21 +24,51 @@ class TTSService {
 
   async initializeClient() {
     try {
-      // Initialize the Google Cloud TTS client
-      // If GOOGLE_APPLICATION_CREDENTIALS is set, it will use that
-      // Otherwise, it will try to use default credentials
-      this.client = new textToSpeech.TextToSpeechClient();
+      let clientOptions = {};
+      
+      // Check for Azure-style JSON credentials first (for Studio voices)
+      if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+        console.log('🔑 Using Azure environment JSON credentials for Google Cloud TTS');
+        try {
+          const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+          clientOptions.credentials = credentials;
+          console.log('✅ Google Cloud credentials parsed successfully');
+        } catch (parseError) {
+          console.error('❌ Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:', parseError.message);
+          throw parseError;
+        }
+      }
+      // Otherwise use standard credentials file if available
+      else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        console.log('🔑 Using GOOGLE_APPLICATION_CREDENTIALS file path');
+      }
+      // No credentials configured
+      else {
+        console.log('⚠️  No Google Cloud credentials found - Studio voices unavailable');
+        console.log('💡 To enable Studio voices:');
+        console.log('   1. Azure: Set GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable');
+        console.log('   2. Local: Set GOOGLE_APPLICATION_CREDENTIALS file path');
+        this.client = null;
+        return;
+      }
+      
+      // Initialize the Google Cloud TTS client with credentials
+      this.client = new textToSpeech.TextToSpeechClient(clientOptions);
+      
+      // Test connection with a simple list voices call
+      await this.client.listVoices({ languageCode: 'en-US' });
       
       // Ensure audio cache directory exists
       await fs.mkdir(this.audioDir, { recursive: true });
       
-      console.log('✅ Google Cloud TTS client initialized successfully');
+      console.log('✅ Google Cloud TTS client initialized successfully - Studio voices available!');
     } catch (error) {
       console.error('❌ Failed to initialize Google Cloud TTS:', error.message);
-      console.log('💡 Falling back to browser TTS. To enable Google TTS:');
-      console.log('   1. Set up Google Cloud project with TTS API enabled');
-      console.log('   2. Set GOOGLE_APPLICATION_CREDENTIALS environment variable');
-      console.log('   3. Or provide service account key JSON');
+      console.log('💡 Falling back to browser TTS. Error details:');
+      console.log('   - Error:', error.message);
+      console.log('   - Check Google Cloud project billing and API enablement');
+      console.log('   - Verify credentials are valid for Text-to-Speech API');
+      this.client = null;
     }
   }
 

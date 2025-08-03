@@ -1095,7 +1095,25 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error resetting game:', error.message);
-    handleError(res, error);
+    console.error('Error details:', error);
+    
+    // Provide more specific error information
+    let errorMessage = 'Failed to reset game data';
+    if (error.code === 'InvalidPartitionKey') {
+      errorMessage = 'Invalid game ID format';
+    } else if (error.code === 'NotFound') {
+      errorMessage = 'Game not found';
+    } else if (error.code === 'Forbidden') {
+      errorMessage = 'Database access denied - check Cosmos DB permissions';
+    } else if (error.code === 'TooManyRequests') {
+      errorMessage = 'Database throttling - please try again in a moment';
+    }
+    
+    res.status(500).json({
+      error: 'Internal server error',
+      message: errorMessage,
+      details: error.message
+    });
   }
 });
 

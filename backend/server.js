@@ -1400,16 +1400,40 @@ app.get('/api/health', (req, res) => {
     PORT: process.env.PORT
   };
   
+  // Check TTS service status
+  const ttsStatus = {
+    available: ttsService.client !== null,
+    credentialsSource: process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ? 'Azure Environment JSON' : 
+                      process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'File Path' : 'None',
+    studioVoicesExpected: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
+    googleCloudProject: process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ? 
+      (() => {
+        try {
+          const creds = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+          return creds.project_id;
+        } catch {
+          return 'Invalid JSON';
+        }
+      })() : 'Not configured'
+  };
+  
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
+    uptime: Math.floor((Date.now() - startTime) / 1000),
     environment: envVars,
+    tts: ttsStatus,
+    announcer: {
+      available: !!generateGoalAnnouncement,
+      features: ['Goal announcements', 'Penalty announcements', 'Commentary']
+    },
     endpoints: {
       goals: '/api/goals',
       penalties: '/api/penalties',
       games: '/api/games', 
       playerStats: '/api/player-stats',
-      health: '/api/health'
+      health: '/api/health',
+      tts: '/api/tts/generate'
     }
   });
 });

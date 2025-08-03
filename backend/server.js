@@ -144,6 +144,55 @@ app.get('/api/games', async (req, res) => {
   }
 });
 
+// Add endpoint for submitted games
+app.get('/api/games/submitted', async (req, res) => {
+  try {
+    const gamesContainer = getGamesContainer();
+    
+    // Get all submission documents
+    const { resources: submissions } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.eventType = 'game-submission'",
+        parameters: []
+      })
+      .fetchAll();
+    
+    // For each submission, get the corresponding game
+    const submittedGames = [];
+    for (const submission of submissions) {
+      try {
+        const { resources: gameQuery } = await gamesContainer.items
+          .query({
+            query: "SELECT * FROM c WHERE c.id = @gameId",
+            parameters: [{ name: "@gameId", value: submission.gameId }]
+          })
+          .fetchAll();
+        
+        if (gameQuery.length > 0) {
+          const game = gameQuery[0];
+          // Add submission info to the game
+          submittedGames.push({
+            ...game,
+            gameStatus: 'submitted',
+            submittedAt: submission.submittedAt,
+            finalScore: submission.finalScore,
+            totalGoals: submission.totalGoals,
+            totalPenalties: submission.totalPenalties,
+            gameSummary: submission.gameSummary
+          });
+        }
+      } catch (error) {
+        console.error(`Error fetching game ${submission.gameId}:`, error);
+      }
+    }
+    
+    res.status(200).json(submittedGames);
+  } catch (error) {
+    console.error('Error fetching submitted games:', error);
+    res.status(500).json({ error: 'Failed to fetch submitted games' });
+  }
+});
+
 // Add the `/api/rosters` endpoint
 app.get('/api/rosters', async (req, res) => {
   const { teamName, season, division } = req.query;
@@ -669,22 +718,17 @@ app.post('/api/goals/announce-last', async (req, res) => {
 
     // Get game details for context
     let game;
-    try {
-      // Try direct lookup first (if gameId is the document id)
-      const { resource: directGame } = await gamesContainer.item(gameId, gameId).read();
-      game = directGame;
-    } catch (err) {
-      // If that fails, try query lookup
-      const { resources: gamesByQuery } = await gamesContainer.items
-        .query({
-          query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
-          parameters: [{ name: "@gameId", value: gameId }]
-        })
-        .fetchAll();
-      
-      if (gamesByQuery.length > 0) {
-        game = gamesByQuery[0];
-      }
+    
+    // Use query lookup since direct lookup doesn't work with partition key
+    const { resources: gamesByQuery } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
+        parameters: [{ name: "@gameId", value: gameId }]
+      })
+      .fetchAll();
+    
+    if (gamesByQuery.length > 0) {
+      game = gamesByQuery[0];
     }
     
     if (!game) {
@@ -805,22 +849,17 @@ app.post('/api/penalties/announce-last', async (req, res) => {
 
     // Get game details for context
     let game;
-    try {
-      // Try direct lookup first (if gameId is the document id)
-      const { resource: directGame } = await gamesContainer.item(gameId, gameId).read();
-      game = directGame;
-    } catch (err) {
-      // If that fails, try query lookup
-      const { resources: gamesByQuery } = await gamesContainer.items
-        .query({
-          query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
-          parameters: [{ name: "@gameId", value: gameId }]
-        })
-        .fetchAll();
-      
-      if (gamesByQuery.length > 0) {
-        game = gamesByQuery[0];
-      }
+    
+    // Use query lookup since direct lookup doesn't work with partition key
+    const { resources: gamesByQuery } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
+        parameters: [{ name: "@gameId", value: gameId }]
+      })
+      .fetchAll();
+    
+    if (gamesByQuery.length > 0) {
+      game = gamesByQuery[0];
     }
     
     if (!game) {

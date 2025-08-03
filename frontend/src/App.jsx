@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import InitialMenu from './pages/InitialMenu.jsx';
 import AdminPanel from './pages/AdminPanel.jsx';
+import EditGame from './pages/EditGame.jsx';
 import LeagueGameSelection from './pages/LeagueGameSelection.jsx';
 import RosterAttendance from './pages/RosterAttendance.jsx';
 import InGameMenu from './pages/InGameMenu.jsx';
@@ -19,6 +20,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<InitialMenu />} />
         <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/admin/edit/:gameId" element={<EditGame />} />
         <Route path="/leagues" element={<LeagueGameSelection />} />
         <Route path="/roster" element={<RosterAttendance />} />
         <Route path="/ingame" element={<InGameMenu />} />

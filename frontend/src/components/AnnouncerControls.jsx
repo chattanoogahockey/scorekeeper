@@ -10,7 +10,8 @@ import { GameContext } from '../contexts/GameContext.jsx';
  */
 export default function AnnouncerControls({ gameId }) {
   const { selectedGame, selectedGameId } = useContext(GameContext);
-  const [loading, setLoading] = useState(false);
+  const [goalLoading, setGoalLoading] = useState(false);
+  const [penaltyLoading, setPenaltyLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
 
@@ -27,9 +28,9 @@ export default function AnnouncerControls({ gameId }) {
       return;
     }
 
-    setLoading(true);
+    setGoalLoading(true);
     setError(null);
-    setMessage('Generating announcement...');
+    setMessage('Generating goal announcement...');
     
     try {
       const apiUrl = import.meta.env.DEV 
@@ -86,7 +87,7 @@ export default function AnnouncerControls({ gameId }) {
       }
       setMessage('');
     } finally {
-      setLoading(false);
+      setGoalLoading(false);
     }
   };
 
@@ -99,7 +100,7 @@ export default function AnnouncerControls({ gameId }) {
       return;
     }
 
-    setLoading(true);
+    setPenaltyLoading(true);
     setError(null);
     setMessage('Generating penalty announcement...');
     
@@ -155,7 +156,7 @@ export default function AnnouncerControls({ gameId }) {
       }
       setMessage('');
     } finally {
-      setLoading(false);
+      setPenaltyLoading(false);
     }
   };
 
@@ -169,17 +170,17 @@ export default function AnnouncerControls({ gameId }) {
       <div className="space-y-2">
         <button
           onClick={announceLatestGoal}
-          disabled={loading || !currentGameId}
+          disabled={goalLoading || !currentGameId}
           className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
         >
-          {loading ? 'Generating...' : 'AI Commentary (Goal/Scoreless)'}
+          {goalLoading ? 'Generating...' : 'AI Commentary (Goal/Scoreless)'}
         </button>
         <button
           onClick={announceLatestPenalty}
-          disabled={loading || !currentGameId}
+          disabled={penaltyLoading || !currentGameId}
           className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400"
         >
-          {loading ? 'Generating...' : 'AI Penalty Announcement'}
+          {penaltyLoading ? 'Generating...' : 'AI Penalty Announcement'}
         </button>
       </div>
       {message && (

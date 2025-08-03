@@ -49,9 +49,8 @@ export default function AdminPanel() {
   };
 
   const handleEditScore = (gameId) => {
-    // For now, navigate to the game with a special edit mode
-    // This could be expanded to a dedicated edit interface
-    setMessage('Score editing feature coming soon');
+    // Navigate to the dedicated edit page
+    navigate(`/admin/edit/${gameId}`);
   };
 
   const handleBackToMain = () => {
@@ -107,7 +106,6 @@ export default function AdminPanel() {
                       <button
                         onClick={() => handleEditScore(game.id)}
                         className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg transition-colors"
-                        disabled
                       >
                         Edit Score
                       </button>

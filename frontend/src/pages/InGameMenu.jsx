@@ -306,17 +306,17 @@ export default function InGameMenu() {
         {/* Submit and Cancel Game Buttons */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           <button
+            onClick={handleCancelGame}
+            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
+          >
+            Cancel Game
+          </button>
+          <button
             onClick={handleSubmitGame}
             disabled={isSubmittingGame}
             className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
             {isSubmittingGame ? 'Submitting...' : 'Submit Game'}
-          </button>
-          <button
-            onClick={handleCancelGame}
-            className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
-          >
-            Cancel Game
           </button>
         </div>
         <p className="text-xs text-gray-500 text-center mb-4">

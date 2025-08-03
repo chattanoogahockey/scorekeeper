@@ -61,23 +61,62 @@ class TTSService {
       const filename = `${gameId}-${type}-${timestamp}.mp3`;
       const filePath = path.join(this.audioDir, filename);
 
-      // Configure the TTS request for Studio-O announcer voice
-      const request = {
-        input: { text: text },
-        // Use Google's most advanced Studio voice for maximum realism
-        voice: {
+      // Try Studio voice first, fallback to Neural2 if not available
+      let voiceConfig;
+      let audioConfig;
+
+      // Attempt Studio-O first (premium quality)
+      try {
+        voiceConfig = {
           languageCode: 'en-US',
           name: 'en-US-Studio-O', // Studio-O: Premium male voice, perfect for sports announcing
           ssmlGender: 'MALE',
-        },
-        // Configure audio for maximum realism and excitement
-        audioConfig: {
+        };
+        
+        audioConfig = {
           audioEncoding: 'MP3',
-          speakingRate: 1.1, // Optimal pace for clear, exciting announcements
-          pitch: 0.8, // Slightly elevated for energy while maintaining authority
-          volumeGainDb: 4.0, // Stadium-level volume for impact
-          effectsProfileId: ['large-home-entertainment-class-device'], // Best quality/realism
-        },
+          speakingRate: 1.0, // Natural pace for Studio voice
+          pitch: 0.0, // Let Studio voice natural expressiveness shine
+          volumeGainDb: 3.0, // Clear volume
+          effectsProfileId: ['large-home-entertainment-class-device'],
+        };
+
+        // Test with a quick synthesis to see if Studio voice is available
+        const testRequest = {
+          input: { text: 'Test' },
+          voice: voiceConfig,
+          audioConfig: { audioEncoding: 'MP3' }
+        };
+        
+        await this.client.synthesizeSpeech(testRequest);
+        console.log(`🎯 Using Studio-O voice for: "${text.substring(0, 50)}..."`);
+        
+      } catch (studioError) {
+        console.log('⚠️  Studio voice not available, using Neural2-D (still excellent quality)');
+        
+        // Fallback to best Neural2 voice
+        voiceConfig = {
+          languageCode: 'en-US',
+          name: 'en-US-Neural2-D', // Best Neural2 male voice
+          ssmlGender: 'MALE',
+        };
+        
+        audioConfig = {
+          audioEncoding: 'MP3',
+          speakingRate: 1.05, // Slightly faster for Neural2
+          pitch: 0.3, // Small pitch boost for excitement
+          volumeGainDb: 3.5, // Higher volume for Neural2
+          effectsProfileId: ['large-home-entertainment-class-device'],
+        };
+        
+        console.log(`🎤 Using Neural2-D voice for: "${text.substring(0, 50)}..."`);
+      }
+
+      // Configure the final TTS request
+      const request = {
+        input: { text: text },
+        voice: voiceConfig,
+        audioConfig: audioConfig,
       };
 
       console.log(`🎤 Generating TTS for: "${text.substring(0, 50)}..."`);
@@ -110,20 +149,61 @@ class TTSService {
       const filename = `${gameId}-penalty-${timestamp}.mp3`;
       const filePath = path.join(this.audioDir, filename);
 
-      const request = {
-        input: { text: text },
-        voice: {
+      // Try Studio voice first, fallback to Neural2 if not available
+      let voiceConfig;
+      let audioConfig;
+
+      // Attempt Studio-M first (premium authoritative voice)
+      try {
+        voiceConfig = {
           languageCode: 'en-US',
           name: 'en-US-Studio-M', // Studio-M: Authoritative male voice, perfect for penalties
           ssmlGender: 'MALE',
-        },
-        audioConfig: {
+        };
+        
+        audioConfig = {
           audioEncoding: 'MP3',
           speakingRate: 0.95, // Deliberate pace for serious announcements
-          pitch: -0.5, // Lower pitch for authority while maintaining clarity
-          volumeGainDb: 3.2, // Clear, commanding volume
-          effectsProfileId: ['large-home-entertainment-class-device'], // Maximum realism
-        },
+          pitch: -0.3, // Slightly lower for authority
+          volumeGainDb: 3.0, // Clear volume
+          effectsProfileId: ['large-home-entertainment-class-device'],
+        };
+
+        // Test Studio voice availability
+        const testRequest = {
+          input: { text: 'Test' },
+          voice: voiceConfig,
+          audioConfig: { audioEncoding: 'MP3' }
+        };
+        
+        await this.client.synthesizeSpeech(testRequest);
+        console.log(`🎯 Using Studio-M voice for penalty: "${text.substring(0, 50)}..."`);
+        
+      } catch (studioError) {
+        console.log('⚠️  Studio voice not available, using Neural2-I (authoritative fallback)');
+        
+        // Fallback to best Neural2 authoritative voice
+        voiceConfig = {
+          languageCode: 'en-US',
+          name: 'en-US-Neural2-I', // Most confident Neural2 voice
+          ssmlGender: 'MALE',
+        };
+        
+        audioConfig = {
+          audioEncoding: 'MP3',
+          speakingRate: 0.9, // Slower for seriousness
+          pitch: -0.8, // Lower pitch for authority
+          volumeGainDb: 3.5, // Higher volume for Neural2
+          effectsProfileId: ['large-home-entertainment-class-device'],
+        };
+        
+        console.log(`🎤 Using Neural2-I voice for penalty: "${text.substring(0, 50)}..."`);
+      }
+
+      const request = {
+        input: { text: text },
+        voice: voiceConfig,
+        audioConfig: audioConfig,
       };
 
       const [response] = await this.client.synthesizeSpeech(request);

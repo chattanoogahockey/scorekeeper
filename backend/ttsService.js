@@ -101,8 +101,34 @@ class TTSService {
     try {
       let clientOptions = {};
       
-      // Priority 1: JSON credentials (Azure approach - WORKING!)
-      if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+      // Priority 1: Base64 encoded credentials (Azure-safe approach)
+      if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
+        console.log('🔑 Using Base64 encoded credentials for Google Cloud TTS');
+        try {
+          const base64String = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64;
+          console.log('🔍 Base64 Credential Diagnostics:');
+          console.log(`   - Base64 Length: ${base64String.length}`);
+          console.log(`   - Base64 First 50 chars: "${base64String.substring(0, 50)}"`);
+          
+          // Decode base64 to JSON string
+          const jsonString = Buffer.from(base64String, 'base64').toString('utf-8');
+          console.log(`   - Decoded JSON Length: ${jsonString.length}`);
+          console.log(`   - JSON First 50 chars: "${jsonString.substring(0, 50)}"`);
+          console.log(`   - JSON Last 50 chars: "${jsonString.substring(jsonString.length - 50)}"`);
+          
+          const credentials = JSON.parse(jsonString);
+          clientOptions.credentials = credentials;
+          console.log('✅ Google Cloud credentials loaded from Base64');
+          console.log(`   - Project: ${credentials.project_id}`);
+          console.log(`   - Email: ${credentials.client_email}`);
+          console.log(`   - Private Key Length: ${credentials.private_key?.length || 0} characters`);
+        } catch (error) {
+          console.error(`❌ Failed to process Base64 credentials: ${error.message}`);
+          throw error;
+        }
+      }
+      // Priority 2: JSON credentials (legacy support)
+      else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
         console.log('🔑 Using JSON credentials for Google Cloud TTS');
         try {
           const rawJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;

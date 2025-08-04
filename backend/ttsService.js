@@ -34,11 +34,14 @@ class TTSService {
       
       if (projectId && clientEmail && privateKey && privateKeyId) {
         console.log('🔑 Using individual environment variables for Google Cloud TTS');
+        // Handle private key formatting - convert \n to actual newlines
+        const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
+        
         const credentials = {
           type: "service_account",
           project_id: projectId,
           private_key_id: privateKeyId,
-          private_key: privateKey,
+          private_key: formattedPrivateKey,
           client_email: clientEmail,
           client_id: "103020565003422938812",
           auth_uri: "https://accounts.google.com/o/oauth2/auth",

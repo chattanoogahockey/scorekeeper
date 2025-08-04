@@ -58,17 +58,31 @@ The code is correctly configured for Studio voices, but Google Cloud credentials
 }
 ```
 
-### 2.2 Add to Azure Environment Variables
+### 2.2 Add to Azure Environment Variables (Individual Variables Method)
 1. Go to [Azure Portal](https://portal.azure.com)
 2. Find your App Service (scorekeeper backend)
 3. Go to "Configuration" > "Application settings"
-4. Click "New application setting"
-5. Add this setting:
-   - **Name**: `GOOGLE_APPLICATION_CREDENTIALS_JSON`
-   - **Value**: (paste the ENTIRE JSON content from step 2.1)
-6. Click "OK"
-7. Click "Save" at the top
-8. **RESTART the App Service** for changes to take effect
+4. Add these FOUR settings from your JSON file:
+   - **Name**: `GOOGLE_CLOUD_PROJECT_ID`
+   - **Value**: (the `project_id` from your JSON)
+   
+   - **Name**: `GOOGLE_CLOUD_CLIENT_EMAIL`  
+   - **Value**: (the `client_email` from your JSON)
+   
+   - **Name**: `GOOGLE_CLOUD_PRIVATE_KEY_ID`
+   - **Value**: (the `private_key_id` from your JSON)
+   
+   - **Name**: `GOOGLE_CLOUD_PRIVATE_KEY`
+   - **Value**: (the `private_key` from your JSON - **IMPORTANT**: Copy this EXACTLY including all `\n` characters)
+
+5. Click "OK" for each setting
+6. Click "Save" at the top
+7. **RESTART the App Service** for changes to take effect
+
+**CRITICAL**: For `GOOGLE_CLOUD_PRIVATE_KEY`, make sure you copy the EXACT value including the `\n` characters. It should look like:
+```
+-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg...\n-----END PRIVATE KEY-----
+```
 
 ## Step 3: Verify Studio Voices Work
 

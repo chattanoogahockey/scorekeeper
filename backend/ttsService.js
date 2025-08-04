@@ -113,43 +113,117 @@ class TTSService {
         // Enhanced private key formatting with multiple strategies
         let formattedPrivateKey = privateKey;
         
-        console.log('🔍 Original private key analysis:');
+        console.log('🔍 ENHANCED PRIVATE KEY DIAGNOSTICS:');
         console.log(`   - Length: ${privateKey.length}`);
-        console.log(`   - Contains \\n: ${privateKey.includes('\\n')}`);
-        console.log(`   - Contains actual newlines: ${privateKey.includes('\n')}`);
+        console.log(`   - First 100 chars: "${privateKey.substring(0, 100)}"`);
+        console.log(`   - Last 100 chars: "${privateKey.substring(privateKey.length - 100)}"`);
+        console.log(`   - Contains \\r\\n: ${privateKey.includes('\r\n')}`);
+        console.log(`   - Contains \\n: ${privateKey.includes('\n')}`);
+        console.log(`   - Contains \\\\n: ${privateKey.includes('\\n')}`);
+        console.log(`   - Contains \\r: ${privateKey.includes('\r')}`);
         console.log(`   - Has BEGIN marker: ${privateKey.includes('-----BEGIN PRIVATE KEY-----')}`);
         console.log(`   - Has END marker: ${privateKey.includes('-----END PRIVATE KEY-----')}`);
+        console.log(`   - Has % chars (URL encoded): ${privateKey.includes('%')}`);
+        console.log(`   - Has JSON escaping: ${privateKey.includes('\\"') || privateKey.includes('\\\\')}`);
         
-        // Strategy 1: Convert escaped newlines to actual newlines
-        if (privateKey.includes('\\n')) {
-          formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
-          console.log('🔧 Applied Strategy 1: Converted escaped \\n to actual newlines');
+        // Try multiple strategies in order
+        const strategies = [];
+        
+        // Strategy 1: Direct use (baseline)
+        strategies.push({
+          name: 'Direct use',
+          key: privateKey
+        });
+        
+        // Strategy 2: URL decode first
+        if (privateKey.includes('%')) {
+          try {
+            const urlDecoded = decodeURIComponent(privateKey);
+            strategies.push({
+              name: 'URL decoded',
+              key: urlDecoded
+            });
+          } catch (e) {
+            console.log('   ⚠️  URL decode failed:', e.message);
+          }
         }
         
-        // Strategy 2: If no newlines at all, try to reconstruct PEM format
-        else if (!privateKey.includes('\n') && privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-          console.log('🔧 Applying Strategy 2: Reconstructing PEM format');
-          
-          // Remove any existing markers
+        // Strategy 3: JSON unescape
+        if (privateKey.includes('\\"') || privateKey.includes('\\\\')) {
+          try {
+            const jsonUnescaped = JSON.parse(`"${privateKey}"`);
+            strategies.push({
+              name: 'JSON unescaped',
+              key: jsonUnescaped
+            });
+          } catch (e) {
+            console.log('   ⚠️  JSON unescape failed:', e.message);
+          }
+        }
+        
+        // Strategy 4: Replace escaped newlines
+        if (privateKey.includes('\\n')) {
+          const newlineFixed = privateKey.replace(/\\n/g, '\n');
+          strategies.push({
+            name: 'Escaped newlines converted',
+            key: newlineFixed
+          });
+        }
+        
+        // Strategy 5: Manual PEM reconstruction
+        if (!privateKey.includes('\n') && privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
           let keyContent = privateKey
             .replace('-----BEGIN PRIVATE KEY-----', '')
             .replace('-----END PRIVATE KEY-----', '')
             .trim();
           
-          // Split into 64-character lines (standard PEM format)
+          // Split into 64-character lines
           const lines = [];
           for (let i = 0; i < keyContent.length; i += 64) {
             lines.push(keyContent.substr(i, 64));
           }
           
-          formattedPrivateKey = '-----BEGIN PRIVATE KEY-----\n' + 
+          const reconstructed = '-----BEGIN PRIVATE KEY-----\n' + 
                               lines.join('\n') + 
                               '\n-----END PRIVATE KEY-----';
           
-          console.log('🔧 Reconstructed PEM with proper line breaks');
+          strategies.push({
+            name: 'PEM reconstructed',
+            key: reconstructed
+          });
         }
         
-        // Strategy 3: Ensure proper PEM structure
+        // Test each strategy and pick the best one
+        console.log(`🧪 Testing ${strategies.length} formatting strategies:`);
+        
+        let bestStrategy = null;
+        for (const strategy of strategies) {
+          const lines = strategy.key.split('\n');
+          const hasProperHeaders = strategy.key.includes('-----BEGIN PRIVATE KEY-----') && 
+                                 strategy.key.includes('-----END PRIVATE KEY-----');
+          const hasReasonableLineCount = lines.length >= 3 && lines.length <= 50;
+          const firstLineIsHeader = lines[0].trim() === '-----BEGIN PRIVATE KEY-----';
+          const lastLineIsFooter = lines[lines.length - 1].trim() === '-----END PRIVATE KEY-----';
+          
+          const score = [hasProperHeaders, hasReasonableLineCount, firstLineIsHeader, lastLineIsFooter]
+            .reduce((sum, check) => sum + (check ? 1 : 0), 0);
+          
+          console.log(`   - ${strategy.name}: Score ${score}/4, Lines: ${lines.length}`);
+          
+          if (!bestStrategy || score > bestStrategy.score) {
+            bestStrategy = { ...strategy, score };
+          }
+        }
+        
+        if (bestStrategy) {
+          formattedPrivateKey = bestStrategy.key;
+          console.log(`🏆 Using best strategy: ${bestStrategy.name} (Score: ${bestStrategy.score}/4)`);
+        } else {
+          console.log('❌ No suitable formatting strategy found');
+          formattedPrivateKey = privateKey; // fallback to original
+        }
+        
+        // Final cleanup to ensure proper PEM structure
         if (!formattedPrivateKey.startsWith('-----BEGIN PRIVATE KEY-----\n')) {
           formattedPrivateKey = formattedPrivateKey.replace(
             '-----BEGIN PRIVATE KEY-----', 
@@ -171,6 +245,34 @@ class TTSService {
         console.log(`   - Line count: ${formattedPrivateKey.split('\n').length}`);
         console.log(`   - First line: ${formattedPrivateKey.split('\n')[0]}`);
         console.log(`   - Last line: ${formattedPrivateKey.split('\n').slice(-1)[0]}`);
+        
+        // Enhanced validation - check the base64 content
+        try {
+          const keyContent = formattedPrivateKey
+            .replace('-----BEGIN PRIVATE KEY-----', '')
+            .replace('-----END PRIVATE KEY-----', '')
+            .replace(/\s/g, '');
+          
+          console.log(`   - Base64 content length: ${keyContent.length}`);
+          console.log(`   - Base64 sample: ${keyContent.substring(0, 50)}...`);
+          
+          // Try to decode the base64 to check if it's valid
+          const decoded = Buffer.from(keyContent, 'base64');
+          console.log(`   - Decoded bytes: ${decoded.length}`);
+          console.log(`   - First 10 bytes: ${Array.from(decoded.slice(0, 10)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')}`);
+          
+          // Check if it looks like a valid private key (ASN.1 structure)
+          const looksValid = decoded[0] === 0x30 && decoded.length > 100;
+          console.log(`   - Appears valid ASN.1: ${looksValid}`);
+          
+          if (!looksValid) {
+            console.error('⚠️  Private key content may be corrupted or incorrectly encoded');
+          }
+          
+        } catch (base64Error) {
+          console.error('❌ Base64 validation failed:', base64Error.message);
+          console.error('   This suggests the private key is severely malformed');
+        }
         
         // Validate the key looks correct
         const lines = formattedPrivateKey.split('\n');

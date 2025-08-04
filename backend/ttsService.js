@@ -110,45 +110,111 @@ class TTSService {
       if (projectId && clientEmail && privateKey && privateKeyId) {
         console.log('🔑 Using individual environment variables for Google Cloud TTS');
         
-        // Handle private key formatting - convert \n to actual newlines if needed
-        // Check if the private key contains escaped newlines or actual newlines
+        // Enhanced private key formatting with multiple strategies
         let formattedPrivateKey = privateKey;
+        
+        console.log('🔍 Original private key analysis:');
+        console.log(`   - Length: ${privateKey.length}`);
+        console.log(`   - Contains \\n: ${privateKey.includes('\\n')}`);
+        console.log(`   - Contains actual newlines: ${privateKey.includes('\n')}`);
+        console.log(`   - Has BEGIN marker: ${privateKey.includes('-----BEGIN PRIVATE KEY-----')}`);
+        console.log(`   - Has END marker: ${privateKey.includes('-----END PRIVATE KEY-----')}`);
+        
+        // Strategy 1: Convert escaped newlines to actual newlines
         if (privateKey.includes('\\n')) {
-          // If it contains escaped newlines, convert them
           formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
-          console.log('🔧 Converted escaped newlines in private key');
-        } else if (!privateKey.includes('\n')) {
-          // If it doesn't contain any newlines at all, it might be base64 or malformed
-          console.log('⚠️  Private key appears to be missing newlines - trying to add them');
-          // Try to insert newlines in standard PEM format
-          if (privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
-            formattedPrivateKey = privateKey
-              .replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n')
-              .replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----');
-          }
+          console.log('🔧 Applied Strategy 1: Converted escaped \\n to actual newlines');
         }
         
-        console.log('🔍 Private key format check:');
-        console.log(`   - Length: ${formattedPrivateKey.length}`);
-        console.log(`   - Has BEGIN marker: ${formattedPrivateKey.includes('-----BEGIN PRIVATE KEY-----')}`);
-        console.log(`   - Has END marker: ${formattedPrivateKey.includes('-----END PRIVATE KEY-----')}`);
-        console.log(`   - Has newlines: ${formattedPrivateKey.includes('\n')}`);
+        // Strategy 2: If no newlines at all, try to reconstruct PEM format
+        else if (!privateKey.includes('\n') && privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+          console.log('🔧 Applying Strategy 2: Reconstructing PEM format');
+          
+          // Remove any existing markers
+          let keyContent = privateKey
+            .replace('-----BEGIN PRIVATE KEY-----', '')
+            .replace('-----END PRIVATE KEY-----', '')
+            .trim();
+          
+          // Split into 64-character lines (standard PEM format)
+          const lines = [];
+          for (let i = 0; i < keyContent.length; i += 64) {
+            lines.push(keyContent.substr(i, 64));
+          }
+          
+          formattedPrivateKey = '-----BEGIN PRIVATE KEY-----\n' + 
+                              lines.join('\n') + 
+                              '\n-----END PRIVATE KEY-----';
+          
+          console.log('🔧 Reconstructed PEM with proper line breaks');
+        }
         
-        const credentials = {
-          type: "service_account",
-          project_id: projectId,
-          private_key_id: privateKeyId,
-          private_key: formattedPrivateKey,
-          client_email: clientEmail,
-          client_id: "103020565003422938812",
-          auth_uri: "https://accounts.google.com/o/oauth2/auth",
-          token_uri: "https://oauth2.googleapis.com/token",
-          auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-          client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(clientEmail)}`,
-          universe_domain: "googleapis.com"
-        };
-        clientOptions.credentials = credentials;
-        console.log('✅ Google Cloud credentials assembled from individual variables');
+        // Strategy 3: Ensure proper PEM structure
+        if (!formattedPrivateKey.startsWith('-----BEGIN PRIVATE KEY-----\n')) {
+          formattedPrivateKey = formattedPrivateKey.replace(
+            '-----BEGIN PRIVATE KEY-----', 
+            '-----BEGIN PRIVATE KEY-----\n'
+          );
+        }
+        
+        if (!formattedPrivateKey.endsWith('\n-----END PRIVATE KEY-----')) {
+          formattedPrivateKey = formattedPrivateKey.replace(
+            '-----END PRIVATE KEY-----', 
+            '\n-----END PRIVATE KEY-----'
+          );
+        }
+        
+        console.log('🔍 Final private key format check:');
+        console.log(`   - Length: ${formattedPrivateKey.length}`);
+        console.log(`   - Has proper BEGIN: ${formattedPrivateKey.includes('-----BEGIN PRIVATE KEY-----\n')}`);
+        console.log(`   - Has proper END: ${formattedPrivateKey.includes('\n-----END PRIVATE KEY-----')}`);
+        console.log(`   - Line count: ${formattedPrivateKey.split('\n').length}`);
+        console.log(`   - First line: ${formattedPrivateKey.split('\n')[0]}`);
+        console.log(`   - Last line: ${formattedPrivateKey.split('\n').slice(-1)[0]}`);
+        
+        // Validate the key looks correct
+        const lines = formattedPrivateKey.split('\n');
+        if (lines.length < 3) {
+          console.error('❌ Private key appears malformed - too few lines');
+          throw new Error('Private key format validation failed');
+        }
+        
+        try {
+          const credentials = {
+            type: "service_account",
+            project_id: projectId,
+            private_key_id: privateKeyId,
+            private_key: formattedPrivateKey,
+            client_email: clientEmail,
+            client_id: "103020565003422938812",
+            auth_uri: "https://accounts.google.com/o/oauth2/auth",
+            token_uri: "https://oauth2.googleapis.com/token",
+            auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+            client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(clientEmail)}`,
+            universe_domain: "googleapis.com"
+          };
+          
+          // Validate credential structure
+          if (!credentials.private_key.includes('-----BEGIN PRIVATE KEY-----')) {
+            throw new Error('Private key missing BEGIN marker');
+          }
+          if (!credentials.private_key.includes('-----END PRIVATE KEY-----')) {
+            throw new Error('Private key missing END marker');
+          }
+          if (!credentials.client_email.includes('@')) {
+            throw new Error('Client email appears invalid');
+          }
+          
+          clientOptions.credentials = credentials;
+          console.log('✅ Google Cloud credentials assembled and validated');
+          console.log(`   - Project: ${projectId}`);
+          console.log(`   - Email: ${clientEmail}`);
+          console.log(`   - Key ID: ${privateKeyId?.substring(0, 8)}...`);
+          
+        } catch (credError) {
+          console.error('❌ Credential validation failed:', credError.message);
+          throw new Error(`Invalid credentials: ${credError.message}`);
+        }
       }
       // Priority 2: JSON credentials (fallback)
       else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
@@ -174,10 +240,56 @@ class TTSService {
       }
       
       // Initialize the Google Cloud TTS client with credentials
+      console.log('🔌 Initializing Google Cloud TTS client...');
       this.client = new textToSpeech.TextToSpeechClient(clientOptions);
       
-      // Test connection with a simple list voices call
-      await this.client.listVoices({ languageCode: 'en-US' });
+      // Test connection with a simple list voices call - this will fail fast if auth is wrong
+      console.log('🧪 Testing Google Cloud TTS connection...');
+      try {
+        const [voices] = await this.client.listVoices({ languageCode: 'en-US' });
+        console.log(`✅ Connection successful! Found ${voices.length} voices available`);
+        
+        // Check if Studio voices are available
+        const studioVoices = voices.filter(voice => voice.name.includes('Studio'));
+        const neural2Voices = voices.filter(voice => voice.name.includes('Neural2'));
+        
+        console.log(`🎭 Studio voices available: ${studioVoices.length}`);
+        console.log(`🧠 Neural2 voices available: ${neural2Voices.length}`);
+        
+        if (studioVoices.length === 0) {
+          console.log('⚠️  No Studio voices found - may need billing enabled');
+        }
+        
+      } catch (testError) {
+        console.error('❌ Google Cloud TTS connection test failed:', testError.message);
+        console.log('🔍 Error details:');
+        console.log(`   - Code: ${testError.code}`);
+        console.log(`   - Status: ${testError.status}`);
+        console.log(`   - Details: ${testError.details}`);
+        
+        // Specific error handling
+        if (testError.message.includes('DECODER routines')) {
+          console.error('🔑 PRIVATE KEY FORMAT ERROR: The private key is malformed');
+          console.error('💡 Solutions:');
+          console.error('   1. Check that private key includes proper PEM headers');
+          console.error('   2. Ensure newlines are properly escaped in environment variable');
+          console.error('   3. Verify the key was copied completely without truncation');
+        } else if (testError.message.includes('UNAUTHENTICATED')) {
+          console.error('🚫 AUTHENTICATION ERROR: Credentials are invalid');
+          console.error('💡 Solutions:');
+          console.error('   1. Verify the service account key is correct');
+          console.error('   2. Check that the service account has TTS permissions');
+          console.error('   3. Ensure project ID matches the service account project');
+        } else if (testError.message.includes('PERMISSION_DENIED')) {
+          console.error('🔒 PERMISSION ERROR: Service account lacks TTS API access');
+          console.error('💡 Solutions:');
+          console.error('   1. Enable Text-to-Speech API in Google Cloud Console');
+          console.error('   2. Grant Cloud Text-to-Speech User role to service account');
+          console.error('   3. Verify billing is enabled for the project');
+        }
+        
+        throw testError;
+      }
       
       // Ensure audio cache directory exists
       await fs.mkdir(this.audioDir, { recursive: true });

@@ -26,20 +26,7 @@ class TTSService {
     try {
       let clientOptions = {};
       
-      // Enhanced debugging for Azure environment
-      console.log('🔍 Debugging Google Cloud credentials:');
-      console.log('   GOOGLE_CLOUD_PROJECT_ID:', !!process.env.GOOGLE_CLOUD_PROJECT_ID);
-      console.log('   GOOGLE_CLOUD_CLIENT_EMAIL:', !!process.env.GOOGLE_CLOUD_CLIENT_EMAIL);
-      console.log('   GOOGLE_CLOUD_PRIVATE_KEY:', !!process.env.GOOGLE_CLOUD_PRIVATE_KEY);
-      console.log('   GOOGLE_CLOUD_PRIVATE_KEY_ID:', !!process.env.GOOGLE_CLOUD_PRIVATE_KEY_ID);
-      console.log('   GOOGLE_APPLICATION_CREDENTIALS_JSON exists:', !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-      console.log('   GOOGLE_APPLICATION_CREDENTIALS exists:', !!process.env.GOOGLE_APPLICATION_CREDENTIALS);
-      if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-        console.log('   JSON credentials length:', process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON.length);
-        console.log('   JSON starts with:', process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON.substring(0, 50) + '...');
-      }
-      
-      // Method 1: Individual environment variables (proper approach for Azure)
+      // Priority 1: Individual environment variables (Azure approach)
       const projectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
       const clientEmail = process.env.GOOGLE_CLOUD_CLIENT_EMAIL;
       const privateKey = process.env.GOOGLE_CLOUD_PRIVATE_KEY;
@@ -47,59 +34,41 @@ class TTSService {
       
       if (projectId && clientEmail && privateKey && privateKeyId) {
         console.log('🔑 Using individual environment variables for Google Cloud TTS');
-        console.log('   Project ID:', projectId);
-        console.log('   Client Email:', clientEmail);
-        console.log('   Private Key ID:', privateKeyId);
-        console.log('   Private Key length:', privateKey.length);
-        
-        try {
-          const credentials = {
-            type: "service_account",
-            project_id: projectId,
-            private_key_id: privateKeyId,
-            private_key: privateKey,
-            client_email: clientEmail,
-            client_id: "103020565003422938812",
-            auth_uri: "https://accounts.google.com/o/oauth2/auth",
-            token_uri: "https://oauth2.googleapis.com/token",
-            auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-            client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(clientEmail)}`,
-            universe_domain: "googleapis.com"
-          };
-          
-          clientOptions.credentials = credentials;
-          console.log('✅ Google Cloud credentials assembled from individual variables');
-        } catch (error) {
-          console.error('❌ Failed to assemble credentials from individual variables:', error.message);
-          throw error;
-        }
+        const credentials = {
+          type: "service_account",
+          project_id: projectId,
+          private_key_id: privateKeyId,
+          private_key: privateKey,
+          client_email: clientEmail,
+          client_id: "103020565003422938812",
+          auth_uri: "https://accounts.google.com/o/oauth2/auth",
+          token_uri: "https://oauth2.googleapis.com/token",
+          auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
+          client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(clientEmail)}`,
+          universe_domain: "googleapis.com"
+        };
+        clientOptions.credentials = credentials;
+        console.log('✅ Google Cloud credentials assembled from individual variables');
       }
-      // Method 2: Azure-style JSON credentials (fallback)
+      // Priority 2: JSON credentials (fallback)
       else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-        console.log('🔑 Using Azure environment JSON credentials for Google Cloud TTS');
+        console.log('🔑 Using JSON credentials for Google Cloud TTS');
         try {
           const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
           clientOptions.credentials = credentials;
-          console.log('✅ Google Cloud credentials parsed successfully');
-          console.log('   Project ID:', credentials.project_id);
-          console.log('   Client Email:', credentials.client_email);
-        } catch (parseError) {
-          console.error('❌ Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:', parseError.message);
-          console.error('   JSON content preview:', process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON.substring(0, 200));
-          throw parseError;
+          console.log('✅ Google Cloud credentials loaded from JSON');
+        } catch (error) {
+          console.error('❌ Failed to parse JSON credentials:', error.message);
+          throw error;
         }
       }
-      // Method 3: Standard credentials file path (local development)
+      // Priority 3: File-based credentials (local development)
       else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        console.log('🔑 Using GOOGLE_APPLICATION_CREDENTIALS file path');
-      }
-      // No credentials configured
-      else {
+        console.log('🔑 Using file-based credentials for Google Cloud TTS');
+        clientOptions.keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      } else {
         console.log('⚠️  No Google Cloud credentials found - Studio voices unavailable');
-        console.log('💡 To enable Studio voices (choose one method):');
-        console.log('   1. Azure: Set individual GOOGLE_CLOUD_* environment variables (recommended)');
-        console.log('   2. Azure: Set GOOGLE_APPLICATION_CREDENTIALS_JSON environment variable');
-        console.log('   3. Local: Set GOOGLE_APPLICATION_CREDENTIALS file path');
+        console.log('💡 To enable Studio voices, set Google Cloud environment variables');
         this.client = null;
         return;
       }

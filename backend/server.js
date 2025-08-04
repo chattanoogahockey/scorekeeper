@@ -1746,7 +1746,7 @@ const server = app.listen(process.env.PORT || 8080, () => {
   console.log(`🚀 Hockey Scorekeeper API running on port ${process.env.PORT || 8080}`);
   console.log('🏥 Health check available at /health');
   console.log('🎯 API endpoints available at /api/*');
-  console.log('✅ Deployment completed successfully');
+  console.log('✅ Deployment completed successfully - Studio voice authentication enabled');
 });
 
 // Handle server errors

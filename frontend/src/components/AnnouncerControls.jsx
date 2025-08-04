@@ -27,62 +27,76 @@ export default function AnnouncerControls({ gameId }) {
 
   /**
    * Use browser text-to-speech to speak the announcement text
+   * Enhanced for mobile compatibility, especially iOS
    */
   const speakText = (text) => {
     if ('speechSynthesis' in window) {
       // Cancel any ongoing speech
       speechSynthesis.cancel();
       
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.9; // Slightly slower for clarity
-      utterance.pitch = 1.0;
-      utterance.volume = 0.8;
-      
-      // Estimate duration (rough calculation: ~150 words per minute)
-      const wordCount = text.split(' ').length;
-      const estimatedDuration = (wordCount / 150) * 60; // seconds
-      
-      utterance.onstart = () => {
-        setMessage('🔊 Playing AI announcement...');
-        setAudioProgress({ current: 0, duration: estimatedDuration, isPlaying: true });
+      // Wait a moment for cancel to take effect on iOS
+      setTimeout(() => {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9; // Slightly slower for clarity
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0; // Full volume for mobile
         
-        // Update progress simulation for TTS (since we can't get real progress)
-        const progressInterval = setInterval(() => {
-          setAudioProgress(prev => {
-            if (prev.current >= prev.duration) {
-              clearInterval(progressInterval);
-              return prev;
-            }
-            return { ...prev, current: prev.current + 0.1 };
-          });
-        }, 100);
+        // Use a voice that works well on iOS
+        const voices = speechSynthesis.getVoices();
+        const preferredVoices = voices.filter(voice => 
+          voice.lang.startsWith('en') && 
+          (voice.name.includes('Samantha') || voice.name.includes('Daniel') || voice.default)
+        );
+        if (preferredVoices.length > 0) {
+          utterance.voice = preferredVoices[0];
+        }
         
-        // Store interval ID to clear it later
-        utterance.progressInterval = progressInterval;
-      };
-      
-      utterance.onend = () => {
-        setMessage('');
-        setAudioProgress({ current: 0, duration: 0, isPlaying: false });
-        if (utterance.progressInterval) {
-          clearInterval(utterance.progressInterval);
-        }
-      };
-      
-      utterance.onerror = (event) => {
-        console.error('Speech synthesis error:', event);
-        setError('Text-to-speech failed');
-        setMessage('');
-        setAudioProgress({ current: 0, duration: 0, isPlaying: false });
-        if (utterance.progressInterval) {
-          clearInterval(utterance.progressInterval);
-        }
-      };
-      
-      speechSynthesis.speak(utterance);
+        // Estimate duration (rough calculation: ~150 words per minute)
+        const wordCount = text.split(' ').length;
+        const estimatedDuration = (wordCount / 150) * 60; // seconds
+        
+        utterance.onstart = () => {
+          setMessage('🔊 Playing announcement...');
+          setAudioProgress({ current: 0, duration: estimatedDuration, isPlaying: true });
+          
+          // Update progress simulation for TTS (since we can't get real progress)
+          const progressInterval = setInterval(() => {
+            setAudioProgress(prev => {
+              if (prev.current >= prev.duration) {
+                clearInterval(progressInterval);
+                return prev;
+              }
+              return { ...prev, current: prev.current + 0.1 };
+            });
+          }, 100);
+          
+          // Store interval ID to clear it later
+          utterance.progressInterval = progressInterval;
+        };
+        
+        utterance.onend = () => {
+          setMessage('');
+          setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+          if (utterance.progressInterval) {
+            clearInterval(utterance.progressInterval);
+          }
+        };
+        
+        utterance.onerror = (event) => {
+          console.error('Speech synthesis error:', event);
+          setError('Text-to-speech failed');
+          setMessage('');
+          setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+          if (utterance.progressInterval) {
+            clearInterval(utterance.progressInterval);
+          }
+        };
+        
+        speechSynthesis.speak(utterance);
+      }, 100);
     } else {
       setError('Text-to-speech not supported in this browser');
-      setTimeout(() => setMessage(''), 8000); // Just show text
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -110,45 +124,66 @@ export default function AnnouncerControls({ gameId }) {
       if (response.data.success) {
         const { announcement, scoreless } = response.data;
         
-        if (scoreless) {
-          setMessage(`Scoreless Commentary: "${announcement.text}"`);
-        } else {
-          setMessage(`Goal Announcement: "${announcement.text}"`);
-        }
+        // Don't show the text message, just play the audio
+        // Only show status when actually playing
         
         // Play the generated audio if available, otherwise use browser TTS
         if (announcement.audioPath) {
-          const audioUrl = import.meta.env.DEV 
-            ? `/api/audio/${announcement.audioPath}` 
-            : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
-          
-          const audio = new Audio(audioUrl);
-          
-          audio.onloadedmetadata = () => {
-            setMessage(scoreless ? 'Playing scoreless commentary...' : 'Playing goal announcement...');
-            setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
-          };
-          
-          audio.ontimeupdate = () => {
-            setAudioProgress(prev => ({
-              ...prev,
-              current: audio.currentTime
-            }));
-          };
-          
-          audio.onended = () => {
-            setMessage('');
-            setAudioProgress({ current: 0, duration: 0, isPlaying: false });
-          };
-          
-          audio.onerror = () => {
-            setError('Failed to play announcement audio, falling back to text-to-speech');
-            setAudioProgress({ current: 0, duration: 0, isPlaying: false });
-            // Fallback to browser TTS
+          try {
+            const audioUrl = import.meta.env.DEV 
+              ? `/api/audio/${announcement.audioPath}` 
+              : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
+            
+            const audio = new Audio(audioUrl);
+            
+            // Pre-load the audio
+            audio.preload = 'auto';
+            
+            // Set up event handlers before attempting to play
+            const setupAudioHandlers = () => {
+              audio.onloadedmetadata = () => {
+                setMessage('🔊 Playing announcement...');
+                setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
+              };
+              
+              audio.ontimeupdate = () => {
+                setAudioProgress(prev => ({
+                  ...prev,
+                  current: audio.currentTime
+                }));
+              };
+              
+              audio.onended = () => {
+                setMessage('');
+                setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+              };
+              
+              audio.onerror = (e) => {
+                console.error('Audio playback error:', e);
+                setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+                // Immediately fallback to browser TTS
+                speakText(announcement.text);
+              };
+            };
+            
+            setupAudioHandlers();
+            
+            // Try to play audio - this should work on mobile if triggered by user interaction
+            try {
+              const playPromise = audio.play();
+              if (playPromise !== undefined) {
+                await playPromise;
+              }
+            } catch (playError) {
+              console.log('Audio autoplay blocked, falling back to TTS:', playError);
+              // Fallback to browser TTS if audio play fails
+              speakText(announcement.text);
+            }
+          } catch (audioError) {
+            console.error('Audio creation error:', audioError);
+            // Fallback to browser TTS if audio creation fails
             speakText(announcement.text);
-          };
-          
-          await audio.play();
+          }
         } else {
           // No server audio available, use browser text-to-speech
           speakText(announcement.text);
@@ -192,41 +227,67 @@ export default function AnnouncerControls({ gameId }) {
       
       if (response.data.success) {
         const { announcement } = response.data;
-        setMessage(`Penalty Announcement: "${announcement.text}"`);
+        
+        // Don't show the text message, just play the audio
+        // Only show status when actually playing
         
         // Play the generated audio if available, otherwise use browser TTS
         if (announcement.audioPath) {
-          const audioUrl = import.meta.env.DEV 
-            ? `/api/audio/${announcement.audioPath}` 
-            : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
-          
-          const audio = new Audio(audioUrl);
-          
-          audio.onloadedmetadata = () => {
-            setMessage('Playing penalty announcement...');
-            setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
-          };
-          
-          audio.ontimeupdate = () => {
-            setAudioProgress(prev => ({
-              ...prev,
-              current: audio.currentTime
-            }));
-          };
-          
-          audio.onended = () => {
-            setMessage('');
-            setAudioProgress({ current: 0, duration: 0, isPlaying: false });
-          };
-          
-          audio.onerror = () => {
-            setError('Failed to play announcement audio, falling back to text-to-speech');
-            setAudioProgress({ current: 0, duration: 0, isPlaying: false });
-            // Fallback to browser TTS
+          try {
+            const audioUrl = import.meta.env.DEV 
+              ? `/api/audio/${announcement.audioPath}` 
+              : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
+            
+            const audio = new Audio(audioUrl);
+            
+            // Pre-load the audio
+            audio.preload = 'auto';
+            
+            // Set up event handlers before attempting to play
+            const setupAudioHandlers = () => {
+              audio.onloadedmetadata = () => {
+                setMessage('🔊 Playing penalty announcement...');
+                setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
+              };
+              
+              audio.ontimeupdate = () => {
+                setAudioProgress(prev => ({
+                  ...prev,
+                  current: audio.currentTime
+                }));
+              };
+              
+              audio.onended = () => {
+                setMessage('');
+                setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+              };
+              
+              audio.onerror = (e) => {
+                console.error('Audio playback error:', e);
+                setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+                // Immediately fallback to browser TTS
+                speakText(announcement.text);
+              };
+            };
+            
+            setupAudioHandlers();
+            
+            // Try to play audio - this should work on mobile if triggered by user interaction
+            try {
+              const playPromise = audio.play();
+              if (playPromise !== undefined) {
+                await playPromise;
+              }
+            } catch (playError) {
+              console.log('Audio autoplay blocked, falling back to TTS:', playError);
+              // Fallback to browser TTS if audio play fails
+              speakText(announcement.text);
+            }
+          } catch (audioError) {
+            console.error('Audio creation error:', audioError);
+            // Fallback to browser TTS if audio creation fails
             speakText(announcement.text);
-          };
-          
-          await audio.play();
+          }
         } else {
           // No server audio available, use browser text-to-speech
           speakText(announcement.text);

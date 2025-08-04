@@ -105,7 +105,43 @@ class TTSService {
       if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
         console.log('🔑 Using JSON credentials for Google Cloud TTS');
         try {
-          const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+          const rawJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
+          console.log('🔍 JSON Credential Diagnostics:');
+          console.log(`   - Length: ${rawJson.length}`);
+          console.log(`   - First 50 chars: "${rawJson.substring(0, 50)}"`);
+          console.log(`   - Last 50 chars: "${rawJson.substring(rawJson.length - 50)}"`);
+          console.log(`   - Starts with {: ${rawJson.startsWith('{')}`);
+          console.log(`   - Ends with }: ${rawJson.endsWith('}')}`);
+          
+          // Try to clean up the JSON string
+          let cleanJson = rawJson.trim();
+          
+          // Remove any potential BOM or invisible characters
+          cleanJson = cleanJson.replace(/^\uFEFF/, '');
+          
+          // If it doesn't start with {, try to find where JSON starts
+          if (!cleanJson.startsWith('{')) {
+            const jsonStart = cleanJson.indexOf('{');
+            if (jsonStart > 0) {
+              console.log(`   - Found JSON start at position: ${jsonStart}`);
+              cleanJson = cleanJson.substring(jsonStart);
+            }
+          }
+          
+          // If it doesn't end with }, try to find where JSON ends
+          if (!cleanJson.endsWith('}')) {
+            const jsonEnd = cleanJson.lastIndexOf('}');
+            if (jsonEnd > 0) {
+              console.log(`   - Found JSON end at position: ${jsonEnd}`);
+              cleanJson = cleanJson.substring(0, jsonEnd + 1);
+            }
+          }
+          
+          console.log(`   - Cleaned JSON length: ${cleanJson.length}`);
+          console.log(`   - Cleaned starts with {: ${cleanJson.startsWith('{')}`);
+          console.log(`   - Cleaned ends with }: ${cleanJson.endsWith('}')}`);
+          
+          const credentials = JSON.parse(cleanJson);
           clientOptions.credentials = credentials;
           console.log('✅ Google Cloud credentials loaded from JSON');
           console.log(`   - Project: ${credentials.project_id}`);
@@ -113,6 +149,8 @@ class TTSService {
           console.log(`   - Private Key Length: ${credentials.private_key?.length || 0} characters`);
         } catch (error) {
           console.error('❌ Failed to parse JSON credentials:', error.message);
+          console.error('Raw JSON content for debugging:');
+          console.error(`"${process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON}"`);
           throw error;
         }
       }

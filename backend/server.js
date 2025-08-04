@@ -181,8 +181,17 @@ app.get('/api/games/submitted', async (req, res) => {
             finalScore: submission.finalScore,
             totalGoals: submission.totalGoals,
             totalPenalties: submission.totalPenalties,
-            gameSummary: submission.gameSummary
+            gameSummary: submission.gameSummary,
+            submissionId: submission.id // Add submission ID for admin panel operations
           });
+        } else {
+          // Game was deleted but submission record still exists - clean it up
+          console.log(`🗑️ Cleaning up orphaned submission record for deleted game ${submission.gameId}`);
+          try {
+            await gamesContainer.item(submission.id, submission.gameId).delete();
+          } catch (cleanupError) {
+            console.error(`Error cleaning up submission ${submission.id}:`, cleanupError);
+          }
         }
       } catch (error) {
         console.error(`Error fetching game ${submission.gameId}:`, error);
@@ -956,6 +965,20 @@ app.post('/api/games/submit', async (req, res) => {
     const penaltiesContainer = getPenaltiesContainer();
     const gamesContainer = getGamesContainer();
     
+    // Check if this game has already been submitted
+    const existingSubmissionQuery = {
+      query: "SELECT * FROM c WHERE c.eventType = 'game-submission' AND c.gameId = @gameId",
+      parameters: [{ name: '@gameId', value: gameId }]
+    };
+    const { resources: existingSubmissions } = await gamesContainer.items.query(existingSubmissionQuery).fetchAll();
+    
+    if (existingSubmissions.length > 0) {
+      return res.status(400).json({
+        error: 'Game has already been submitted. Use the admin panel to reset the game if you need to re-score it.',
+        alreadySubmitted: true
+      });
+    }
+    
     // Update all goals for this game to mark as submitted
     const goalsQuery = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId',
@@ -990,9 +1013,9 @@ app.post('/api/games/submit', async (req, res) => {
       await penaltiesContainer.item(penalty.id, penalty.gameId).replace(updatedPenalty);
     }
     
-    // Create game summary record
+    // Create game summary record with consistent ID format
     const gameSubmissionRecord = {
-      id: `${gameId}-submission-${Date.now()}`,
+      id: `${gameId}-submission`, // Use consistent ID without timestamp
       gameId,
       eventType: 'game-submission',
       submittedAt: new Date().toISOString(),

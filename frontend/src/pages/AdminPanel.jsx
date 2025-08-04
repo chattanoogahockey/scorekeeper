@@ -7,9 +7,12 @@ export default function AdminPanel() {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [voices, setVoices] = useState({ currentVoice: '', availableVoices: [] });
+  const [voiceLoading, setVoiceLoading] = useState(false);
 
   useEffect(() => {
     fetchGames();
+    fetchVoices();
   }, []);
 
   const fetchGames = async () => {
@@ -22,6 +25,15 @@ export default function AdminPanel() {
     } catch (error) {
       console.error('Error fetching submitted games:', error);
       setLoading(false);
+    }
+  };
+
+  const fetchVoices = async () => {
+    try {
+      const response = await axios.get('/api/admin/voices');
+      setVoices(response.data);
+    } catch (error) {
+      console.error('Error fetching voices:', error);
     }
   };
 
@@ -57,6 +69,37 @@ export default function AdminPanel() {
     navigate('/');
   };
 
+  const handleVoiceChange = async (voiceId) => {
+    setVoiceLoading(true);
+    try {
+      const response = await axios.post('/api/admin/voices/select', { voiceId });
+      if (response.data.success) {
+        setMessage(`Announcer voice changed to ${voiceId}`);
+        fetchVoices(); // Refresh voice info
+      }
+    } catch (error) {
+      console.error('Error changing voice:', error);
+      setMessage(`Error changing voice: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setVoiceLoading(false);
+    }
+  };
+
+  const handleTestVoice = async (voiceId) => {
+    try {
+      const response = await axios.post('/api/admin/voices/test', { voiceId });
+      if (response.data.success) {
+        // Play the test audio
+        const audio = new Audio(response.data.audioUrl);
+        audio.play();
+        setMessage(`Playing test audio for ${voiceId}`);
+      }
+    } catch (error) {
+      console.error('Error testing voice:', error);
+      setMessage(`Error testing voice: ${error.response?.data?.error || error.message}`);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
@@ -74,6 +117,73 @@ export default function AdminPanel() {
           {message && (
             <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">
               {message}
+            </div>
+          )}
+        </div>
+
+        {/* Announcer Voice Selection */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-2xl font-bold mb-4">Announcer Voice Settings</h2>
+          
+          {voices.availableVoices.length > 0 && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-gray-600 mb-2">
+                  Current Voice: <span className="font-semibold">{voices.currentVoice}</span>
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {voices.availableVoices.map((voice) => (
+                  <div 
+                    key={voice.id} 
+                    className={`border-2 rounded-lg p-4 transition-all ${
+                      voice.id === voices.currentVoice 
+                        ? 'border-blue-500 bg-blue-50' 
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <div className="flex flex-col space-y-2">
+                      <h3 className="font-semibold text-gray-800">{voice.name}</h3>
+                      <p className="text-sm text-gray-600">{voice.description}</p>
+                      <div className="flex items-center space-x-2 text-xs">
+                        <span className={`px-2 py-1 rounded-full ${
+                          voice.type === 'Studio' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-blue-100 text-blue-800'
+                        }`}>
+                          {voice.type}
+                        </span>
+                        <span className={`px-2 py-1 rounded-full ${
+                          voice.gender === 'FEMALE' 
+                            ? 'bg-pink-100 text-pink-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {voice.gender}
+                        </span>
+                      </div>
+                      
+                      <div className="flex space-x-2 mt-3">
+                        <button
+                          onClick={() => handleTestVoice(voice.id)}
+                          className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded text-sm transition-colors"
+                        >
+                          Test
+                        </button>
+                        {voice.id !== voices.currentVoice && (
+                          <button
+                            onClick={() => handleVoiceChange(voice.id)}
+                            disabled={voiceLoading}
+                            className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white px-3 py-2 rounded text-sm transition-colors"
+                          >
+                            {voiceLoading ? 'Setting...' : 'Select'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

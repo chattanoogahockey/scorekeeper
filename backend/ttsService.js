@@ -12,6 +12,7 @@ const __dirname = path.dirname(__filename);
  * Voice Configuration:
  * - Studio-O: Primary announcer voice for goals and general commentary (expressive, engaging)
  * - Studio-M: Secondary voice for penalties and serious announcements (authoritative, clear)
+ * - Studio-Q: Alternative female voice option (professional, clear)
  * 
  * Studio voices are Google's most advanced TTS technology with human-like quality
  */
@@ -19,7 +20,81 @@ class TTSService {
   constructor() {
     this.client = null;
     this.audioDir = path.join(__dirname, 'audio-cache');
+    this.selectedVoice = 'en-US-Studio-O'; // Default voice
     this.initializeClient();
+  }
+
+  /**
+   * Set the current announcer voice
+   */
+  setAnnouncerVoice(voiceName) {
+    const supportedVoices = [
+      'en-US-Studio-O',  // Male, energetic
+      'en-US-Studio-M',  // Male, authoritative 
+      'en-US-Studio-Q',  // Female, professional
+      'en-US-Neural2-D', // Male, clear (fallback)
+      'en-US-Neural2-F', // Female, warm (fallback)
+      'en-US-Neural2-I'  // Male, confident (fallback)
+    ];
+    
+    if (supportedVoices.includes(voiceName)) {
+      this.selectedVoice = voiceName;
+      console.log(`🎤 Announcer voice set to: ${voiceName}`);
+      return true;
+    } else {
+      console.log(`⚠️  Voice ${voiceName} not supported. Using default: ${this.selectedVoice}`);
+      return false;
+    }
+  }
+
+  /**
+   * Get list of available voices
+   */
+  getAvailableVoices() {
+    return [
+      {
+        id: 'en-US-Studio-O',
+        name: 'Studio O (Male - Energetic)',
+        gender: 'MALE',
+        type: 'Studio',
+        description: 'High-energy male voice perfect for goals and exciting moments'
+      },
+      {
+        id: 'en-US-Studio-M',
+        name: 'Studio M (Male - Authoritative)',
+        gender: 'MALE', 
+        type: 'Studio',
+        description: 'Authoritative male voice ideal for penalties and official announcements'
+      },
+      {
+        id: 'en-US-Studio-Q',
+        name: 'Studio Q (Female - Professional)',
+        gender: 'FEMALE',
+        type: 'Studio', 
+        description: 'Professional female voice for clear, articulate announcements'
+      },
+      {
+        id: 'en-US-Neural2-D',
+        name: 'Neural2 D (Male - Clear)',
+        gender: 'MALE',
+        type: 'Neural2',
+        description: 'Clear, reliable male voice (fallback option)'
+      },
+      {
+        id: 'en-US-Neural2-F',
+        name: 'Neural2 F (Female - Warm)',
+        gender: 'FEMALE',
+        type: 'Neural2',
+        description: 'Warm, friendly female voice (fallback option)'
+      },
+      {
+        id: 'en-US-Neural2-I',
+        name: 'Neural2 I (Male - Confident)',
+        gender: 'MALE',
+        type: 'Neural2',
+        description: 'Confident, strong male voice (fallback option)'
+      }
+    ];
   }
 
   async initializeClient() {
@@ -137,27 +212,32 @@ class TTSService {
       const filename = `${gameId}-${type}-${timestamp}.mp3`;
       const filePath = path.join(this.audioDir, filename);
 
-      // Try Studio voice first, fallback to Neural2 if not available
+      // Try the selected voice first, fallback to Neural2 if not available
       let voiceConfig;
       let audioConfig;
 
-      // Attempt Studio voice first (use working Studio voice)
+      // Attempt to use the currently selected voice
       try {
+        // Determine gender from voice name
+        const isStudioQ = this.selectedVoice === 'en-US-Studio-Q';
+        const isNeuralF = this.selectedVoice === 'en-US-Neural2-F';
+        const isFemale = isStudioQ || isNeuralF;
+        
         voiceConfig = {
           languageCode: 'en-US',
-          name: 'en-US-Studio-M', // Studio-M: Male voice that should be available
-          ssmlGender: 'MALE',
+          name: this.selectedVoice,
+          ssmlGender: isFemale ? 'FEMALE' : 'MALE',
         };
         
         audioConfig = {
           audioEncoding: 'MP3',
           speakingRate: 1.15, // Faster pace for more energy and excitement
-          pitch: 0.5, // Higher pitch for more energy and enthusiasm
+          pitch: isFemale ? 1.0 : 0.5, // Higher pitch for females, moderate for males
           volumeGainDb: 4.0, // Boost volume for stadium atmosphere
           effectsProfileId: ['large-home-entertainment-class-device'],
         };
 
-        // Test with a quick synthesis to see if Studio voice is available
+        // Test with a quick synthesis to see if voice is available
         const testRequest = {
           input: { text: 'Test' },
           voice: voiceConfig,
@@ -165,10 +245,11 @@ class TTSService {
         };
         
         await this.client.synthesizeSpeech(testRequest);
-        console.log(`🎯 Using Studio-O voice for: "${text.substring(0, 50)}..."`);
+        console.log(`🎯 Using ${this.selectedVoice} voice for: "${text.substring(0, 50)}..."`);
         
-      } catch (studioError) {
-        console.log('⚠️  Studio voice not available, using Neural2-D (still excellent quality)');
+      } catch (voiceError) {
+        console.log(`⚠️  ${this.selectedVoice} voice not available, using Neural2-D fallback`);
+        console.log('Voice error details:', voiceError.message);
         
         // Fallback to best Neural2 voice
         voiceConfig = {
@@ -225,27 +306,32 @@ class TTSService {
       const filename = `${gameId}-penalty-${timestamp}.mp3`;
       const filePath = path.join(this.audioDir, filename);
 
-      // Try Studio voice first, fallback to Neural2 if not available
+      // Use the selected voice for penalty announcements (slightly more serious tone)
       let voiceConfig;
       let audioConfig;
 
-      // Attempt Studio voice first (same male voice for consistency)
+      // Attempt to use the currently selected voice for penalties
       try {
+        // Determine gender from voice name
+        const isStudioQ = this.selectedVoice === 'en-US-Studio-Q';
+        const isNeuralF = this.selectedVoice === 'en-US-Neural2-F';
+        const isFemale = isStudioQ || isNeuralF;
+        
         voiceConfig = {
           languageCode: 'en-US',
-          name: 'en-US-Studio-M', // Studio-M: Same male voice for consistency
-          ssmlGender: 'MALE',
+          name: this.selectedVoice,
+          ssmlGender: isFemale ? 'FEMALE' : 'MALE',
         };
         
         audioConfig = {
           audioEncoding: 'MP3',
-          speakingRate: 1.05, // Slightly slower than goals but still energetic
-          pitch: 0.2, // Lower than goals for authority but still energetic
+          speakingRate: 1.05, // Slightly slower than goals for authority
+          pitch: isFemale ? 0.8 : 0.2, // Lower pitch for authority
           volumeGainDb: 4.0, // Strong volume for penalty announcements
           effectsProfileId: ['large-home-entertainment-class-device'],
         };
 
-        // Test Studio voice availability
+        // Test voice availability
         const testRequest = {
           input: { text: 'Test' },
           voice: voiceConfig,
@@ -253,10 +339,11 @@ class TTSService {
         };
         
         await this.client.synthesizeSpeech(testRequest);
-        console.log(`🎯 Using Studio-M voice for penalty: "${text.substring(0, 50)}..."`);
+        console.log(`🎯 Using ${this.selectedVoice} voice for penalty: "${text.substring(0, 50)}..."`);
         
-      } catch (studioError) {
-        console.log('⚠️  Studio voice not available, using Neural2-I (authoritative fallback)');
+      } catch (voiceError) {
+        console.log(`⚠️  ${this.selectedVoice} voice not available, using Neural2-I fallback`);
+        console.log('Voice error details:', voiceError.message);
         
         // Fallback to best Neural2 authoritative voice
         voiceConfig = {

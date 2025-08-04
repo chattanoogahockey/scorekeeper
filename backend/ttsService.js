@@ -34,8 +34,30 @@ class TTSService {
       
       if (projectId && clientEmail && privateKey && privateKeyId) {
         console.log('🔑 Using individual environment variables for Google Cloud TTS');
-        // Handle private key formatting - convert \n to actual newlines
-        const formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
+        
+        // Handle private key formatting - convert \n to actual newlines if needed
+        // Check if the private key contains escaped newlines or actual newlines
+        let formattedPrivateKey = privateKey;
+        if (privateKey.includes('\\n')) {
+          // If it contains escaped newlines, convert them
+          formattedPrivateKey = privateKey.replace(/\\n/g, '\n');
+          console.log('🔧 Converted escaped newlines in private key');
+        } else if (!privateKey.includes('\n')) {
+          // If it doesn't contain any newlines at all, it might be base64 or malformed
+          console.log('⚠️  Private key appears to be missing newlines - trying to add them');
+          // Try to insert newlines in standard PEM format
+          if (privateKey.includes('-----BEGIN PRIVATE KEY-----')) {
+            formattedPrivateKey = privateKey
+              .replace('-----BEGIN PRIVATE KEY-----', '-----BEGIN PRIVATE KEY-----\n')
+              .replace('-----END PRIVATE KEY-----', '\n-----END PRIVATE KEY-----');
+          }
+        }
+        
+        console.log('🔍 Private key format check:');
+        console.log(`   - Length: ${formattedPrivateKey.length}`);
+        console.log(`   - Has BEGIN marker: ${formattedPrivateKey.includes('-----BEGIN PRIVATE KEY-----')}`);
+        console.log(`   - Has END marker: ${formattedPrivateKey.includes('-----END PRIVATE KEY-----')}`);
+        console.log(`   - Has newlines: ${formattedPrivateKey.includes('\n')}`);
         
         const credentials = {
           type: "service_account",

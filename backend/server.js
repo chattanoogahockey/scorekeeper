@@ -1090,8 +1090,18 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
       
     console.log(`🚨 Found ${penalties.length} penalties to delete`);
       
-    console.log('📝 Querying for game submissions...');
-    // Get game submission records
+    console.log('📝 Querying for ALL game-related records...');
+    // Get ALL records related to this game (not just submissions)
+    const { resources: allGameRecords } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId",
+        parameters: [{ name: "@gameId", value: gameId }]
+      })
+      .fetchAll();
+    
+    console.log(`📝 Found ${allGameRecords.length} total game records to delete`);
+    
+    // Also specifically get submission records with different query pattern
     const { resources: submissions } = await gamesContainer.items
       .query({
         query: "SELECT * FROM c WHERE c.gameId = @gameId AND (c.eventType = 'game-submission' OR c.eventType = 'game-completion')",
@@ -1099,7 +1109,7 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
       })
       .fetchAll();
     
-    console.log(`📝 Found ${submissions.length} submissions to delete`);
+    console.log(`📝 Found ${submissions.length} specific submission records to delete`);
     
     // Delete all goals
     console.log('🗑️ Deleting goals...');
@@ -1124,7 +1134,7 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
     }
     
     // Delete submission records to remove from admin panel
-    console.log('🗑️ Deleting submissions...');
+    console.log('🗑️ Deleting specific submission records...');
     for (const submission of submissions) {
       try {
         await gamesContainer.item(submission.id, submission.gameId).delete();
@@ -1134,15 +1144,37 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
       }
     }
     
-    console.log(`✅ Reset complete: Deleted ${goals.length} goals, ${penalties.length} penalties, and ${submissions.length} submission records for game ${gameId}`);
+    // Delete ALL game-related records to ensure complete removal
+    console.log('🗑️ Deleting ALL game-related records...');
+    for (const record of allGameRecords) {
+      try {
+        await gamesContainer.item(record.id, record.gameId || gameId).delete();
+        console.log(`✅ Deleted game record: ${record.id} (type: ${record.eventType || 'unknown'})`);
+      } catch (deleteError) {
+        console.error(`❌ Failed to delete game record ${record.id}:`, deleteError.message);
+      }
+    }
+    
+    // Also try to delete the primary game record with gameId as both id and partition key
+    console.log('🗑️ Deleting primary game record...');
+    try {
+      await gamesContainer.item(gameId, gameId).delete();
+      console.log(`✅ Deleted primary game record: ${gameId}`);
+    } catch (deleteError) {
+      console.log(`⚠️ Primary game record ${gameId} not found or already deleted: ${deleteError.message}`);
+    }
+    
+    console.log(`✅ Reset complete: Deleted ${goals.length} goals, ${penalties.length} penalties, ${submissions.length} submissions, ${allGameRecords.length} game records for ${gameId}`);
     
     res.status(200).json({
       success: true,
-      message: `Game data reset successfully. Game removed from completed games list.`,
+      message: `Game completely removed from system. Game will no longer appear in admin panel.`,
       deletedItems: {
         goals: goals.length,
         penalties: penalties.length,
-        submissions: submissions.length
+        submissions: submissions.length,
+        gameRecords: allGameRecords.length,
+        totalDeleted: goals.length + penalties.length + submissions.length + allGameRecords.length
       }
     });
   } catch (error) {
@@ -1822,11 +1854,27 @@ app.post('/api/admin/voices/test', async (req, res) => {
       });
     }
     
+    // Check if TTS client is available
+    if (!ttsService.client) {
+      return res.status(503).json({
+        error: 'Google Cloud TTS not available',
+        message: 'Studio voices require Google Cloud credentials to be configured'
+      });
+    }
+    
     const testText = text || 'Goal! What an amazing shot! The crowd goes wild!';
     
     // Temporarily set the voice for testing
     const originalVoice = ttsService.selectedVoice;
-    ttsService.setAnnouncerVoice(voiceId);
+    const voiceChanged = ttsService.setAnnouncerVoice(voiceId);
+    
+    if (!voiceChanged) {
+      return res.status(400).json({
+        error: 'Invalid voice ID',
+        voiceId,
+        availableVoices: ttsService.getAvailableVoices().map(v => v.id)
+      });
+    }
     
     // Generate test audio
     const gameId = 'voice-test';
@@ -1846,6 +1894,7 @@ app.post('/api/admin/voices/test', async (req, res) => {
     } else {
       res.status(500).json({
         error: 'Failed to generate test audio',
+        message: 'TTS synthesis failed - check server logs for details',
         voiceId
       });
     }
@@ -1853,7 +1902,8 @@ app.post('/api/admin/voices/test', async (req, res) => {
     console.error('❌ Error testing voice:', error);
     res.status(500).json({ 
       error: 'Failed to test voice',
-      message: error.message 
+      message: error.message,
+      details: 'Check server logs for more information'
     });
   }
 });

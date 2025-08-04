@@ -20,7 +20,7 @@ class TTSService {
   constructor() {
     this.client = null;
     this.audioDir = path.join(__dirname, 'audio-cache');
-    this.selectedVoice = 'en-US-Studio-O'; // Default voice
+    this.selectedVoice = 'en-US-Studio-Q'; // Default to female Studio voice (more likely available)
     this.initializeClient();
   }
 
@@ -53,6 +53,13 @@ class TTSService {
   getAvailableVoices() {
     return [
       {
+        id: 'en-US-Studio-Q',
+        name: 'Studio Q (Female - Professional)',
+        gender: 'FEMALE',
+        type: 'Studio', 
+        description: 'Professional female voice for clear, articulate announcements (Default)'
+      },
+      {
         id: 'en-US-Studio-O',
         name: 'Studio O (Male - Energetic)',
         gender: 'MALE',
@@ -67,11 +74,11 @@ class TTSService {
         description: 'Authoritative male voice ideal for penalties and official announcements'
       },
       {
-        id: 'en-US-Studio-Q',
-        name: 'Studio Q (Female - Professional)',
+        id: 'en-US-Neural2-F',
+        name: 'Neural2 F (Female - Warm)',
         gender: 'FEMALE',
-        type: 'Studio', 
-        description: 'Professional female voice for clear, articulate announcements'
+        type: 'Neural2',
+        description: 'Warm, friendly female voice (fallback option)'
       },
       {
         id: 'en-US-Neural2-D',
@@ -79,13 +86,6 @@ class TTSService {
         gender: 'MALE',
         type: 'Neural2',
         description: 'Clear, reliable male voice (fallback option)'
-      },
-      {
-        id: 'en-US-Neural2-F',
-        name: 'Neural2 F (Female - Warm)',
-        gender: 'FEMALE',
-        type: 'Neural2',
-        description: 'Warm, friendly female voice (fallback option)'
       },
       {
         id: 'en-US-Neural2-I',

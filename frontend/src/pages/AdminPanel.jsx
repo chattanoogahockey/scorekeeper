@@ -6,6 +6,7 @@ export default function AdminPanel() {
   const navigate = useNavigate();
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState(null); // Track which game is being deleted
   const [message, setMessage] = useState('');
   const [voices, setVoices] = useState({ currentVoice: '', availableVoices: [] });
   const [voiceLoading, setVoiceLoading] = useState(false);
@@ -39,24 +40,44 @@ export default function AdminPanel() {
 
   const handleDeleteGameScore = async (gameId) => {
     const game = games.find(g => g.id === gameId);
-    const confirmMessage = `Delete all scoring data for ${game.awayTeam} vs ${game.homeTeam}? This will reset the game to unscored state.`;
+    const confirmMessage = `Delete all scoring data for ${game.awayTeam} vs ${game.homeTeam}? This will completely remove the game from the admin panel.`;
     
     if (!confirm(confirmMessage)) return;
+    
+    console.log(`AdminPanel: Attempting to delete game ${gameId}`);
+    setDeleting(gameId); // Show loading state for this specific game
+    setMessage(''); // Clear any previous messages
     
     try {
       const apiUrl = import.meta.env.DEV 
         ? `/api/games/${gameId}/reset` 
         : `${import.meta.env.VITE_API_BASE_URL}/api/games/${gameId}/reset`;
       
+      console.log(`AdminPanel: Making DELETE request to ${apiUrl}`);
       const response = await axios.delete(apiUrl);
+      console.log(`AdminPanel: Delete response:`, response.data);
       
       if (response.data.success) {
-        setMessage(`Game scoring data deleted successfully. Game is now available for re-scoring.`);
-        fetchGames(); // Refresh the list
+        // Immediately remove the game from local state for instant UI feedback
+        setGames(prevGames => prevGames.filter(g => g.id !== gameId));
+        
+        setMessage(`Game completely removed. Deleted ${response.data.deletedItems.totalDeleted} records total.`);
+        console.log('AdminPanel: Refreshing games list...');
+        
+        // Also refresh from server to ensure consistency
+        setTimeout(async () => {
+          await fetchGames();
+          console.log('AdminPanel: Games list refreshed from server');
+        }, 1000);
+      } else {
+        setMessage(`Error: Deletion response indicated failure`);
       }
     } catch (error) {
       console.error('Error deleting game score:', error);
-      setMessage(`Error: ${error.response?.data?.error || error.message}`);
+      const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message;
+      setMessage(`Error: ${errorMsg}`);
+    } finally {
+      setDeleting(null); // Clear loading state
     }
   };
 
@@ -91,12 +112,16 @@ export default function AdminPanel() {
       if (response.data.success) {
         // Play the test audio
         const audio = new Audio(response.data.audioUrl);
-        audio.play();
+        audio.play().catch(audioError => {
+          console.error('Error playing audio:', audioError);
+          setMessage(`Test audio generated but playback failed: ${audioError.message}`);
+        });
         setMessage(`Playing test audio for ${voiceId}`);
       }
     } catch (error) {
       console.error('Error testing voice:', error);
-      setMessage(`Error testing voice: ${error.response?.data?.error || error.message}`);
+      const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message;
+      setMessage(`Error testing voice: ${errorMsg}`);
     }
   };
 
@@ -222,9 +247,14 @@ export default function AdminPanel() {
                       
                       <button
                         onClick={() => handleDeleteGameScore(game.id)}
-                        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition-colors"
+                        disabled={deleting === game.id}
+                        className={`px-4 py-2 rounded-lg transition-colors text-white ${
+                          deleting === game.id 
+                            ? 'bg-red-300 cursor-not-allowed' 
+                            : 'bg-red-500 hover:bg-red-600'
+                        }`}
                       >
-                        Delete Score
+                        {deleting === game.id ? 'Deleting...' : 'Delete Score'}
                       </button>
                     </div>
                   </div>

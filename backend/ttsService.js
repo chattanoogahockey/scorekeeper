@@ -99,102 +99,17 @@ class TTSService {
 
   async initializeClient() {
     try {
-      let clientOptions = {};
+      console.log('🔑 Initializing Google Cloud TTS with credential file approach');
       
-      // Priority 1: Base64 encoded credentials (Azure-safe approach)
-      if (process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64) {
-        console.log('🔑 Using Base64 encoded credentials for Google Cloud TTS');
-        try {
-          const base64String = process.env.GOOGLE_APPLICATION_CREDENTIALS_BASE64;
-          console.log('🔍 Base64 Credential Diagnostics:');
-          console.log(`   - Base64 Length: ${base64String.length}`);
-          console.log(`   - Base64 First 50 chars: "${base64String.substring(0, 50)}"`);
-          
-          // Decode base64 to JSON string
-          const jsonString = Buffer.from(base64String, 'base64').toString('utf-8');
-          console.log(`   - Decoded JSON Length: ${jsonString.length}`);
-          console.log(`   - JSON First 50 chars: "${jsonString.substring(0, 50)}"`);
-          console.log(`   - JSON Last 50 chars: "${jsonString.substring(jsonString.length - 50)}"`);
-          
-          const credentials = JSON.parse(jsonString);
-          clientOptions.credentials = credentials;
-          console.log('✅ Google Cloud credentials loaded from Base64');
-          console.log(`   - Project: ${credentials.project_id}`);
-          console.log(`   - Email: ${credentials.client_email}`);
-          console.log(`   - Private Key Length: ${credentials.private_key?.length || 0} characters`);
-        } catch (error) {
-          console.error(`❌ Failed to process Base64 credentials: ${error.message}`);
-          throw error;
-        }
-      }
-      // Priority 2: JSON credentials (legacy support)
-      else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-        console.log('🔑 Using JSON credentials for Google Cloud TTS');
-        try {
-          const rawJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-          console.log('🔍 JSON Credential Diagnostics:');
-          console.log(`   - Length: ${rawJson.length}`);
-          console.log(`   - First 50 chars: "${rawJson.substring(0, 50)}"`);
-          console.log(`   - Last 50 chars: "${rawJson.substring(rawJson.length - 50)}"`);
-          console.log(`   - Starts with {: ${rawJson.startsWith('{')}`);
-          console.log(`   - Ends with }: ${rawJson.endsWith('}')}`);
-          
-          // Try to clean up the JSON string
-          let cleanJson = rawJson.trim();
-          
-          // Remove any potential BOM or invisible characters
-          cleanJson = cleanJson.replace(/^\uFEFF/, '');
-          
-          // If it doesn't start with {, try to find where JSON starts
-          if (!cleanJson.startsWith('{')) {
-            const jsonStart = cleanJson.indexOf('{');
-            if (jsonStart > 0) {
-              console.log(`   - Found JSON start at position: ${jsonStart}`);
-              cleanJson = cleanJson.substring(jsonStart);
-            }
-          }
-          
-          // If it doesn't end with }, try to find where JSON ends
-          if (!cleanJson.endsWith('}')) {
-            const jsonEnd = cleanJson.lastIndexOf('}');
-            if (jsonEnd > 0) {
-              console.log(`   - Found JSON end at position: ${jsonEnd}`);
-              cleanJson = cleanJson.substring(0, jsonEnd + 1);
-            }
-          }
-          
-          console.log(`   - Cleaned JSON length: ${cleanJson.length}`);
-          console.log(`   - Cleaned starts with {: ${cleanJson.startsWith('{')}`);
-          console.log(`   - Cleaned ends with }: ${cleanJson.endsWith('}')}`);
-          
-          const credentials = JSON.parse(cleanJson);
-          clientOptions.credentials = credentials;
-          console.log('✅ Google Cloud credentials loaded from JSON');
-          console.log(`   - Project: ${credentials.project_id}`);
-          console.log(`   - Email: ${credentials.client_email}`);
-          console.log(`   - Private Key Length: ${credentials.private_key?.length || 0} characters`);
-        } catch (error) {
-          console.error('❌ Failed to parse JSON credentials:', error.message);
-          console.error('Raw JSON content for debugging:');
-          console.error(`"${process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON}"`);
-          throw error;
-        }
-      }
-      // Priority 2: File-based credentials (local development)
-      else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        console.log('🔑 Using file-based credentials for Google Cloud TTS');
-        clientOptions.keyFilename = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-      }
-      else {
-        console.log('⚠️  No Google Cloud credentials found - Studio voices unavailable');
-        console.log('💡 To enable Studio voices, set GOOGLE_APPLICATION_CREDENTIALS_JSON');
-        this.client = null;
-        return;
+      // Check if GOOGLE_APPLICATION_CREDENTIALS is set
+      if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        console.log(`✅ GOOGLE_APPLICATION_CREDENTIALS found: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
+      } else {
+        console.log('⚠️  GOOGLE_APPLICATION_CREDENTIALS not set, using default credential chain');
       }
       
-      // Initialize the Google Cloud TTS client with credentials
-      console.log('🔌 Initializing Google Cloud TTS client...');
-      this.client = new textToSpeech.TextToSpeechClient(clientOptions);
+      // Initialize client without explicit credentials - let the SDK handle it automatically
+      this.client = new textToSpeech.TextToSpeechClient();
       
       // Test connection and get available voices
       console.log('🧪 Testing Google Cloud TTS connection...');

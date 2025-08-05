@@ -758,8 +758,8 @@ app.post('/api/goals/announce-last', async (req, res) => {
           period: 1 // Default to first period for scoreless games
         });
         
-        // Generate TTS audio for scoreless commentary
-        const audioPath = await ttsService.generateSpeech(scorelessCommentary, gameId, 'scoreless');
+        // Generate TTS audio for scoreless commentary using admin-selected voice
+        const audioPath = await ttsService.generateSpeech(scorelessCommentary, gameId, 'announcement');
         
         return res.status(200).json({
           success: true,

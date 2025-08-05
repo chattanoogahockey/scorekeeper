@@ -10,7 +10,7 @@ class TTSService {
   constructor() {
     this.client = null;
     this.audioDir = path.join(__dirname, 'audio-cache');
-    this.selectedVoice = 'en-US-Studio-O'; // Default to energetic female Studio voice
+    this.selectedVoice = 'en-US-Studio-Q'; // Default to professional male Studio voice
     this.initializeClient();
   }
 
@@ -23,10 +23,10 @@ class TTSService {
   getVoiceSettings(voiceId, scenario = 'goal') {
     const baseSettings = {
       'en-US-Studio-Q': {
-        goal: { speakingRate: 0.85, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' },
+        goal: { speakingRate: 1.25, pitch: 0, volumeGainDb: 4.0, emphasis: 'none' },
         penalty: { speakingRate: 0.75, pitch: 0, volumeGainDb: 1.0, emphasis: 'none' },
         announcement: { speakingRate: 0.9, pitch: 0, volumeGainDb: 0.5, emphasis: 'none' },
-        test: { speakingRate: 0.8, pitch: 0, volumeGainDb: 1.0, emphasis: 'none' }
+        test: { speakingRate: 1.0, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' }
       },
       'en-US-Studio-O': {
         goal: { speakingRate: 1.35, pitch: 0, volumeGainDb: 6.0, emphasis: 'none' },
@@ -145,7 +145,7 @@ class TTSService {
         name: 'Studio Q (Male - Professional)',
         gender: 'MALE',
         type: 'Studio', 
-        description: 'Professional male voice for clear, articulate announcements (Default)'
+        description: 'Professional male voice for clear, articulate announcements (DEFAULT)'
       },
       {
         id: 'en-US-Studio-O',

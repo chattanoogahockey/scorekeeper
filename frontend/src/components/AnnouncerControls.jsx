@@ -170,6 +170,7 @@ export default function AnnouncerControls({ gameId }) {
               : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
             
             const audio = new Audio(audioUrl);
+            let audioPlaybackStarted = false;
             
             // Pre-load the audio
             audio.preload = 'auto';
@@ -177,7 +178,7 @@ export default function AnnouncerControls({ gameId }) {
             // Set up event handlers before attempting to play
             const setupAudioHandlers = async () => {
               audio.onloadedmetadata = async () => {
-                setMessage('🔊 Playing announcement...');
+                setMessage('🔊 Playing Studio voice announcement...');
                 setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
                 // Request wake lock for long audio
                 await requestWakeLock();
@@ -198,12 +199,15 @@ export default function AnnouncerControls({ gameId }) {
               };
               
               audio.onerror = async (e) => {
-                console.error('Audio playback error:', e);
+                console.error('Studio audio playback error:', e);
                 setAudioProgress({ current: 0, duration: 0, isPlaying: false });
                 // Release wake lock on error
                 await releaseWakeLock();
-                // Immediately fallback to browser TTS
-                speakText(announcement.text);
+                // Only fallback if we haven't started playing yet
+                if (!audioPlaybackStarted) {
+                  console.log('Falling back to browser TTS...');
+                  speakText(announcement.text);
+                }
               };
             };
             
@@ -214,19 +218,24 @@ export default function AnnouncerControls({ gameId }) {
               const playPromise = audio.play();
               if (playPromise !== undefined) {
                 await playPromise;
+                audioPlaybackStarted = true; // Mark that Studio audio started successfully
+                console.log('✅ Studio voice audio playing successfully');
               }
             } catch (playError) {
-              console.log('Audio autoplay blocked, falling back to TTS:', playError);
-              // Fallback to browser TTS if audio play fails
-              speakText(announcement.text);
+              console.log('Studio audio autoplay blocked, falling back to browser TTS:', playError);
+              // Only fallback if we haven't started playing
+              if (!audioPlaybackStarted) {
+                speakText(announcement.text);
+              }
             }
           } catch (audioError) {
-            console.error('Audio creation error:', audioError);
+            console.error('Studio audio creation error:', audioError);
             // Fallback to browser TTS if audio creation fails
             speakText(announcement.text);
           }
         } else {
           // No server audio available, use browser text-to-speech
+          console.log('No Studio audio available, using browser TTS fallback');
           speakText(announcement.text);
         }
       }
@@ -280,6 +289,7 @@ export default function AnnouncerControls({ gameId }) {
               : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
             
             const audio = new Audio(audioUrl);
+            let audioPlaybackStarted = false;
             
             // Pre-load the audio
             audio.preload = 'auto';
@@ -287,7 +297,7 @@ export default function AnnouncerControls({ gameId }) {
             // Set up event handlers before attempting to play
             const setupAudioHandlers = () => {
               audio.onloadedmetadata = () => {
-                setMessage('🔊 Playing penalty announcement...');
+                setMessage('🔊 Playing Studio voice penalty announcement...');
                 setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
               };
               
@@ -304,10 +314,13 @@ export default function AnnouncerControls({ gameId }) {
               };
               
               audio.onerror = (e) => {
-                console.error('Audio playback error:', e);
+                console.error('Studio penalty audio playback error:', e);
                 setAudioProgress({ current: 0, duration: 0, isPlaying: false });
-                // Immediately fallback to browser TTS
-                speakText(announcement.text);
+                // Only fallback if we haven't started playing yet
+                if (!audioPlaybackStarted) {
+                  console.log('Falling back to browser TTS for penalty...');
+                  speakText(announcement.text);
+                }
               };
             };
             
@@ -318,19 +331,24 @@ export default function AnnouncerControls({ gameId }) {
               const playPromise = audio.play();
               if (playPromise !== undefined) {
                 await playPromise;
+                audioPlaybackStarted = true; // Mark that Studio audio started successfully
+                console.log('✅ Studio voice penalty audio playing successfully');
               }
             } catch (playError) {
-              console.log('Audio autoplay blocked, falling back to TTS:', playError);
-              // Fallback to browser TTS if audio play fails
-              speakText(announcement.text);
+              console.log('Studio penalty audio autoplay blocked, falling back to browser TTS:', playError);
+              // Only fallback if we haven't started playing
+              if (!audioPlaybackStarted) {
+                speakText(announcement.text);
+              }
             }
           } catch (audioError) {
-            console.error('Audio creation error:', audioError);
+            console.error('Studio penalty audio creation error:', audioError);
             // Fallback to browser TTS if audio creation fails
             speakText(announcement.text);
           }
         } else {
           // No server audio available, use browser text-to-speech
+          console.log('No Studio penalty audio available, using browser TTS fallback');
           speakText(announcement.text);
         }
       }

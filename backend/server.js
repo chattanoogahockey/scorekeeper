@@ -2,7 +2,20 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
-import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoalsContainer, getPenaltiesContainer, getOTShootoutContainer, getRinkReportsContainer } from './cosmosClient.js';
+import { 
+  getGamesContainer, 
+  getAttendanceContainer, 
+  getRostersContainer, 
+  getGoalsContainer, 
+  getPenaltiesContainer, 
+  getOTShootoutContainer, 
+  getRinkReportsContainer,
+  getSettingsContainer,
+  getAnalyticsContainer,
+  getPlayersContainer,
+  initializeContainers,
+  testDatabaseConnection
+} from './cosmosClient.js';
 
 // Import TTS service
 import ttsService from './ttsService.js';
@@ -25,35 +38,35 @@ try {
   generateGoalFeedDescription = announcerModule.generateGoalFeedDescription;
   generatePenaltyFeedDescription = announcerModule.generatePenaltyFeedDescription;
   generatePenaltyAnnouncement = announcerModule.generatePenaltyAnnouncement;
-  console.log('✅ Announcer service loaded successfully');
+  console.log('✅ Announcer service loaded');
 } catch (error) {
-  console.log('⚠️ Announcer service not available:', error.message);
+  console.log('⚠️ Announcer service not available');
 }
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
-// Track server start time for diagnostics
+// Production startup
 const startTime = Date.now();
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Enhanced startup logging
-console.log('🚀 Starting Hockey Scorekeeper API...');
-console.log('📁 Working directory:', process.cwd());
-console.log('🔧 Environment variables:');
-console.log('  NODE_ENV:', process.env.NODE_ENV);
-console.log('  PORT:', process.env.PORT);
-console.log('  COSMOS_DB_GOALS_CONTAINER:', process.env.COSMOS_DB_GOALS_CONTAINER || 'NOT SET');
-console.log('  COSMOS_DB_PENALTIES_CONTAINER:', process.env.COSMOS_DB_PENALTIES_CONTAINER || 'NOT SET');
-console.log('  COSMOS_DB_GAMES_CONTAINER:', process.env.COSMOS_DB_GAMES_CONTAINER || 'NOT SET');
-console.log('  COSMOS_DB_ROSTERS_CONTAINER:', process.env.COSMOS_DB_ROSTERS_CONTAINER || 'NOT SET');
-console.log('  COSMOS_DB_ATTENDANCE_CONTAINER:', process.env.COSMOS_DB_ATTENDANCE_CONTAINER || 'NOT SET');
-console.log('  COSMOS_DB_OTSHOOTOUT_CONTAINER:', process.env.COSMOS_DB_OTSHOOTOUT_CONTAINER || 'NOT SET');
-console.log('  COSMOS_DB_URI:', process.env.COSMOS_DB_URI ? 'SET' : 'NOT SET');
-console.log('  COSMOS_DB_KEY:', process.env.COSMOS_DB_KEY ? 'SET' : 'NOT SET');
+console.log(`🚀 Starting Hockey Scorekeeper API (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'})`);
+
+// Initialize database containers
+try {
+  await initializeContainers();
+  await testDatabaseConnection();
+  console.log('🗄️ Database ready');
+} catch (error) {
+  console.error('💥 Database initialization failed:', error.message);
+  if (isProduction) {
+    process.exit(1);
+  }
+}
 
 // HEALTH CHECK ENDPOINT for Azure (only at /health, not root)
 app.get('/health', (req, res) => {
@@ -77,7 +90,6 @@ function handleError(res, error) {
 // Main API endpoints
 app.post('/api/attendance', async (req, res) => {
   const { gameId, attendance, totalRoster } = req.body;
-  console.log('Received attendance POST:', JSON.stringify(req.body, null, 2));
   if (!gameId || !attendance || !totalRoster) {
     console.error('❌ Invalid attendance payload:', JSON.stringify(req.body, null, 2));
     return res.status(400).json({ 
@@ -1884,65 +1896,6 @@ app.get('/api/otshootout', async (req, res) => {
   }
 });
 
-// DELETE endpoint for clearing scoring data (for testing)
-app.delete('/api/clear-scoring-data', async (req, res) => {
-  console.log('🗑️ Clearing scoring data for testing (keeping rosters and game schedule)...');
-  
-  try {
-    const goalsContainer = getGoalsContainer();
-    const penaltiesContainer = getPenaltiesContainer();
-    const otShootoutContainer = getOTShootoutContainer();
-    const gamesContainer = getGamesContainer();
-    
-    // Get all scoring-related items (not rosters or original game schedule)
-    const [goals, penalties, otShootout, gameSubmissions] = await Promise.all([
-      goalsContainer.items.query('SELECT * FROM c').fetchAll(),
-      penaltiesContainer.items.query('SELECT * FROM c').fetchAll(),
-      otShootoutContainer.items.query('SELECT * FROM c').fetchAll(),
-      // Only get submission/completion records, not original games
-      gamesContainer.items.query('SELECT * FROM c WHERE c.eventType = "game-submission" OR c.eventType = "game-completion"').fetchAll()
-    ]);
-    
-    // Delete all scoring items
-    const deletePromises = [];
-    
-    goals.resources.forEach(goal => {
-      deletePromises.push(goalsContainer.item(goal.id, goal.gameId).delete());
-    });
-    
-    penalties.resources.forEach(penalty => {
-      deletePromises.push(penaltiesContainer.item(penalty.id, penalty.gameId).delete());
-    });
-    
-    otShootout.resources.forEach(item => {
-      deletePromises.push(otShootoutContainer.item(item.id, item.gameId).delete());
-    });
-    
-    gameSubmissions.resources.forEach(submission => {
-      deletePromises.push(gamesContainer.item(submission.id, submission.gameId).delete());
-    });
-    
-    await Promise.all(deletePromises);
-    
-    console.log(`✅ Cleared ${goals.resources.length} goals, ${penalties.resources.length} penalties, ${otShootout.resources.length} OT/Shootout records, and ${gameSubmissions.resources.length} game submissions`);
-    console.log('📅 Game schedule and rosters preserved');
-    
-    res.status(200).json({
-      success: true,
-      message: 'Scoring data cleared successfully (game schedule and rosters preserved)',
-      deletedCounts: {
-        goals: goals.resources.length,
-        penalties: penalties.resources.length,
-        otShootout: otShootout.resources.length,
-        gameSubmissions: gameSubmissions.resources.length
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error clearing scoring data:', error.message);
-    handleError(res, error);
-  }
-});
-
 // Health check endpoint for debugging production issues
 app.get('/api/health', (req, res) => {
   const envVars = {
@@ -2337,106 +2290,6 @@ app.post('/api/rink-reports/generate', async (req, res) => {
     console.error('❌ Error generating rink report:', error);
     res.status(500).json({
       error: 'Failed to generate rink report',
-      message: error.message
-    });
-  }
-});
-
-// Test endpoint to create sample rink report data
-app.post('/api/rink-reports/create-sample', async (req, res) => {
-  console.log('📰 Creating sample rink report data...');
-  
-  try {
-    const container = getRinkReportsContainer();
-    const currentWeek = getCurrentWeekId();
-    
-    const sampleReport = {
-      id: `Gold-${currentWeek}`,
-      division: 'Gold',
-      week: currentWeek,
-      weekLabel: 'This Week',
-      publishedAt: new Date().toISOString(),
-      author: 'Sample Data Generator',
-      title: 'Gold Division Weekly Roundup',
-      html: `
-        <p>The Gold Division delivered exceptional hockey this week with 4 thrilling matchups. Players combined for 23 goals, demonstrating the high level of skill and competition in our premier division.</p>
-        
-        <h3>Game of the Week</h3>
-        <p>In a stunning overtime thriller, the Thunder Bolts defeated the Ice Crushers 5-4. Jake Morrison scored the game-winner with just 1:30 remaining in the extra period, completing his hat trick performance in dramatic fashion.</p>
-        
-        <h3>Scoring Leaders</h3>
-        <p>Jake Morrison led all Gold division players with 5 points (3G, 2A), establishing himself as the player to watch. His consistent performance has been instrumental in the Thunder Bolts' recent success.</p>
-        
-        <h3>Team Spotlight</h3>
-        <p>The Thunder Bolts showcased impressive offensive capabilities, averaging 4.5 goals per game this week. Their balanced attack and excellent special teams play have positioned them as division frontrunners.</p>
-        
-        <h3>Physical Play</h3>
-        <p>The competition was intense with 12 penalties totaling 28 minutes. While teams competed hard, the focus remained on skillful, competitive hockey that showcased the best of our league.</p>
-        
-        <h3>Looking Ahead</h3>
-        <p>Next week features crucial matchups that could reshape the division standings. The Thunder Bolts face their biggest test yet, while other teams look to make their move in the playoff race.</p>
-      `,
-      highlights: [
-        'Thunder Bolts edge Ice Crushers 5-4 in overtime thriller',
-        'Jake Morrison records hat trick with game-winning goal',
-        'Power Players stage dramatic comeback from 3-goal deficit',
-        'Victory Squad maintains perfect penalty kill record'
-      ],
-      standoutPlayers: [
-        {
-          name: 'Jake Morrison',
-          team: 'Thunder Bolts',
-          stats: '3 goals, 2 assists this week',
-          highlight: 'Hat trick hero with overtime game-winner'
-        },
-        {
-          name: 'Alex Chen',
-          team: 'Ice Crushers',
-          stats: '2 goals, 3 assists this week',
-          highlight: 'Playmaker extraordinaire setting up scoring chances'
-        },
-        {
-          name: 'Ryan Thompson',
-          team: 'Power Players',
-          stats: '4 goals, 1 assist this week',
-          highlight: 'Goal-scoring machine in comeback victory'
-        }
-      ],
-      leagueUpdates: [
-        'Gold division completed 4 high-intensity games this week',
-        'Players scored 23 goals across all matchups',
-        '28 penalty minutes assessed in competitive play',
-        'Average of 5.8 goals per game demonstrates offensive talent',
-        'Playoff race intensifies with tight standings',
-        'Championship tournament preparations underway'
-      ],
-      upcomingPredictions: [
-        {
-          matchup: 'Thunder Bolts vs Power Players',
-          prediction: 'High-scoring affair between top offensive teams',
-          keyFactor: 'Special teams play could decide the outcome'
-        },
-        {
-          matchup: 'Ice Crushers vs Victory Squad',
-          prediction: 'Defensive battle between disciplined teams',
-          keyFactor: 'Goaltending performance will be crucial'
-        }
-      ],
-      generatedBy: 'sample',
-      lastUpdated: new Date().toISOString()
-    };
-    
-    await container.items.upsert(sampleReport);
-    
-    res.status(201).json({
-      success: true,
-      message: 'Sample rink report created successfully',
-      report: sampleReport
-    });
-  } catch (error) {
-    console.error('❌ Error creating sample report:', error);
-    res.status(500).json({
-      error: 'Failed to create sample report',
       message: error.message
     });
   }

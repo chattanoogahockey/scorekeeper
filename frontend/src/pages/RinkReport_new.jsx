@@ -12,39 +12,6 @@ export default function RinkReport() {
   const divisions = ['Gold', 'Silver', 'Bronze'];
   const weeks = ['current', 'week-1', 'week-2', 'week-3'];
 
-  // Helper function to get current ISO week
-  const getCurrentWeekId = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const startOfYear = new Date(year, 0, 1);
-    const dayOfYear = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000)) + 1;
-    const weekNumber = Math.ceil(dayOfYear / 7);
-    return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
-  };
-
-  // Convert week format to ISO week
-  const getISOWeek = (week) => {
-    if (week === 'current') return getCurrentWeekId();
-    
-    const now = new Date();
-    const year = now.getFullYear();
-    
-    if (week.startsWith('week-')) {
-      const weeksBack = parseInt(week.split('-')[1]);
-      const targetDate = new Date(now);
-      targetDate.setDate(now.getDate() - (weeksBack * 7));
-      
-      const targetYear = targetDate.getFullYear();
-      const startOfYear = new Date(targetYear, 0, 1);
-      const dayOfYear = Math.floor((targetDate - startOfYear) / (24 * 60 * 60 * 1000)) + 1;
-      const weekNumber = Math.ceil(dayOfYear / 7);
-      
-      return `${targetYear}-W${weekNumber.toString().padStart(2, '0')}`;
-    }
-    
-    return week; // Already in ISO format
-  };
-
   // Load reports data
   useEffect(() => {
     fetchReports();
@@ -63,11 +30,7 @@ export default function RinkReport() {
       divisions.forEach(division => {
         organizedReports[division] = {};
         weeks.forEach(week => {
-          const isoWeek = getISOWeek(week);
-          // Try to find report by ISO week format or old format
-          const report = reportsData.find(r => 
-            r.division === division && (r.week === isoWeek || r.week === week)
-          );
+          const report = reportsData.find(r => r.division === division && r.week === week);
           // Only add real reports, no fake data
           if (report) {
             organizedReports[division][week] = report;
@@ -186,7 +149,7 @@ export default function RinkReport() {
 
                 <div 
                   className="prose prose-lg max-w-none"
-                  dangerouslySetInnerHTML={{ __html: currentReport.html || currentReport.article }}
+                  dangerouslySetInnerHTML={{ __html: currentReport.article }}
                 />
               </div>
             </div>

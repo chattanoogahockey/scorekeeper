@@ -99,8 +99,10 @@ app.post('/api/attendance', async (req, res) => {
   }
   try {
     const container = getAttendanceContainer();
+    
+    // Use a consistent ID to ensure we upsert the same record for multiple submissions
     const attendanceRecord = {
-      id: `${gameId}-attendance-${Date.now()}`,
+      id: `${gameId}-attendance`,
       eventType: 'attendance',
       gameId,
       recordedAt: new Date().toISOString(),
@@ -121,7 +123,9 @@ app.post('/api/attendance', async (req, res) => {
         totalPresent: Object.values(attendance).reduce((sum, players) => sum + players.length, 0)
       }
     };
-    const { resource } = await container.items.create(attendanceRecord);
+    
+    // Use upsert to replace any existing attendance record for this game
+    const { resource } = await container.items.upsert(attendanceRecord);
     res.status(201).json(resource);
   } catch (error) {
     handleError(res, error);
@@ -358,6 +362,23 @@ app.post('/api/goals', async (req, res) => {
   try {
     const container = getGoalsContainer();
     const penaltiesContainer = getPenaltiesContainer();
+    const gamesContainer = getGamesContainer();
+    
+    // Get game information for division context
+    let division = 'Unknown';
+    try {
+      const gameInfoQuery = {
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
+      };
+      const { resources: gameInfo } = await gamesContainer.items.query(gameInfoQuery).fetchAll();
+      if (gameInfo.length > 0) {
+        const game = gameInfo[0];
+        division = game.division || game.league || 'Unknown';
+      }
+    } catch (error) {
+      console.warn('Could not fetch game division info:', error.message);
+    }
     
     // Get existing goals for this game to calculate analytics
     const existingGoalsQuery = {
@@ -448,6 +469,7 @@ app.post('/api/goals', async (req, res) => {
       eventType: 'goal',
       gameId,
       period,
+      division,                    // Add division for consistency
       teamName: team,              // Changed from scoringTeam to teamName (for announcer)
       playerName: player,          // Changed from scorer to playerName (for announcer) 
       assistedBy: assist ? [assist] : [], // Changed from assists to assistedBy (for announcer)
@@ -507,6 +529,23 @@ app.post('/api/penalties', async (req, res) => {
   try {
     const container = getPenaltiesContainer();
     const goalsContainer = getGoalsContainer();
+    const gamesContainer = getGamesContainer();
+    
+    // Get game information for division context
+    let division = 'Unknown';
+    try {
+      const gameInfoQuery = {
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
+      };
+      const { resources: gameInfo } = await gamesContainer.items.query(gameInfoQuery).fetchAll();
+      if (gameInfo.length > 0) {
+        const game = gameInfo[0];
+        division = game.division || game.league || 'Unknown';
+      }
+    } catch (error) {
+      console.warn('Could not fetch game division info:', error.message);
+    }
     
     // Get existing penalties for this game to calculate analytics
     const existingPenaltiesQuery = {
@@ -590,6 +629,7 @@ app.post('/api/penalties', async (req, res) => {
       id: `${gameId}-penalty-${Date.now()}`,
       gameId,
       period,
+      division,                    // Added division field for consistency
       teamName: team,              // Changed from penalizedTeam to teamName (for announcer)
       playerName: player,          // Changed from penalizedPlayer to playerName (for announcer)
       penaltyType,
@@ -1336,6 +1376,30 @@ app.post('/api/games/submit', async (req, res) => {
       });
     }
     
+    // Get the original game record to extract division/league information
+    let division = 'Unknown';
+    let league = 'Unknown';
+    let homeTeam = 'Unknown';
+    let awayTeam = 'Unknown';
+    
+    try {
+      const originalGameQuery = {
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
+      };
+      const { resources: originalGames } = await gamesContainer.items.query(originalGameQuery).fetchAll();
+      
+      if (originalGames.length > 0) {
+        const game = originalGames[0];
+        division = game.division || game.league || 'Unknown';
+        league = game.league || game.division || 'Unknown';
+        homeTeam = game.homeTeam || 'Unknown';
+        awayTeam = game.awayTeam || 'Unknown';
+      }
+    } catch (error) {
+      console.warn('Could not fetch original game record:', error.message);
+    }
+    
     // Update all goals for this game to mark as submitted
     const goalsQuery = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId',
@@ -1377,6 +1441,10 @@ app.post('/api/games/submit', async (req, res) => {
       eventType: 'game-submission',
       submittedAt: new Date().toISOString(),
       submittedBy: submittedBy || 'Unknown',
+      division,
+      league,
+      homeTeam,
+      awayTeam,
       finalScore: finalScore || {},
       totalGoals: goals.length,
       totalPenalties: penalties.length,

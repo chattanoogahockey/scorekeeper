@@ -307,13 +307,13 @@ export default function InGameMenu() {
         <div className="grid grid-cols-2 gap-3 mb-4">
           <button
             onClick={() => navigate('/roster')}
-            className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
+            className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
             📋 Rosters
           </button>
           <button
             onClick={() => navigate('/admin')}
-            className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
+            className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
           >
             ⚙️ Admin
           </button>

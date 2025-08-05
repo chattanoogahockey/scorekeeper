@@ -130,7 +130,7 @@ export default function Statistics() {
               goalsFor: 0,
               goalsAgainst: 0,
               gamesPlayed: 0,
-              division: game.league || 'Unknown'
+              division: game.division || game.league || 'Unknown'
             });
           }
         });

@@ -700,13 +700,55 @@ app.delete('/api/goals/:id', async (req, res) => {
 // Announce last goal endpoint
 app.post('/api/goals/announce-last', async (req, res) => {
   console.log('📢 Announcing last goal...');
-  const { gameId } = req.body;
+  const { gameId, voiceGender } = req.body;
 
   if (!gameId) {
     return res.status(400).json({
       error: 'Invalid request. Required: gameId.'
     });
   }
+
+  // Map voice gender to Google TTS Studio voices using database configuration
+  let selectedVoice = 'en-US-Studio-Q'; // Default fallback
+  
+  try {
+    const gamesContainer = getGamesContainer();
+    const { resources: configs } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.id = 'voiceConfig'",
+        parameters: []
+      })
+      .fetchAll();
+    
+    if (configs.length > 0) {
+      const voiceConfig = configs[0];
+      if (voiceGender === 'male' && voiceConfig.maleVoice) {
+        selectedVoice = voiceConfig.maleVoice;
+      } else if (voiceGender === 'female' && voiceConfig.femaleVoice) {
+        selectedVoice = voiceConfig.femaleVoice;
+      }
+    } else {
+      // Use defaults based on corrected gender mapping
+      const defaultMapping = {
+        'male': 'en-US-Studio-Q',    // Studio-Q is male
+        'female': 'en-US-Studio-O'   // Studio-O is female  
+      };
+      selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
+    }
+  } catch (configError) {
+    console.warn('⚠️ Could not fetch voice config, using defaults:', configError.message);
+    const defaultMapping = {
+      'male': 'en-US-Studio-Q',    // Studio-Q is male
+      'female': 'en-US-Studio-O'   // Studio-O is female
+    };
+    selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
+  }
+  
+  console.log(`🎤 Using voice: ${selectedVoice} (requested: ${voiceGender})`);
+  
+  // Temporarily set the voice in TTS service for this request
+  const originalVoice = ttsService.selectedVoice;
+  ttsService.selectedVoice = selectedVoice;
 
   // Check if announcer service is available
   if (!generateGoalAnnouncement) {
@@ -834,18 +876,63 @@ app.post('/api/goals/announce-last', async (req, res) => {
   } catch (error) {
     console.error('❌ Error announcing last goal:', error.message);
     handleError(res, error);
+  } finally {
+    // Restore original voice
+    ttsService.selectedVoice = originalVoice;
   }
 });
 
 // Penalty announcement endpoint
 app.post('/api/penalties/announce-last', async (req, res) => {
-  const { gameId } = req.body;
+  const { gameId, voiceGender } = req.body;
 
   if (!gameId) {
     return res.status(400).json({
       error: 'Game ID is required'
     });
   }
+
+  // Map voice gender to Google TTS Studio voices using database configuration
+  let selectedVoice = 'en-US-Studio-Q'; // Default fallback
+  
+  try {
+    const gamesContainer = getGamesContainer();
+    const { resources: configs } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.id = 'voiceConfig'",
+        parameters: []
+      })
+      .fetchAll();
+    
+    if (configs.length > 0) {
+      const voiceConfig = configs[0];
+      if (voiceGender === 'male' && voiceConfig.maleVoice) {
+        selectedVoice = voiceConfig.maleVoice;
+      } else if (voiceGender === 'female' && voiceConfig.femaleVoice) {
+        selectedVoice = voiceConfig.femaleVoice;
+      }
+    } else {
+      // Use defaults based on corrected gender mapping
+      const defaultMapping = {
+        'male': 'en-US-Studio-Q',    // Studio-Q is male
+        'female': 'en-US-Studio-O'   // Studio-O is female  
+      };
+      selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
+    }
+  } catch (configError) {
+    console.warn('⚠️ Could not fetch voice config, using defaults:', configError.message);
+    const defaultMapping = {
+      'male': 'en-US-Studio-Q',    // Studio-Q is male
+      'female': 'en-US-Studio-O'   // Studio-O is female
+    };
+    selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
+  }
+  
+  console.log(`🎤 Using voice for penalty: ${selectedVoice} (requested: ${voiceGender})`);
+  
+  // Temporarily set the voice in TTS service for this request
+  const originalVoice = ttsService.selectedVoice;
+  ttsService.selectedVoice = selectedVoice;
 
   // Check if announcer service is available
   if (!generatePenaltyAnnouncement) {
@@ -949,6 +1036,9 @@ app.post('/api/penalties/announce-last', async (req, res) => {
   } catch (error) {
     console.error('❌ Error announcing last penalty:', error.message);
     handleError(res, error);
+  } finally {
+    // Restore original voice
+    ttsService.selectedVoice = originalVoice;
   }
 });
 
@@ -1988,6 +2078,118 @@ app.post('/api/admin/voices/test', async (req, res) => {
       error: 'Voice test failed',
       message: error.message,
       voiceId: req.body.voiceId
+    });
+  }
+});
+
+// Voice configuration endpoints for male/female voice mapping
+app.get('/api/admin/voice-config', async (req, res) => {
+  try {
+    const gamesContainer = getGamesContainer();
+    
+    // Try to get existing voice configuration
+    try {
+      const { resources: configs } = await gamesContainer.items
+        .query({
+          query: "SELECT * FROM c WHERE c.id = 'voiceConfig'",
+          parameters: []
+        })
+        .fetchAll();
+      
+      if (configs.length > 0) {
+        res.json({
+          success: true,
+          config: configs[0]
+        });
+      } else {
+        // Return default configuration
+        res.json({
+          success: true,
+          config: {
+            id: 'voiceConfig',
+            maleVoice: 'en-US-Studio-Q', // Studio-Q is male 
+            femaleVoice: 'en-US-Studio-O' // Studio-O is female
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching voice config:', error);
+      // Return default configuration on error
+      res.json({
+        success: true,
+        config: {
+          id: 'voiceConfig',
+          maleVoice: 'en-US-Studio-Q',
+          femaleVoice: 'en-US-Studio-O'
+        }
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error getting voice config:', error);
+    res.status(500).json({
+      error: 'Failed to get voice configuration',
+      message: error.message
+    });
+  }
+});
+
+app.post('/api/admin/voice-config', async (req, res) => {
+  try {
+    const { maleVoice, femaleVoice } = req.body;
+    
+    if (!maleVoice || !femaleVoice) {
+      return res.status(400).json({
+        error: 'Both maleVoice and femaleVoice are required'
+      });
+    }
+    
+    const gamesContainer = getGamesContainer();
+    
+    const voiceConfig = {
+      id: 'voiceConfig',
+      maleVoice,
+      femaleVoice,
+      updatedAt: new Date().toISOString()
+    };
+    
+    // Use upsert to create or update the configuration
+    const { resource } = await gamesContainer.items.upsert(voiceConfig);
+    
+    console.log(`✅ Voice configuration updated: Male=${maleVoice}, Female=${femaleVoice}`);
+    
+    res.json({
+      success: true,
+      message: 'Voice configuration saved successfully',
+      config: resource
+    });
+  } catch (error) {
+    console.error('❌ Error saving voice config:', error);
+    res.status(500).json({
+      error: 'Failed to save voice configuration',
+      message: error.message
+    });
+  }
+});
+
+app.get('/api/admin/available-voices', (req, res) => {
+  try {
+    // Provide a list of Google TTS Studio voices for the dropdowns
+    const studioVoices = [
+      { id: 'en-US-Studio-Q', name: 'Studio Q (Male - Professional)', gender: 'male', type: 'Studio' },
+      { id: 'en-US-Studio-O', name: 'Studio O (Female - Professional)', gender: 'female', type: 'Studio' },
+      { id: 'en-US-Studio-M', name: 'Studio M (Male - Dynamic)', gender: 'male', type: 'Studio' },
+      { id: 'en-US-Studio-F', name: 'Studio F (Female - Dynamic)', gender: 'female', type: 'Studio' }
+    ];
+    
+    res.json({
+      success: true,
+      voices: studioVoices
+    });
+  } catch (error) {
+    console.error('❌ Error getting available voices:', error);
+    res.status(500).json({
+      error: 'Failed to get available voices',
+      message: error.message
     });
   }
 });

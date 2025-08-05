@@ -40,6 +40,12 @@ class TTSService {
         announcement: { speakingRate: 0.8, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' },
         test: { speakingRate: 0.9, pitch: 0, volumeGainDb: 3.0, emphasis: 'none' }
       },
+      'en-US-Studio-F': {
+        goal: { speakingRate: 1.3, pitch: 0, volumeGainDb: 6.0, emphasis: 'none' },
+        penalty: { speakingRate: 0.8, pitch: 0, volumeGainDb: 4.0, emphasis: 'none' },
+        announcement: { speakingRate: 1.0, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' },
+        test: { speakingRate: 1.1, pitch: 0, volumeGainDb: 3.0, emphasis: 'none' }
+      },
       'en-US-Neural2-F': {
         goal: { speakingRate: 1.2, pitch: 2.0, volumeGainDb: 2.0, emphasis: 'moderate' },
         penalty: { speakingRate: 0.95, pitch: -0.5, volumeGainDb: 1.0, emphasis: 'moderate' },

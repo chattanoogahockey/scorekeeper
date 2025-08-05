@@ -10,10 +10,17 @@ export default function AdminPanel() {
   const [message, setMessage] = useState('');
   const [voices, setVoices] = useState({ currentVoice: '', availableVoices: [] });
   const [voiceLoading, setVoiceLoading] = useState(false);
+  
+  // Voice configuration state
+  const [voiceConfig, setVoiceConfig] = useState({ maleVoice: '', femaleVoice: '' });
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [voiceConfigLoading, setVoiceConfigLoading] = useState(false);
 
   useEffect(() => {
     fetchGames();
     fetchVoices();
+    fetchVoiceConfig();
+    fetchAvailableVoices();
   }, []);
 
   const fetchGames = async () => {
@@ -36,6 +43,46 @@ export default function AdminPanel() {
       setVoices(response.data);
     } catch (error) {
       console.error('Error fetching voices:', error);
+    }
+  };
+
+  const fetchVoiceConfig = async () => {
+    try {
+      const response = await axios.get('/api/admin/voice-config');
+      if (response.data.success) {
+        setVoiceConfig({
+          maleVoice: response.data.config.maleVoice || 'en-US-Studio-Q',
+          femaleVoice: response.data.config.femaleVoice || 'en-US-Studio-O'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching voice config:', error);
+    }
+  };
+
+  const fetchAvailableVoices = async () => {
+    try {
+      const response = await axios.get('/api/admin/available-voices');
+      if (response.data.success) {
+        setAvailableVoices(response.data.voices);
+      }
+    } catch (error) {
+      console.error('Error fetching available voices:', error);
+    }
+  };
+
+  const handleVoiceConfigSave = async () => {
+    setVoiceConfigLoading(true);
+    try {
+      const response = await axios.post('/api/admin/voice-config', voiceConfig);
+      if (response.data.success) {
+        setMessage(`Voice configuration saved! Male: ${voiceConfig.maleVoice}, Female: ${voiceConfig.femaleVoice}`);
+      }
+    } catch (error) {
+      console.error('Error saving voice config:', error);
+      setMessage(`Error saving voice configuration: ${error.response?.data?.error || error.message}`);
+    } finally {
+      setVoiceConfigLoading(false);
     }
   };
 
@@ -149,6 +196,69 @@ export default function AdminPanel() {
               {message}
             </div>
           )}
+        </div>
+
+        {/* Voice Configuration Section */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-2xl font-bold mb-4">Voice Configuration</h2>
+          <p className="text-gray-600 mb-4">Configure which Studio voices to use for male and female announcements.</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Male Voice Dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <span className="text-xl mr-2">👨</span>Male Voice
+              </label>
+              <select 
+                value={voiceConfig.maleVoice} 
+                onChange={(e) => setVoiceConfig({...voiceConfig, maleVoice: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {availableVoices.filter(voice => voice.gender === 'male').map(voice => (
+                  <option key={voice.id} value={voice.id}>
+                    {voice.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Female Voice Dropdown */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                <span className="text-xl mr-2">👩</span>Female Voice
+              </label>
+              <select 
+                value={voiceConfig.femaleVoice} 
+                onChange={(e) => setVoiceConfig({...voiceConfig, femaleVoice: e.target.value})}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
+              >
+                {availableVoices.filter(voice => voice.gender === 'female').map(voice => (
+                  <option key={voice.id} value={voice.id}>
+                    {voice.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <button
+              onClick={handleVoiceConfigSave}
+              disabled={voiceConfigLoading}
+              className="bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white px-6 py-2 rounded-lg transition-colors"
+            >
+              {voiceConfigLoading ? 'Saving...' : 'Save Voice Configuration'}
+            </button>
+          </div>
+
+          {/* Current Configuration Display */}
+          <div className="mt-4 p-3 bg-gray-50 rounded border">
+            <p className="text-sm text-gray-600">
+              <strong>Current Configuration:</strong><br/>
+              👨 Male: {voiceConfig.maleVoice}<br/>
+              👩 Female: {voiceConfig.femaleVoice}
+            </p>
+          </div>
         </div>
 
         {/* Announcer Voice Selection */}

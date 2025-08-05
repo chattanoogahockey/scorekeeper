@@ -14,6 +14,69 @@ class TTSService {
     this.initializeClient();
   }
 
+  /**
+   * Get list of available voices with correct gender assignments
+   */
+  getAvailableVoices() {
+    return [
+      {
+        id: 'en-US-Studio-Q',
+        name: 'Studio Q (Female - Professional)',
+        gender: 'FEMALE',
+        type: 'Studio', 
+        description: 'Professional female voice for clear, articulate announcements (Default)'
+      },
+      {
+        id: 'en-US-Studio-O',
+        name: 'Studio O (Female - Energetic)', 
+        gender: 'FEMALE',  // FIXED: Studio-O is actually female
+        type: 'Studio',
+        description: 'High-energy female voice perfect for goals and exciting moments'
+      },
+      {
+        id: 'en-US-Studio-M',
+        name: 'Studio M (Male - Authoritative)',
+        gender: 'MALE', 
+        type: 'Studio',
+        description: 'Authoritative male voice ideal for penalties and official announcements'
+      },
+      {
+        id: 'en-US-Neural2-F',
+        name: 'Neural2 F (Female - Warm)',
+        gender: 'FEMALE',
+        type: 'Neural2',
+        description: 'Warm, friendly female voice (fallback option)'
+      },
+      {
+        id: 'en-US-Neural2-D',
+        name: 'Neural2 D (Male - Clear)',
+        gender: 'MALE',
+        type: 'Neural2',
+        description: 'Clear, reliable male voice (fallback option)'
+      },
+      {
+        id: 'en-US-Neural2-I',
+        name: 'Neural2 I (Male - Confident)',
+        gender: 'MALE',
+        type: 'Neural2',
+        description: 'Confident, strong male voice (fallback option)'
+      }
+    ];
+  }
+
+  setAnnouncerVoice(voiceName) {
+    const supportedVoices = this.getAvailableVoices().map(v => v.id);
+    
+    if (supportedVoices.includes(voiceName)) {
+      this.selectedVoice = voiceName;
+      console.log(`🎤 Announcer voice set to: ${voiceName}`);
+      return true;
+    } else {
+      console.log(`⚠️  Voice ${voiceName} not supported. Using default: ${this.selectedVoice}`);
+      return false;
+    }
+  }
+
   async initializeClient() {
     try {
       console.log('🔑 Initializing Google Cloud TTS with credential file approach');

@@ -1863,6 +1863,8 @@ app.post('/api/admin/voices/test', async (req, res) => {
     }
     
     const testText = text || 'Goal! What an amazing shot! The crowd goes wild!';
+    console.log(`🎤 Testing voice: ${voiceId}`);
+    console.log(`🎙️  Using voice: ${voiceId} (Rate: 1, Pitch: 0)`);
     
     // Temporarily set the voice for testing
     const originalVoice = ttsService.selectedVoice;
@@ -1878,32 +1880,35 @@ app.post('/api/admin/voices/test', async (req, res) => {
     
     // Generate test audio
     const gameId = 'voice-test';
-    const audioFilename = await ttsService.generateSpeech(testText, gameId, 'test');
+    const result = await ttsService.generateSpeech(testText, gameId, 'test');
     
     // Restore original voice
     ttsService.setAnnouncerVoice(originalVoice);
     
-    if (audioFilename) {
+    if (result && result.success) {
       res.json({
         success: true,
         message: 'Test audio generated successfully',
-        audioUrl: `/api/audio/${audioFilename}`,
+        audioUrl: `/api/audio/${result.filename}`,
         voiceId,
-        testText
+        testText,
+        size: result.size
       });
     } else {
+      const errorMsg = result?.error || 'TTS synthesis failed - check server logs for details';
+      console.error(`❌ Test voice failed: ${errorMsg}`);
       res.status(500).json({
         error: 'Failed to generate test audio',
-        message: 'TTS synthesis failed - check server logs for details',
+        message: errorMsg,
         voiceId
       });
     }
   } catch (error) {
-    console.error('❌ Error testing voice:', error);
-    res.status(500).json({ 
-      error: 'Failed to test voice',
+    console.error('❌ Voice test error:', error);
+    res.status(500).json({
+      error: 'Voice test failed',
       message: error.message,
-      details: 'Check server logs for more information'
+      voiceId: req.body.voiceId
     });
   }
 });

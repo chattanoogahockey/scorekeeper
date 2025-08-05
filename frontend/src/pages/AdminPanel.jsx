@@ -62,7 +62,9 @@ export default function AdminPanel() {
         // Immediately remove the game from local state for instant UI feedback
         setGames(prevGames => prevGames.filter(g => g.id !== gameId));
         
-        setMessage(`Game completely removed. Deleted ${response.data.deletedItems.totalDeleted} records total.`);
+        // Show the server's actual message instead of hardcoded text
+        const serverMessage = response.data.message || 'Game deletion completed';
+        setMessage(serverMessage);
         console.log('AdminPanel: Refreshing games list...');
         
         // Force immediate refresh from server to ensure consistency

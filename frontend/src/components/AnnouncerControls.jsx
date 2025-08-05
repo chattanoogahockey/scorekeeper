@@ -171,6 +171,7 @@ export default function AnnouncerControls({ gameId }) {
             
             const audio = new Audio(audioUrl);
             let audioPlaybackStarted = false;
+            let fallbackTriggered = false;
             
             // Pre-load the audio
             audio.preload = 'auto';
@@ -203,14 +204,15 @@ export default function AnnouncerControls({ gameId }) {
                 setAudioProgress({ current: 0, duration: 0, isPlaying: false });
                 // Release wake lock on error
                 await releaseWakeLock();
-                // Only fallback if we haven't started playing yet
-                if (!audioPlaybackStarted) {
+                // Only fallback if Studio audio never started AND we haven't already triggered fallback
+                if (!audioPlaybackStarted && !fallbackTriggered) {
+                  fallbackTriggered = true;
                   console.log('Falling back to browser TTS...');
                   speakText(announcement.text);
                 }
               };
             };
-            
+
             setupAudioHandlers();
             
             // Try to play audio - this should work on mobile if triggered by user interaction
@@ -222,9 +224,10 @@ export default function AnnouncerControls({ gameId }) {
                 console.log('✅ Studio voice audio playing successfully');
               }
             } catch (playError) {
-              console.log('Studio audio autoplay blocked, falling back to browser TTS:', playError);
-              // Only fallback if we haven't started playing
-              if (!audioPlaybackStarted) {
+              console.log('Studio audio autoplay blocked, using fallback:', playError);
+              // Only fallback if we haven't already triggered fallback
+              if (!fallbackTriggered) {
+                fallbackTriggered = true;
                 speakText(announcement.text);
               }
             }
@@ -290,6 +293,7 @@ export default function AnnouncerControls({ gameId }) {
             
             const audio = new Audio(audioUrl);
             let audioPlaybackStarted = false;
+            let fallbackTriggered = false;
             
             // Pre-load the audio
             audio.preload = 'auto';
@@ -316,14 +320,15 @@ export default function AnnouncerControls({ gameId }) {
               audio.onerror = (e) => {
                 console.error('Studio penalty audio playback error:', e);
                 setAudioProgress({ current: 0, duration: 0, isPlaying: false });
-                // Only fallback if we haven't started playing yet
-                if (!audioPlaybackStarted) {
+                // Only fallback if Studio audio never started AND we haven't already triggered fallback
+                if (!audioPlaybackStarted && !fallbackTriggered) {
+                  fallbackTriggered = true;
                   console.log('Falling back to browser TTS for penalty...');
                   speakText(announcement.text);
                 }
               };
             };
-            
+
             setupAudioHandlers();
             
             // Try to play audio - this should work on mobile if triggered by user interaction
@@ -335,9 +340,10 @@ export default function AnnouncerControls({ gameId }) {
                 console.log('✅ Studio voice penalty audio playing successfully');
               }
             } catch (playError) {
-              console.log('Studio penalty audio autoplay blocked, falling back to browser TTS:', playError);
-              // Only fallback if we haven't started playing
-              if (!audioPlaybackStarted) {
+              console.log('Studio penalty audio autoplay blocked, using fallback:', playError);
+              // Only fallback if we haven't already triggered fallback
+              if (!fallbackTriggered) {
+                fallbackTriggered = true;
                 speakText(announcement.text);
               }
             }

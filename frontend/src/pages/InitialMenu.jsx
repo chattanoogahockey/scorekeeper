@@ -25,6 +25,14 @@ export default function InitialMenu() {
     setLoginError('');
   };
 
+  const handleStatistics = () => {
+    navigate('/statistics');
+  };
+
+  const handleRinkReport = () => {
+    navigate('/rink-report');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 flex flex-col items-center justify-center p-4">
       <div className="text-center mb-12">
@@ -43,6 +51,20 @@ export default function InitialMenu() {
             className="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-4 px-8 rounded-lg text-xl shadow-lg transition-colors"
           >
             New Game
+          </button>
+          
+          <button
+            onClick={handleStatistics}
+            className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-lg text-xl shadow-lg transition-colors"
+          >
+            📊 Statistics
+          </button>
+          
+          <button
+            onClick={handleRinkReport}
+            className="w-full bg-purple-500 hover:bg-purple-600 text-white font-bold py-4 px-8 rounded-lg text-xl shadow-lg transition-colors"
+          >
+            🏒 The Rink Report
           </button>
           
           <button

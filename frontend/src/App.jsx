@@ -9,6 +9,8 @@ import InGameMenu from './pages/InGameMenu.jsx';
 import GoalRecord from './pages/GoalRecord.jsx';
 import PenaltyRecord from './pages/PenaltyRecord.jsx';
 import Dashboard from './pages/Dashboard.jsx';
+import Statistics from './pages/Statistics.jsx';
+import RinkReport from './pages/RinkReport.jsx';
 import { GameProvider } from './contexts/GameContext.jsx';
 
 /**
@@ -27,6 +29,8 @@ export default function App() {
         <Route path="/goal" element={<GoalRecord />} />
         <Route path="/penalty" element={<PenaltyRecord />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/statistics" element={<Statistics />} />
+        <Route path="/rink-report" element={<RinkReport />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </GameProvider>

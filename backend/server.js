@@ -1113,45 +1113,85 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
     
     // Delete all goals
     console.log('🗑️ Deleting goals...');
+    let goalsDeleted = 0;
+    let goalsAlreadyGone = 0;
+    
     for (const goal of goals) {
       try {
         await goalsContainer.item(goal.id, goal.gameId).delete();
         console.log(`✅ Deleted goal: ${goal.id}`);
+        goalsDeleted++;
       } catch (deleteError) {
-        console.error(`❌ Failed to delete goal ${goal.id}:`, deleteError.message);
+        if (deleteError.code === 404 || deleteError.message.includes('does not exist')) {
+          console.log(`ℹ️  Goal ${goal.id} already removed`);
+          goalsAlreadyGone++;
+        } else {
+          console.error(`❌ Failed to delete goal ${goal.id}:`, deleteError.message);
+        }
       }
     }
     
     // Delete all penalties  
     console.log('🗑️ Deleting penalties...');
+    let penaltiesDeleted = 0;
+    let penaltiesAlreadyGone = 0;
+    
     for (const penalty of penalties) {
       try {
         await penaltiesContainer.item(penalty.id, penalty.gameId).delete();
         console.log(`✅ Deleted penalty: ${penalty.id}`);
+        penaltiesDeleted++;
       } catch (deleteError) {
-        console.error(`❌ Failed to delete penalty ${penalty.id}:`, deleteError.message);
+        if (deleteError.code === 404 || deleteError.message.includes('does not exist')) {
+          console.log(`ℹ️  Penalty ${penalty.id} already removed`);
+          penaltiesAlreadyGone++;
+        } else {
+          console.error(`❌ Failed to delete penalty ${penalty.id}:`, deleteError.message);
+        }
       }
     }
     
     // Delete submission records to remove from admin panel
     console.log('🗑️ Deleting specific submission records...');
+    let submissionsDeleted = 0;
+    let submissionsAlreadyGone = 0;
+    
     for (const submission of submissions) {
       try {
         await gamesContainer.item(submission.id, submission.gameId).delete();
         console.log(`✅ Deleted submission: ${submission.id}`);
+        submissionsDeleted++;
       } catch (deleteError) {
-        console.error(`❌ Failed to delete submission ${submission.id}:`, deleteError.message);
+        if (deleteError.code === 404 || deleteError.message.includes('does not exist')) {
+          console.log(`ℹ️  Submission ${submission.id} already removed`);
+          submissionsAlreadyGone++;
+        } else {
+          console.error(`❌ Failed to delete submission ${submission.id}:`, deleteError.message);
+        }
       }
     }
     
-    // Delete ALL game-related records to ensure complete removal
-    console.log('🗑️ Deleting ALL game-related records...');
-    for (const record of allGameRecords) {
+    // Delete ALL game-related records to ensure complete removal (avoid duplicates)
+    console.log('🗑️ Deleting remaining game records...');
+    let gameRecordsDeleted = 0;
+    let gameRecordsAlreadyGone = 0;
+    
+    // Filter out records we already processed in submissions
+    const submissionIds = new Set(submissions.map(s => s.id));
+    const remainingRecords = allGameRecords.filter(record => !submissionIds.has(record.id));
+    
+    for (const record of remainingRecords) {
       try {
         await gamesContainer.item(record.id, record.gameId || gameId).delete();
         console.log(`✅ Deleted game record: ${record.id} (type: ${record.eventType || 'unknown'})`);
+        gameRecordsDeleted++;
       } catch (deleteError) {
-        console.error(`❌ Failed to delete game record ${record.id}:`, deleteError.message);
+        if (deleteError.code === 404 || deleteError.message.includes('does not exist')) {
+          console.log(`ℹ️  Game record ${record.id} already removed`);
+          gameRecordsAlreadyGone++;
+        } else {
+          console.error(`❌ Failed to delete game record ${record.id}:`, deleteError.message);
+        }
       }
     }
     
@@ -1161,20 +1201,28 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
       await gamesContainer.item(gameId, gameId).delete();
       console.log(`✅ Deleted primary game record: ${gameId}`);
     } catch (deleteError) {
-      console.log(`⚠️ Primary game record ${gameId} not found or already deleted: ${deleteError.message}`);
+      if (deleteError.code === 404 || deleteError.message.includes('does not exist')) {
+        console.log(`ℹ️  Primary game record ${gameId} already removed`);
+      } else {
+        console.log(`⚠️ Could not delete primary game record ${gameId}: ${deleteError.message}`);
+      }
     }
     
-    console.log(`✅ Reset complete: Deleted ${goals.length} goals, ${penalties.length} penalties, ${submissions.length} submissions, ${allGameRecords.length} game records for ${gameId}`);
+    console.log(`✅ Reset complete: Successfully deleted ${goalsDeleted} goals, ${penaltiesDeleted} penalties, ${submissionsDeleted} submissions, ${gameRecordsDeleted} game records for ${gameId}`);
+    if (goalsAlreadyGone + penaltiesAlreadyGone + submissionsAlreadyGone + gameRecordsAlreadyGone > 0) {
+      console.log(`ℹ️  ${goalsAlreadyGone + penaltiesAlreadyGone + submissionsAlreadyGone + gameRecordsAlreadyGone} items were already removed`);
+    }
     
     res.status(200).json({
       success: true,
       message: `Game completely removed from system. Game will no longer appear in admin panel.`,
       deletedItems: {
-        goals: goals.length,
-        penalties: penalties.length,
-        submissions: submissions.length,
-        gameRecords: allGameRecords.length,
-        totalDeleted: goals.length + penalties.length + submissions.length + allGameRecords.length
+        goals: goalsDeleted,
+        penalties: penaltiesDeleted,
+        submissions: submissionsDeleted,
+        gameRecords: gameRecordsDeleted,
+        totalDeleted: goalsDeleted + penaltiesDeleted + submissionsDeleted + gameRecordsDeleted,
+        alreadyRemoved: goalsAlreadyGone + penaltiesAlreadyGone + submissionsAlreadyGone + gameRecordsAlreadyGone
       }
     });
   } catch (error) {

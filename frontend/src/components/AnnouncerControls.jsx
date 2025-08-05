@@ -445,14 +445,14 @@ export default function AnnouncerControls({ gameId }) {
           disabled={goalLoading || !currentGameId}
           className="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400"
         >
-          {goalLoading ? 'Generating...' : 'AI Commentary (Goal/Scoreless)'}
+          {goalLoading ? 'Generating...' : 'Goal'}
         </button>
         <button
           onClick={announceLatestPenalty}
           disabled={penaltyLoading || !currentGameId}
           className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400"
         >
-          {penaltyLoading ? 'Generating...' : 'AI Penalty Announcement'}
+          {penaltyLoading ? 'Generating...' : 'Penalty'}
         </button>
       </div>
       

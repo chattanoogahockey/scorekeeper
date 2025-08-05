@@ -2,6 +2,7 @@
   "name": "scorekeeper2",
   "version": "1.0.0",
   "description": "Hockey scorekeeper application with automated Azure deployment",
+  "type": "module",
   "private": true,
   "scripts": {
     "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",

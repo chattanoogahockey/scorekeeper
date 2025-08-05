@@ -45,6 +45,7 @@ const CONTAINER_DEFINITIONS = {
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
+        { path: '/*' },
         { path: '/division/?' },
         { path: '/week/?' },
         { path: '/type/?' },
@@ -60,6 +61,7 @@ const CONTAINER_DEFINITIONS = {
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
+        { path: '/*' },
         { path: '/division/?' },
         { path: '/week/?' },
         { path: '/publishedAt/?' }
@@ -74,6 +76,7 @@ const CONTAINER_DEFINITIONS = {
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
+        { path: '/*' },
         { path: '/league/?' },
         { path: '/division/?' },
         { path: '/eventType/?' },
@@ -90,6 +93,7 @@ const CONTAINER_DEFINITIONS = {
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
+        { path: '/*' },
         { path: '/division/?' },
         { path: '/teamName/?' },
         { path: '/playerName/?' },
@@ -105,6 +109,7 @@ const CONTAINER_DEFINITIONS = {
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
+        { path: '/*' },
         { path: '/gameId/?' },
         { path: '/teamName/?' },
         { path: '/playerName/?' },
@@ -120,6 +125,7 @@ const CONTAINER_DEFINITIONS = {
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
+        { path: '/*' },
         { path: '/gameId/?' },
         { path: '/teamName/?' },
         { path: '/playerName/?' },
@@ -135,6 +141,7 @@ const CONTAINER_DEFINITIONS = {
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
+        { path: '/*' },
         { path: '/teamId/?' },
         { path: '/division/?' },
         { path: '/teamName/?' },
@@ -150,6 +157,7 @@ const CONTAINER_DEFINITIONS = {
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
+        { path: '/*' },
         { path: '/gameId/?' },
         { path: '/recordedAt/?' }
       ]
@@ -163,6 +171,7 @@ const CONTAINER_DEFINITIONS = {
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
+        { path: '/*' },
         { path: '/gameId/?' },
         { path: '/winner/?' },
         { path: '/recordedAt/?' }

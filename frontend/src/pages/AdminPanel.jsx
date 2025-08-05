@@ -106,9 +106,10 @@ export default function AdminPanel() {
     }
   };
 
-  const handleTestVoice = async (voiceId) => {
+  const handleTestVoice = async (voiceId, scenario = 'test') => {
     try {
-      const response = await axios.post('/api/admin/voices/test', { voiceId });
+      setMessage(`Testing ${voiceId} with ${scenario} scenario...`);
+      const response = await axios.post('/api/admin/voices/test', { voiceId, scenario });
       if (response.data.success) {
         // Play the test audio
         const audio = new Audio(response.data.audioUrl);
@@ -116,7 +117,8 @@ export default function AdminPanel() {
           console.error('Error playing audio:', audioError);
           setMessage(`Test audio generated but playback failed: ${audioError.message}`);
         });
-        setMessage(`Playing test audio for ${voiceId}`);
+        const settings = response.data.settings;
+        setMessage(`🎯 Playing optimized ${scenario} audio for ${voiceId} (Rate: ${settings.speakingRate}, Pitch: ${settings.pitch}, Volume: ${settings.volumeGainDb})`);
       }
     } catch (error) {
       console.error('Error testing voice:', error);
@@ -189,17 +191,31 @@ export default function AdminPanel() {
                       </div>
                       
                       <div className="flex space-x-2 mt-3">
-                        <button
-                          onClick={() => handleTestVoice(voice.id)}
-                          className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-3 py-2 rounded text-sm transition-colors"
-                        >
-                          Test
-                        </button>
+                        <div className="flex flex-col space-y-1 flex-1">
+                          <button
+                            onClick={() => handleTestVoice(voice.id, 'test')}
+                            className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                          >
+                            Test General
+                          </button>
+                          <button
+                            onClick={() => handleTestVoice(voice.id, 'goal')}
+                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                          >
+                            Test Goal
+                          </button>
+                          <button
+                            onClick={() => handleTestVoice(voice.id, 'penalty')}
+                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                          >
+                            Test Penalty
+                          </button>
+                        </div>
                         {voice.id !== voices.currentVoice && (
                           <button
                             onClick={() => handleVoiceChange(voice.id)}
                             disabled={voiceLoading}
-                            className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white px-3 py-2 rounded text-sm transition-colors"
+                            className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white px-3 py-2 rounded text-sm transition-colors"
                           >
                             {voiceLoading ? 'Setting...' : 'Select'}
                           </button>

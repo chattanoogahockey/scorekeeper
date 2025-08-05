@@ -1846,7 +1846,7 @@ app.post('/api/admin/voices/select', (req, res) => {
 
 app.post('/api/admin/voices/test', async (req, res) => {
   try {
-    const { voiceId, text } = req.body;
+    const { voiceId, text, scenario } = req.body;
     
     if (!voiceId) {
       return res.status(400).json({ 
@@ -1862,36 +1862,24 @@ app.post('/api/admin/voices/test', async (req, res) => {
       });
     }
     
-    const testText = text || 'Goal! What an amazing shot! The crowd goes wild!';
-    console.log(`🎤 Testing voice: ${voiceId}`);
-    console.log(`🎙️  Using voice: ${voiceId} (Rate: 1, Pitch: 0)`);
+    console.log(`🎤 Testing voice: ${voiceId} with optimal ${scenario || 'test'} settings`);
     
-    // Temporarily set the voice for testing
-    const originalVoice = ttsService.selectedVoice;
-    const voiceChanged = ttsService.setAnnouncerVoice(voiceId);
-    
-    if (!voiceChanged) {
-      return res.status(400).json({
-        error: 'Invalid voice ID',
-        voiceId,
-        availableVoices: ttsService.getAvailableVoices().map(v => v.id)
-      });
-    }
-    
-    // Generate test audio
-    const gameId = 'voice-test';
-    const result = await ttsService.generateSpeech(testText, gameId, 'test');
-    
-    // Restore original voice
-    ttsService.setAnnouncerVoice(originalVoice);
+    // Use the new optimal testing method
+    const result = await ttsService.testVoiceWithOptimalSettings(voiceId, scenario || 'test');
     
     if (result && result.success) {
+      console.log(`🎯 Voice test successful with optimized settings:`);
+      console.log(`   - Voice: ${result.voice}`);
+      console.log(`   - Scenario: ${result.scenario}`);
+      console.log(`   - Settings: Rate=${result.settings.speakingRate}, Pitch=${result.settings.pitch}, Volume=${result.settings.volumeGainDb}`);
+      
       res.json({
         success: true,
-        message: 'Test audio generated successfully',
+        message: 'Test audio generated with optimal announcer settings',
         audioUrl: `/api/audio/${result.filename}`,
         voiceId,
-        testText,
+        scenario: result.scenario,
+        settings: result.settings,
         size: result.size
       });
     } else {

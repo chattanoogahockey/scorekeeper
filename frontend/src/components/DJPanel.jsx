@@ -8,6 +8,18 @@ import React, { useState, useRef } from 'react';
 export default function DJPanel() {
   const [isPlaying, setIsPlaying] = useState(false);
   const currentAudioRef = useRef(null);
+  const [currentOrganIndex, setCurrentOrganIndex] = useState(0);
+  
+  // Array of organ sound files
+  const organSounds = [
+    'organ_toro.mp3',
+    'organ_mexican_hat_dance.mp3', 
+    'organ_lets_go_uppity.mp3',
+    'organ_happy_know_it.mp3',
+    'organ_charge.mp3',
+    'organ_bull_fight_rally.mp3',
+    'organ_build_up.mp3'
+  ];
 
   const playSound = (filename, extension = 'wav') => {
     // If audio is already playing, ignore the new request
@@ -40,6 +52,45 @@ export default function DJPanel() {
       console.error('Error playing audio:', error);
       resetPlaying();
     });
+  };
+
+  const playOrganSound = () => {
+    // If audio is already playing, ignore the new request
+    if (isPlaying) {
+      console.log('Audio already playing, ignoring request');
+      return;
+    }
+
+    // Get the current organ sound file
+    const currentOrganFile = organSounds[currentOrganIndex];
+    
+    // Stop any currently playing audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+    }
+
+    const audio = new Audio(`/sounds/${currentOrganFile}`);
+    currentAudioRef.current = audio;
+    
+    setIsPlaying(true);
+    
+    // Reset playing state when audio ends or has an error
+    const resetPlaying = () => {
+      setIsPlaying(false);
+      currentAudioRef.current = null;
+    };
+    
+    audio.addEventListener('ended', resetPlaying);
+    audio.addEventListener('error', resetPlaying);
+    
+    audio.play().catch((error) => {
+      console.error('Error playing organ audio:', error);
+      resetPlaying();
+    });
+
+    // Move to next organ sound, loop back to 0 after the last one
+    setCurrentOrganIndex((prevIndex) => (prevIndex + 1) % organSounds.length);
   };
 
   return (
@@ -89,6 +140,17 @@ export default function DJPanel() {
           }`}
         >
           Period Buzzer
+        </button>
+        <button
+          onClick={playOrganSound}
+          disabled={isPlaying}
+          className={`px-4 py-2 text-white rounded transition-all duration-200 col-span-2 ${
+            isPlaying 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-purple-700 to-purple-800 hover:from-purple-800 hover:to-purple-900'
+          }`}
+        >
+          🎹 Organ ({currentOrganIndex + 1}/{organSounds.length})
         </button>
       </div>
       {isPlaying && (

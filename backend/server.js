@@ -1198,16 +1198,46 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
       }
     }
     
-    // Also try to delete the primary game record with gameId as both id and partition key
+    // Also try to delete the primary game record - check for multiple possible structures
     console.log('🗑️ Deleting primary game record...');
-    try {
-      await gamesContainer.item(gameId, gameId).delete();
-      console.log(`✅ Deleted primary game record: ${gameId}`);
-    } catch (deleteError) {
-      if (deleteError.code === 404 || deleteError.message.includes('does not exist')) {
-        console.log(`ℹ️  Primary game record ${gameId} already removed`);
-      } else {
-        console.log(`⚠️ Could not delete primary game record ${gameId}: ${deleteError.message}`);
+    
+    // First, try to find the actual game record to get the correct partition key
+    const gameQuery = {
+      query: 'SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId',
+      parameters: [{ name: '@gameId', value: gameId }]
+    };
+    
+    const { resources: gameRecords } = await gamesContainer.items.query(gameQuery).fetchAll();
+    const mainGameRecord = gameRecords.find(record => 
+      record.id === gameId || 
+      (record.gameId === gameId && !record.eventType) || 
+      (record.gameId === gameId && record.eventType === 'game-creation')
+    );
+    
+    if (mainGameRecord) {
+      try {
+        // Use the correct partition key (likely 'league' field) 
+        const partitionKey = mainGameRecord.league || mainGameRecord.gameId || gameId;
+        await gamesContainer.item(mainGameRecord.id, partitionKey).delete();
+        console.log(`✅ Deleted primary game record: ${mainGameRecord.id} with partition key: ${partitionKey}`);
+      } catch (deleteError) {
+        if (deleteError.code === 404 || deleteError.message.includes('does not exist')) {
+          console.log(`ℹ️  Primary game record ${mainGameRecord.id} already removed`);
+        } else {
+          console.log(`⚠️ Could not delete primary game record ${mainGameRecord.id}: ${deleteError.message}`);
+        }
+      }
+    } else {
+      // Fallback: try with gameId as both id and partition key (original logic)
+      try {
+        await gamesContainer.item(gameId, gameId).delete();
+        console.log(`✅ Deleted primary game record: ${gameId} (fallback method)`);
+      } catch (deleteError) {
+        if (deleteError.code === 404 || deleteError.message.includes('does not exist')) {
+          console.log(`ℹ️  Primary game record ${gameId} already removed (fallback)`);
+        } else {
+          console.log(`⚠️ Could not delete primary game record ${gameId} (fallback): ${deleteError.message}`);
+        }
       }
     }
     

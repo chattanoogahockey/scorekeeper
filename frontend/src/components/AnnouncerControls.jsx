@@ -163,11 +163,13 @@ export default function AnnouncerControls({ gameId }) {
         // Only show status when actually playing
         
         // Play the generated audio if available, otherwise use browser TTS
-        if (announcement.audioPath) {
+        if (announcement.audioPath && typeof announcement.audioPath === 'string' && announcement.audioPath.trim() !== '') {
           try {
             const audioUrl = import.meta.env.DEV 
               ? `/api/audio/${announcement.audioPath}` 
               : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
+            
+            console.log('🎵 Attempting to play Studio voice audio:', audioUrl);
             
             const audio = new Audio(audioUrl);
             let audioPlaybackStarted = false;
@@ -234,11 +236,13 @@ export default function AnnouncerControls({ gameId }) {
           } catch (audioError) {
             console.error('Studio audio creation error:', audioError);
             // Fallback to browser TTS if audio creation fails
+            console.log('🔄 Falling back to browser TTS due to audio creation error');
             speakText(announcement.text);
           }
         } else {
           // No server audio available, use browser text-to-speech
-          console.log('No Studio audio available, using browser TTS fallback');
+          console.log('⚠️ No Studio audio available, using browser TTS fallback');
+          console.log('AudioPath received:', announcement.audioPath);
           speakText(announcement.text);
         }
       }
@@ -285,11 +289,13 @@ export default function AnnouncerControls({ gameId }) {
         // Only show status when actually playing
         
         // Play the generated audio if available, otherwise use browser TTS
-        if (announcement.audioPath) {
+        if (announcement.audioPath && typeof announcement.audioPath === 'string' && announcement.audioPath.trim() !== '') {
           try {
             const audioUrl = import.meta.env.DEV 
               ? `/api/audio/${announcement.audioPath}` 
               : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
+            
+            console.log('🎵 Attempting to play Studio penalty audio:', audioUrl);
             
             const audio = new Audio(audioUrl);
             let audioPlaybackStarted = false;
@@ -350,11 +356,13 @@ export default function AnnouncerControls({ gameId }) {
           } catch (audioError) {
             console.error('Studio penalty audio creation error:', audioError);
             // Fallback to browser TTS if audio creation fails
+            console.log('🔄 Falling back to browser TTS due to penalty audio creation error');
             speakText(announcement.text);
           }
         } else {
           // No server audio available, use browser text-to-speech
-          console.log('No Studio penalty audio available, using browser TTS fallback');
+          console.log('⚠️ No Studio penalty audio available, using browser TTS fallback');
+          console.log('AudioPath received:', announcement.audioPath);
           speakText(announcement.text);
         }
       }

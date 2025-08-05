@@ -301,19 +301,24 @@ class TTSService {
     } catch (error) {
       console.error('❌ Speech generation failed:', error.message);
       
-      // If Studio voice fails, try fallback to Neural2-D
-      if (this.selectedVoice.includes('Studio') && error.message.includes('timeout')) {
-        console.log('🔄 Studio voice timeout, trying Neural2-D fallback...');
+      // Enhanced fallback logic - only try fallback for specific Studio voice issues
+      if (this.selectedVoice.includes('Studio') && 
+          (error.message.includes('timeout') || error.message.includes('UNAVAILABLE') || error.code === 503)) {
+        console.log('🔄 Studio voice temporarily unavailable, trying Neural2-D fallback...');
         const originalVoice = this.selectedVoice;
         this.selectedVoice = 'en-US-Neural2-D';
         
         try {
           const fallbackResult = await this.generateSpeech(text, gameId, type);
           this.selectedVoice = originalVoice; // Restore
-          return fallbackResult;
+          if (fallbackResult.success) {
+            fallbackResult.fallbackUsed = true;
+            fallbackResult.originalVoice = originalVoice;
+            return fallbackResult;
+          }
         } catch (fallbackError) {
           this.selectedVoice = originalVoice; // Restore
-          console.error('❌ Fallback also failed:', fallbackError.message);
+          console.error('❌ Neural2-D fallback also failed:', fallbackError.message);
         }
       }
       
@@ -321,7 +326,8 @@ class TTSService {
         success: false,
         error: error.message,
         voice: this.selectedVoice,
-        fallbackUsed: false
+        fallbackUsed: false,
+        shouldRetryWithStudio: true  // Frontend can decide whether to retry or use browser TTS
       };
     }
   }

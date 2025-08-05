@@ -759,14 +759,15 @@ app.post('/api/goals/announce-last', async (req, res) => {
         });
         
         // Generate TTS audio for scoreless commentary using admin-selected voice
-        const audioPath = await ttsService.generateSpeech(scorelessCommentary, gameId, 'announcement');
+        const audioResult = await ttsService.generateSpeech(scorelessCommentary, gameId, 'announcement');
+        const audioFilename = audioResult?.success ? audioResult.filename : null;
         
         return res.status(200).json({
           success: true,
           scoreless: true,
           announcement: {
             text: scorelessCommentary,
-            audioPath: audioPath
+            audioPath: audioFilename
           },
           gameData: {
             homeTeam: game.homeTeam,
@@ -815,7 +816,8 @@ app.post('/api/goals/announce-last', async (req, res) => {
     const announcementText = await generateGoalAnnouncement(goalData, playerStats);
     
     // Generate TTS audio for goal announcement using optimized goal speech
-    const audioPath = await ttsService.generateGoalSpeech(announcementText, gameId);
+    const audioResult = await ttsService.generateGoalSpeech(announcementText, gameId);
+    const audioFilename = audioResult?.success ? audioResult.filename : null;
     
     console.log('✅ Goal announcement generated successfully');
     
@@ -824,7 +826,7 @@ app.post('/api/goals/announce-last', async (req, res) => {
       goal: lastGoal,
       announcement: {
         text: announcementText,
-        audioPath: audioPath
+        audioPath: audioFilename
       },
       goalData,
       playerStats
@@ -929,7 +931,8 @@ app.post('/api/penalties/announce-last', async (req, res) => {
     const announcementText = await generatePenaltyAnnouncement(penaltyData, gameContext);
     
     // Generate TTS audio for penalty announcement (using special penalty voice)
-    const audioPath = await ttsService.generatePenaltySpeech(announcementText, gameId);
+    const audioResult = await ttsService.generatePenaltySpeech(announcementText, gameId);
+    const audioFilename = audioResult?.success ? audioResult.filename : null;
     
     console.log('✅ Penalty announcement generated successfully');
     
@@ -938,7 +941,7 @@ app.post('/api/penalties/announce-last', async (req, res) => {
       penalty: lastPenalty,
       announcement: {
         text: announcementText,
-        audioPath: audioPath
+        audioPath: audioFilename
       },
       penaltyData,
       gameContext
@@ -1091,10 +1094,10 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
     console.log(`🚨 Found ${penalties.length} penalties to delete`);
       
     console.log('📝 Querying for ALL game-related records...');
-    // Get ALL records related to this game (not just submissions)
+    // Get ALL records related to this game (including primary game document)
     const { resources: allGameRecords } = await gamesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId",
+        query: "SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId",
         parameters: [{ name: "@gameId", value: gameId }]
       })
       .fetchAll();
@@ -1208,20 +1211,30 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
       }
     }
     
+    // Calculate total items processed (deleted + already gone)
+    const totalProcessed = goalsDeleted + penaltiesDeleted + submissionsDeleted + gameRecordsDeleted + 
+                           goalsAlreadyGone + penaltiesAlreadyGone + submissionsAlreadyGone + gameRecordsAlreadyGone;
+    
     console.log(`✅ Reset complete: Successfully deleted ${goalsDeleted} goals, ${penaltiesDeleted} penalties, ${submissionsDeleted} submissions, ${gameRecordsDeleted} game records for ${gameId}`);
     if (goalsAlreadyGone + penaltiesAlreadyGone + submissionsAlreadyGone + gameRecordsAlreadyGone > 0) {
       console.log(`ℹ️  ${goalsAlreadyGone + penaltiesAlreadyGone + submissionsAlreadyGone + gameRecordsAlreadyGone} items were already removed`);
     }
     
+    // Show meaningful message even when totalDeleted is 0 due to eventual consistency
+    const resultMessage = totalProcessed > 0 
+      ? `Game completely removed. Processed ${totalProcessed} records total.`
+      : `Game deletion processed. All game data has been marked for removal from the system.`;
+    
     res.status(200).json({
       success: true,
-      message: `Game completely removed from system. Game will no longer appear in admin panel.`,
+      message: resultMessage,
       deletedItems: {
         goals: goalsDeleted,
         penalties: penaltiesDeleted,
         submissions: submissionsDeleted,
         gameRecords: gameRecordsDeleted,
         totalDeleted: goalsDeleted + penaltiesDeleted + submissionsDeleted + gameRecordsDeleted,
+        totalProcessed: totalProcessed,
         alreadyRemoved: goalsAlreadyGone + penaltiesAlreadyGone + submissionsAlreadyGone + gameRecordsAlreadyGone
       }
     });

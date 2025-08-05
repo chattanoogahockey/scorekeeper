@@ -39,18 +39,18 @@ const {
   COSMOS_DB_OTSHOOTOUT_CONTAINER,
 } = process.env;
 
-// Debugging: Log critical environment variables to verify they are loaded
-console.log('COSMOS_DB_URI:', process.env.COSMOS_DB_URI);
-console.log('COSMOS_DB_KEY:', process.env.COSMOS_DB_KEY);
+// Debugging: Log critical environment variables to verify they are loaded (REDACTED for security)
+console.log('COSMOS_DB_URI:', process.env.COSMOS_DB_URI ? 'SET' : 'NOT SET');
+console.log('COSMOS_DB_KEY:', process.env.COSMOS_DB_KEY ? 'SET' : 'NOT SET');
 console.log('COSMOS_DB_NAME:', process.env.COSMOS_DB_NAME);
 
 // Log the current working directory for debugging
 console.log('Current working directory:', process.cwd());
 
-// Log all relevant environment variables for debugging
+// Log all relevant environment variables for debugging (REDACTED for security)
 console.log('Environment Variables:', {
-  COSMOS_DB_URI: process.env.COSMOS_DB_URI,
-  COSMOS_DB_KEY: process.env.COSMOS_DB_KEY,
+  COSMOS_DB_URI: process.env.COSMOS_DB_URI ? 'SET' : 'NOT SET',
+  COSMOS_DB_KEY: process.env.COSMOS_DB_KEY ? 'SET' : 'NOT SET',
   COSMOS_DB_NAME: process.env.COSMOS_DB_NAME,
   COSMOS_DB_GOALS_CONTAINER: process.env.COSMOS_DB_GOALS_CONTAINER,
   COSMOS_DB_PENALTIES_CONTAINER: process.env.COSMOS_DB_PENALTIES_CONTAINER,

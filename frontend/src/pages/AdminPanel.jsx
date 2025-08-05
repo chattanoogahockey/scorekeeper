@@ -19,7 +19,8 @@ export default function AdminPanel() {
   const fetchGames = async () => {
     try {
       console.log('AdminPanel: Fetching submitted games from /api/games/submitted...');
-      const response = await axios.get('/api/games/submitted');
+      // Add cache busting to prevent stale data
+      const response = await axios.get(`/api/games/submitted?t=${Date.now()}`);
       console.log('AdminPanel: Received response:', response.data);
       setGames(response.data);
       setLoading(false);
@@ -64,11 +65,11 @@ export default function AdminPanel() {
         setMessage(`Game completely removed. Deleted ${response.data.deletedItems.totalDeleted} records total.`);
         console.log('AdminPanel: Refreshing games list...');
         
-        // Also refresh from server to ensure consistency
+        // Force immediate refresh from server to ensure consistency
         setTimeout(async () => {
           await fetchGames();
           console.log('AdminPanel: Games list refreshed from server');
-        }, 1000);
+        }, 500);
       } else {
         setMessage(`Error: Deletion response indicated failure`);
       }

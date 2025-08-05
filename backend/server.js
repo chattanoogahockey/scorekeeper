@@ -814,8 +814,8 @@ app.post('/api/goals/announce-last', async (req, res) => {
     // Generate the announcement
     const announcementText = await generateGoalAnnouncement(goalData, playerStats);
     
-    // Generate TTS audio for goal announcement
-    const audioPath = await ttsService.generateSpeech(announcementText, gameId, 'goal');
+    // Generate TTS audio for goal announcement using optimized goal speech
+    const audioPath = await ttsService.generateGoalSpeech(announcementText, gameId);
     
     console.log('✅ Goal announcement generated successfully');
     

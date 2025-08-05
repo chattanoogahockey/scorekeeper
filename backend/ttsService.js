@@ -10,7 +10,7 @@ class TTSService {
   constructor() {
     this.client = null;
     this.audioDir = path.join(__dirname, 'audio-cache');
-    this.selectedVoice = 'en-US-Studio-Q';
+    this.selectedVoice = 'en-US-Studio-O'; // Default to energetic female Studio voice
     this.initializeClient();
   }
 
@@ -23,10 +23,10 @@ class TTSService {
   getVoiceSettings(voiceId, scenario = 'goal') {
     const baseSettings = {
       'en-US-Studio-Q': {
-        goal: { speakingRate: 1.25, pitch: 0, volumeGainDb: 4.0, emphasis: 'none' },
-        penalty: { speakingRate: 0.95, pitch: 0, volumeGainDb: 3.0, emphasis: 'none' },
-        announcement: { speakingRate: 1.0, pitch: 0, volumeGainDb: 1.0, emphasis: 'none' },
-        test: { speakingRate: 1.1, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' }
+        goal: { speakingRate: 0.85, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' },
+        penalty: { speakingRate: 0.75, pitch: 0, volumeGainDb: 1.0, emphasis: 'none' },
+        announcement: { speakingRate: 0.9, pitch: 0, volumeGainDb: 0.5, emphasis: 'none' },
+        test: { speakingRate: 0.8, pitch: 0, volumeGainDb: 1.0, emphasis: 'none' }
       },
       'en-US-Studio-O': {
         goal: { speakingRate: 1.35, pitch: 0, volumeGainDb: 6.0, emphasis: 'none' },
@@ -35,10 +35,10 @@ class TTSService {
         test: { speakingRate: 1.2, pitch: 0, volumeGainDb: 3.0, emphasis: 'none' }
       },
       'en-US-Studio-M': {
-        goal: { speakingRate: 1.2, pitch: 0, volumeGainDb: 5.0, emphasis: 'none' },
-        penalty: { speakingRate: 0.85, pitch: 0, volumeGainDb: 4.0, emphasis: 'none' },
-        announcement: { speakingRate: 0.95, pitch: 0, volumeGainDb: 1.0, emphasis: 'none' },
-        test: { speakingRate: 1.0, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' }
+        goal: { speakingRate: 1.4, pitch: 0, volumeGainDb: 7.0, emphasis: 'none' },
+        penalty: { speakingRate: 0.65, pitch: 0, volumeGainDb: 5.0, emphasis: 'none' },
+        announcement: { speakingRate: 0.8, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' },
+        test: { speakingRate: 0.9, pitch: 0, volumeGainDb: 3.0, emphasis: 'none' }
       },
       'en-US-Neural2-F': {
         goal: { speakingRate: 1.2, pitch: 2.0, volumeGainDb: 2.0, emphasis: 'moderate' },
@@ -173,7 +173,7 @@ class TTSService {
         name: 'Neural2 D (Male - Clear)',
         gender: 'MALE',
         type: 'Neural2',
-        description: 'Clear, reliable male voice (fallback option)'
+        description: 'Clear, reliable male voice (PRIMARY FALLBACK)'
       },
       {
         id: 'en-US-Neural2-I',
@@ -300,43 +300,47 @@ class TTSService {
 
     } catch (error) {
       console.error('❌ Speech generation failed:', error.message);
+      
+      // If Studio voice fails, try fallback to Neural2-D
+      if (this.selectedVoice.includes('Studio') && error.message.includes('timeout')) {
+        console.log('🔄 Studio voice timeout, trying Neural2-D fallback...');
+        const originalVoice = this.selectedVoice;
+        this.selectedVoice = 'en-US-Neural2-D';
+        
+        try {
+          const fallbackResult = await this.generateSpeech(text, gameId, type);
+          this.selectedVoice = originalVoice; // Restore
+          return fallbackResult;
+        } catch (fallbackError) {
+          this.selectedVoice = originalVoice; // Restore
+          console.error('❌ Fallback also failed:', fallbackError.message);
+        }
+      }
+      
       return {
         success: false,
         error: error.message,
-        voice: this.selectedVoice
+        voice: this.selectedVoice,
+        fallbackUsed: false
       };
     }
   }
 
   /**
-   * Generate goal announcement with high-energy optimized settings
+   * Generate goal announcement using the currently selected admin voice
    */
   async generateGoalSpeech(text, gameId) {
-    const originalVoice = this.selectedVoice;
-    
-    // Use the most energetic voice available for goals
-    const goalVoice = this.getAvailableVoices().find(v => v.id === 'en-US-Studio-O') ? 
-      'en-US-Studio-O' : this.selectedVoice;
-      
-    this.setAnnouncerVoice(goalVoice);
+    // Use the admin-selected voice instead of auto-switching
     const result = await this.generateSpeech(text, gameId, 'goal');
-    this.selectedVoice = originalVoice; // Restore original voice
     return result;
   }
 
   /**
-   * Generate penalty announcement with authoritative optimized settings
+   * Generate penalty announcement using the currently selected admin voice
    */
   async generatePenaltySpeech(text, gameId) {
-    const originalVoice = this.selectedVoice;
-    
-    // Use the most authoritative voice available for penalties
-    const penaltyVoice = this.getAvailableVoices().find(v => v.id === 'en-US-Studio-M') ? 
-      'en-US-Studio-M' : this.selectedVoice;
-      
-    this.setAnnouncerVoice(penaltyVoice);
+    // Use the admin-selected voice instead of auto-switching
     const result = await this.generateSpeech(text, gameId, 'penalty');
-    this.selectedVoice = originalVoice; // Restore original voice
     return result;
   }
 

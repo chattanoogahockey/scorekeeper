@@ -10,6 +10,14 @@ export default function DJPanel() {
   const currentAudioRef = useRef(null);
   const [currentOrganIndex, setCurrentOrganIndex] = useState(0);
   
+  // Audio progress state
+  const [audioProgress, setAudioProgress] = useState({ 
+    current: 0, 
+    duration: 0, 
+    isPlaying: false,
+    fileName: ''
+  });
+  
   // Array of organ sound files
   const organSounds = [
     'organ_toro.mp3',
@@ -39,10 +47,29 @@ export default function DJPanel() {
     
     setIsPlaying(true);
     
+    // Update progress bar when audio loads
+    audio.addEventListener('loadedmetadata', () => {
+      setAudioProgress({ 
+        current: 0, 
+        duration: audio.duration, 
+        isPlaying: true,
+        fileName: filename 
+      });
+    });
+    
+    // Update progress during playback
+    audio.addEventListener('timeupdate', () => {
+      setAudioProgress(prev => ({
+        ...prev,
+        current: audio.currentTime
+      }));
+    });
+    
     // Reset playing state when audio ends or has an error
     const resetPlaying = () => {
       setIsPlaying(false);
       currentAudioRef.current = null;
+      setAudioProgress({ current: 0, duration: 0, isPlaying: false, fileName: '' });
     };
     
     audio.addEventListener('ended', resetPlaying);
@@ -75,10 +102,29 @@ export default function DJPanel() {
     
     setIsPlaying(true);
     
+    // Update progress bar when audio loads
+    audio.addEventListener('loadedmetadata', () => {
+      setAudioProgress({ 
+        current: 0, 
+        duration: audio.duration, 
+        isPlaying: true,
+        fileName: 'organ' 
+      });
+    });
+    
+    // Update progress during playback
+    audio.addEventListener('timeupdate', () => {
+      setAudioProgress(prev => ({
+        ...prev,
+        current: audio.currentTime
+      }));
+    });
+    
     // Reset playing state when audio ends or has an error
     const resetPlaying = () => {
       setIsPlaying(false);
       currentAudioRef.current = null;
+      setAudioProgress({ current: 0, duration: 0, isPlaying: false, fileName: '' });
     };
     
     audio.addEventListener('ended', resetPlaying);
@@ -150,10 +196,29 @@ export default function DJPanel() {
               : 'bg-gradient-to-r from-purple-700 to-purple-800 hover:from-purple-800 hover:to-purple-900'
           }`}
         >
-          🎹 Organ ({currentOrganIndex + 1}/{organSounds.length})
+          🎹 Organ
         </button>
       </div>
-      {isPlaying && (
+      
+      {/* Audio Progress Bar */}
+      {audioProgress.isPlaying && (
+        <div className="mt-3 p-2 bg-gray-50 rounded border">
+          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+            <span>🎵 Playing: {audioProgress.fileName}</span>
+            <span>{Math.round(audioProgress.current)}s / {Math.round(audioProgress.duration)}s</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div 
+              className="bg-blue-500 h-2 rounded-full transition-all duration-100"
+              style={{ 
+                width: `${Math.min((audioProgress.current / audioProgress.duration) * 100, 100)}%` 
+              }}
+            ></div>
+          </div>
+        </div>
+      )}
+      
+      {isPlaying && !audioProgress.isPlaying && (
         <p className="text-sm text-gray-500 mt-2 text-center">
           Audio playing...
         </p>

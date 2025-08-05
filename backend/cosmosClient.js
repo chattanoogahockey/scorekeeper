@@ -70,10 +70,11 @@ const CONTAINER_DEFINITIONS = {
   // Game records and submissions
   games: {
     name: 'games',
-    partitionKey: '/division',
+    partitionKey: '/league',
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
+        { path: '/league/?' },
         { path: '/division/?' },
         { path: '/eventType/?' },
         { path: '/submittedAt/?' },
@@ -84,8 +85,8 @@ const CONTAINER_DEFINITIONS = {
   
   // Player statistics and profiles
   players: {
-    name: 'players',
-    partitionKey: '/division',
+    name: 'playerStats',
+    partitionKey: '/_partitionKey',
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
@@ -130,10 +131,11 @@ const CONTAINER_DEFINITIONS = {
   // Team rosters and player assignments
   rosters: {
     name: 'rosters',
-    partitionKey: '/division',
+    partitionKey: '/teamId',
     indexingPolicy: {
       indexingMode: 'consistent',
       includedPaths: [
+        { path: '/teamId/?' },
         { path: '/division/?' },
         { path: '/teamName/?' },
         { path: '/season/?' }

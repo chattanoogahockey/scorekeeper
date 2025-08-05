@@ -15,6 +15,11 @@ export default function AnnouncerControls({ gameId }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   
+  // Voice selection state - get from localStorage or default to 'male'
+  const [selectedVoice, setSelectedVoice] = useState(() => {
+    return localStorage.getItem('selectedVoice') || 'male';
+  });
+  
   // Audio progress state
   const [audioProgress, setAudioProgress] = useState({ 
     current: 0, 
@@ -27,6 +32,13 @@ export default function AnnouncerControls({ gameId }) {
 
   // Use gameId prop if provided, otherwise use context
   const currentGameId = gameId || selectedGameId;
+
+  // Voice selection handler
+  const handleVoiceSelection = (voice) => {
+    setSelectedVoice(voice);
+    localStorage.setItem('selectedVoice', voice);
+    console.log(`🎤 Voice selection changed to: ${voice}`);
+  };
 
   // Request wake lock to keep screen active
   const requestWakeLock = async () => {
@@ -154,7 +166,10 @@ export default function AnnouncerControls({ gameId }) {
         ? '/api/goals/announce-last' 
         : `${import.meta.env.VITE_API_BASE_URL}/api/goals/announce-last`;
       
-      const response = await axios.post(apiUrl, { gameId: currentGameId });
+      const response = await axios.post(apiUrl, { 
+        gameId: currentGameId,
+        voiceGender: selectedVoice // Include selected voice
+      });
       
       if (response.data.success) {
         const { announcement, scoreless } = response.data;
@@ -280,7 +295,10 @@ export default function AnnouncerControls({ gameId }) {
         ? '/api/penalties/announce-last' 
         : `${import.meta.env.VITE_API_BASE_URL}/api/penalties/announce-last`;
       
-      const response = await axios.post(apiUrl, { gameId: currentGameId });
+      const response = await axios.post(apiUrl, { 
+        gameId: currentGameId,
+        voiceGender: selectedVoice // Include selected voice
+      });
       
       if (response.data.success) {
         const { announcement } = response.data;
@@ -387,6 +405,36 @@ export default function AnnouncerControls({ gameId }) {
   return (
     <div className="border rounded shadow p-4">
       <h4 className="text-xl font-semibold mb-2">Announcer Controls</h4>
+      
+      {/* Voice Selection */}
+      <div className="mb-4">
+        <p className="text-sm font-medium text-gray-700 mb-2">Select Voice Type:</p>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleVoiceSelection('male')}
+            className={`flex items-center justify-center px-4 py-2 rounded-lg border-2 transition-colors ${
+              selectedVoice === 'male'
+                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+            }`}
+          >
+            <span className="text-xl mr-2">👨</span>
+            <span className="text-sm font-medium">Male</span>
+          </button>
+          <button
+            onClick={() => handleVoiceSelection('female')}
+            className={`flex items-center justify-center px-4 py-2 rounded-lg border-2 transition-colors ${
+              selectedVoice === 'female'
+                ? 'border-pink-500 bg-pink-50 text-pink-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+            }`}
+          >
+            <span className="text-xl mr-2">👩</span>
+            <span className="text-sm font-medium">Female</span>
+          </button>
+        </div>
+      </div>
+      
       {!currentGameId && (
         <p className="text-yellow-600 mb-2 text-sm">⚠️ No game selected. Please select a game to use announcer features.</p>
       )}

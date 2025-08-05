@@ -131,6 +131,10 @@ export function getPlayerStatsContainer() {
   return database.container('playerStats');
 }
 
+export function getRinkReportsContainer() {
+  return database.container('rink_reports');
+}
+
 export async function testDatabaseConnection() {
   try {
     const container = getGamesContainer(); // Using the games container for testing

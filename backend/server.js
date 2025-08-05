@@ -2,10 +2,13 @@ import express from 'express';
 import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
-import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoalsContainer, getPenaltiesContainer, getOTShootoutContainer } from './cosmosClient.js';
+import { getGamesContainer, getAttendanceContainer, getRostersContainer, getGoalsContainer, getPenaltiesContainer, getOTShootoutContainer, getRinkReportsContainer } from './cosmosClient.js';
 
 // Import TTS service
 import ttsService from './ttsService.js';
+
+// Import rink report generator
+import { generateRinkReport, getCurrentWeekId } from './rinkReportGenerator.js';
 
 // Conditionally import announcer service to prevent startup failures
 let createGoalAnnouncement = null;
@@ -1381,6 +1384,47 @@ app.post('/api/games/submit', async (req, res) => {
     const { resource } = await gamesContainer.items.create(gameSubmissionRecord);
     console.log('✅ Game submitted successfully');
     
+    // Trigger automatic rink report generation
+    try {
+      console.log('📰 Triggering rink report generation...');
+      
+      // Get the game details to determine division
+      let gameDetails = null;
+      try {
+        const { resources: gameQuery } = await gamesContainer.items
+          .query({
+            query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
+            parameters: [{ name: "@gameId", value: gameId }]
+          })
+          .fetchAll();
+        
+        if (gameQuery.length > 0) {
+          gameDetails = gameQuery[0];
+        }
+      } catch (gameQueryError) {
+        console.warn('⚠️ Could not fetch game details for report generation:', gameQueryError.message);
+      }
+      
+      if (gameDetails && gameDetails.division) {
+        const currentWeek = getCurrentWeekId();
+        console.log(`📰 Generating report for ${gameDetails.division} division, week ${currentWeek}`);
+        
+        // Generate report asynchronously (don't wait for completion)
+        generateRinkReport(gameDetails.division, currentWeek)
+          .then((report) => {
+            console.log(`✅ Rink report generated successfully for ${gameDetails.division} division`);
+          })
+          .catch((reportError) => {
+            console.error(`❌ Failed to generate rink report for ${gameDetails.division}:`, reportError.message);
+          });
+      } else {
+        console.log('ℹ️ Game division not found, skipping report generation');
+      }
+    } catch (reportGenError) {
+      console.error('❌ Error in report generation trigger:', reportGenError.message);
+      // Don't fail the game submission if report generation fails
+    }
+    
     res.status(201).json({
       success: true,
       submissionRecord: resource,
@@ -2212,6 +2256,189 @@ app.get('/api/penalties/game/:gameId', async (req, res) => {
   } catch (error) {
     console.error('❌ Error fetching penalties for game:', error);
     handleError(res, error);
+  }
+});
+
+// Rink Reports API endpoint
+app.get('/api/rink-reports', async (req, res) => {
+  console.log('📰 Fetching rink reports...');
+  const { division, week } = req.query;
+  
+  try {
+    const container = getRinkReportsContainer();
+    let querySpec;
+    
+    if (division && week) {
+      // Get specific report by division and week
+      querySpec = {
+        query: 'SELECT * FROM c WHERE c.division = @division AND c.week = @week',
+        parameters: [
+          { name: '@division', value: division },
+          { name: '@week', value: week }
+        ]
+      };
+    } else if (division) {
+      // Get all reports for a division
+      querySpec = {
+        query: 'SELECT * FROM c WHERE c.division = @division ORDER BY c.week DESC',
+        parameters: [{ name: '@division', value: division }]
+      };
+    } else {
+      // Get all reports, ordered by week (most recent first)
+      querySpec = {
+        query: 'SELECT * FROM c ORDER BY c.week DESC, c.division ASC'
+      };
+    }
+    
+    const { resources: reports } = await container.items.query(querySpec).fetchAll();
+    
+    console.log(`✅ Found ${reports.length} rink reports`);
+    res.status(200).json(reports);
+  } catch (error) {
+    console.error('❌ Error fetching rink reports:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch rink reports',
+      message: error.message 
+    });
+  }
+});
+
+// Manual rink report generation endpoint
+app.post('/api/rink-reports/generate', async (req, res) => {
+  console.log('📰 Manual rink report generation triggered...');
+  const { division, week } = req.body;
+  
+  try {
+    if (!division) {
+      return res.status(400).json({
+        error: 'Division is required',
+        example: { division: 'Gold', week: '2025-W32' }
+      });
+    }
+    
+    const targetWeek = week || getCurrentWeekId();
+    console.log(`📰 Generating report for ${division} division, week ${targetWeek}`);
+    
+    const report = await generateRinkReport(division, targetWeek);
+    
+    res.status(201).json({
+      success: true,
+      message: `Rink report generated for ${division} division, week ${targetWeek}`,
+      report: {
+        id: report.id,
+        division: report.division,
+        week: report.week,
+        title: report.title,
+        publishedAt: report.publishedAt,
+        generatedBy: report.generatedBy
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error generating rink report:', error);
+    res.status(500).json({
+      error: 'Failed to generate rink report',
+      message: error.message
+    });
+  }
+});
+
+// Test endpoint to create sample rink report data
+app.post('/api/rink-reports/create-sample', async (req, res) => {
+  console.log('📰 Creating sample rink report data...');
+  
+  try {
+    const container = getRinkReportsContainer();
+    const currentWeek = getCurrentWeekId();
+    
+    const sampleReport = {
+      id: `Gold-${currentWeek}`,
+      division: 'Gold',
+      week: currentWeek,
+      weekLabel: 'This Week',
+      publishedAt: new Date().toISOString(),
+      author: 'Sample Data Generator',
+      title: 'Gold Division Weekly Roundup',
+      html: `
+        <p>The Gold Division delivered exceptional hockey this week with 4 thrilling matchups. Players combined for 23 goals, demonstrating the high level of skill and competition in our premier division.</p>
+        
+        <h3>Game of the Week</h3>
+        <p>In a stunning overtime thriller, the Thunder Bolts defeated the Ice Crushers 5-4. Jake Morrison scored the game-winner with just 1:30 remaining in the extra period, completing his hat trick performance in dramatic fashion.</p>
+        
+        <h3>Scoring Leaders</h3>
+        <p>Jake Morrison led all Gold division players with 5 points (3G, 2A), establishing himself as the player to watch. His consistent performance has been instrumental in the Thunder Bolts' recent success.</p>
+        
+        <h3>Team Spotlight</h3>
+        <p>The Thunder Bolts showcased impressive offensive capabilities, averaging 4.5 goals per game this week. Their balanced attack and excellent special teams play have positioned them as division frontrunners.</p>
+        
+        <h3>Physical Play</h3>
+        <p>The competition was intense with 12 penalties totaling 28 minutes. While teams competed hard, the focus remained on skillful, competitive hockey that showcased the best of our league.</p>
+        
+        <h3>Looking Ahead</h3>
+        <p>Next week features crucial matchups that could reshape the division standings. The Thunder Bolts face their biggest test yet, while other teams look to make their move in the playoff race.</p>
+      `,
+      highlights: [
+        'Thunder Bolts edge Ice Crushers 5-4 in overtime thriller',
+        'Jake Morrison records hat trick with game-winning goal',
+        'Power Players stage dramatic comeback from 3-goal deficit',
+        'Victory Squad maintains perfect penalty kill record'
+      ],
+      standoutPlayers: [
+        {
+          name: 'Jake Morrison',
+          team: 'Thunder Bolts',
+          stats: '3 goals, 2 assists this week',
+          highlight: 'Hat trick hero with overtime game-winner'
+        },
+        {
+          name: 'Alex Chen',
+          team: 'Ice Crushers',
+          stats: '2 goals, 3 assists this week',
+          highlight: 'Playmaker extraordinaire setting up scoring chances'
+        },
+        {
+          name: 'Ryan Thompson',
+          team: 'Power Players',
+          stats: '4 goals, 1 assist this week',
+          highlight: 'Goal-scoring machine in comeback victory'
+        }
+      ],
+      leagueUpdates: [
+        'Gold division completed 4 high-intensity games this week',
+        'Players scored 23 goals across all matchups',
+        '28 penalty minutes assessed in competitive play',
+        'Average of 5.8 goals per game demonstrates offensive talent',
+        'Playoff race intensifies with tight standings',
+        'Championship tournament preparations underway'
+      ],
+      upcomingPredictions: [
+        {
+          matchup: 'Thunder Bolts vs Power Players',
+          prediction: 'High-scoring affair between top offensive teams',
+          keyFactor: 'Special teams play could decide the outcome'
+        },
+        {
+          matchup: 'Ice Crushers vs Victory Squad',
+          prediction: 'Defensive battle between disciplined teams',
+          keyFactor: 'Goaltending performance will be crucial'
+        }
+      ],
+      generatedBy: 'sample',
+      lastUpdated: new Date().toISOString()
+    };
+    
+    await container.items.upsert(sampleReport);
+    
+    res.status(201).json({
+      success: true,
+      message: 'Sample rink report created successfully',
+      report: sampleReport
+    });
+  } catch (error) {
+    console.error('❌ Error creating sample report:', error);
+    res.status(500).json({
+      error: 'Failed to create sample report',
+      message: error.message
+    });
   }
 });
 

@@ -12,6 +12,7 @@ export default function AnnouncerControls({ gameId }) {
   const { selectedGame, selectedGameId } = useContext(GameContext);
   const [goalLoading, setGoalLoading] = useState(false);
   const [penaltyLoading, setPenaltyLoading] = useState(false);
+  const [randomLoading, setRandomLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   
@@ -402,6 +403,138 @@ export default function AnnouncerControls({ gameId }) {
     }
   };
 
+  /**
+   * Generate and announce random commentary
+   */
+  const announceRandomCommentary = async () => {
+    if (!currentGameId) {
+      setError('No game selected. Please select a game first.');
+      return;
+    }
+
+    setRandomLoading(true);
+    setError(null);
+    setMessage('Generating random commentary...');
+    
+    try {
+      const apiUrl = import.meta.env.DEV 
+        ? '/api/randomCommentary' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/randomCommentary`;
+      
+      const response = await axios.post(apiUrl, { 
+        gameId: currentGameId,
+        voiceGender: selectedVoice // Include selected voice
+      });
+      
+      if (response.data.success) {
+        const { text, audioPath } = response.data;
+        
+        // Play the generated audio if available, otherwise use browser TTS
+        if (audioPath && typeof audioPath === 'string' && audioPath.trim() !== '') {
+          try {
+            const audioUrl = import.meta.env.DEV 
+              ? `/api/audio/${audioPath}` 
+              : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${audioPath}`;
+            
+            console.log('🎵 Attempting to play random commentary audio:', audioUrl);
+            
+            const audio = new Audio(audioUrl);
+            let audioPlaybackStarted = false;
+            let fallbackTriggered = false;
+            
+            // Pre-load the audio
+            audio.preload = 'auto';
+            
+            // Set up event handlers before attempting to play
+            const setupAudioHandlers = async () => {
+              audio.onloadedmetadata = async () => {
+                setMessage('🔊 Playing random commentary...');
+                setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
+                // Request wake lock for long audio
+                await requestWakeLock();
+              };
+              
+              audio.ontimeupdate = () => {
+                setAudioProgress(prev => ({
+                  ...prev,
+                  current: audio.currentTime
+                }));
+              };
+              
+              audio.onended = async () => {
+                setMessage('');
+                setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+                // Release wake lock when audio ends
+                await releaseWakeLock();
+              };
+              
+              audio.onerror = async (e) => {
+                console.error('Random commentary audio playback error:', e);
+                setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+                // Release wake lock on error
+                await releaseWakeLock();
+                // Only fallback if Studio audio never started AND we haven't already triggered fallback
+                if (!audioPlaybackStarted && !fallbackTriggered) {
+                  fallbackTriggered = true;
+                  console.log('Falling back to browser TTS...');
+                  speakText(text);
+                }
+              };
+            };
+
+            setupAudioHandlers();
+            
+            // Try to play audio - this should work on mobile if triggered by user interaction
+            try {
+              const playPromise = audio.play();
+              if (playPromise !== undefined) {
+                await playPromise;
+                audioPlaybackStarted = true; // Mark that Studio audio started successfully
+                console.log('✅ Random commentary audio playing successfully');
+              }
+            } catch (playError) {
+              console.log('Random commentary autoplay blocked, using fallback:', playError);
+              // Only fallback if we haven't already triggered fallback
+              if (!fallbackTriggered) {
+                fallbackTriggered = true;
+                speakText(text);
+              }
+            }
+          } catch (audioError) {
+            console.error('Random commentary audio creation error:', audioError);
+            // Fallback to browser TTS if audio creation fails
+            console.log('🔄 Falling back to browser TTS due to audio creation error');
+            speakText(text);
+          }
+        } else {
+          // No server audio available, use browser text-to-speech
+          console.log('⚠️ No Studio audio available for random commentary, using browser TTS fallback');
+          console.log('AudioPath received:', audioPath);
+          speakText(text);
+        }
+      } else if (response.data.text) {
+        // API returned just text without audio processing
+        console.log('📢 Random commentary text received, using browser TTS');
+        speakText(response.data.text);
+      }
+    } catch (err) {
+      console.error('Error generating random commentary:', err);
+      
+      // Handle fallback when random commentary service isn't available
+      if (err.response?.status === 503) {
+        setError('Random commentary service not available in current deployment');
+        setMessage('Random commentary feature temporarily unavailable');
+      } else if (err.response?.status === 404) {
+        setError('Random commentary endpoint not found');
+      } else {
+        setError(err.response?.data?.error || 'Failed to generate random commentary');
+      }
+      setMessage('');
+    } finally {
+      setRandomLoading(false);
+    }
+  };
+
   return (
     <div className="border rounded shadow p-4">
       <h4 className="text-xl font-semibold mb-2">Announcer Controls</h4>
@@ -453,6 +586,13 @@ export default function AnnouncerControls({ gameId }) {
           className="w-full px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400"
         >
           {penaltyLoading ? 'Generating...' : 'Penalty'}
+        </button>
+        <button
+          onClick={announceRandomCommentary}
+          disabled={randomLoading || !currentGameId}
+          className="w-full px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400"
+        >
+          {randomLoading ? 'Generating...' : 'Random'}
         </button>
       </div>
       

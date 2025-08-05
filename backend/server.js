@@ -1042,6 +1042,255 @@ app.post('/api/penalties/announce-last', async (req, res) => {
   }
 });
 
+// Random Commentary endpoint
+app.post('/api/randomCommentary', async (req, res) => {
+  console.log('🎲 Generating random commentary...');
+  const { gameId, division, voiceGender } = req.body;
+
+  if (!gameId && !division) {
+    return res.status(400).json({
+      error: 'Either gameId or division is required.'
+    });
+  }
+
+  // Map voice gender to Google TTS Studio voices using database configuration
+  let selectedVoice = 'en-US-Studio-Q'; // Default fallback
+  
+  try {
+    const gamesContainer = getGamesContainer();
+    const { resources: configs } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.id = 'voiceConfig'",
+        parameters: []
+      })
+      .fetchAll();
+    
+    if (configs.length > 0) {
+      const voiceConfig = configs[0];
+      if (voiceGender === 'male' && voiceConfig.maleVoice) {
+        selectedVoice = voiceConfig.maleVoice;
+      } else if (voiceGender === 'female' && voiceConfig.femaleVoice) {
+        selectedVoice = voiceConfig.femaleVoice;
+      }
+    } else {
+      // Use defaults based on corrected gender mapping
+      const defaultMapping = {
+        'male': 'en-US-Studio-Q',    // Studio-Q is male
+        'female': 'en-US-Studio-O'   // Studio-O is female  
+      };
+      selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
+    }
+  } catch (configError) {
+    console.warn('⚠️ Could not fetch voice config, using defaults:', configError.message);
+    const defaultMapping = {
+      'male': 'en-US-Studio-Q',    // Studio-Q is male
+      'female': 'en-US-Studio-O'   // Studio-O is female
+    };
+    selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
+  }
+  
+  console.log(`🎤 Using voice for random commentary: ${selectedVoice} (requested: ${voiceGender})`);
+  
+  // Temporarily set the voice in TTS service for this request
+  const originalVoice = ttsService.selectedVoice;
+  ttsService.selectedVoice = selectedVoice;
+
+  try {
+    const goalsContainer = getGoalsContainer();
+    const penaltiesContainer = getPenaltiesContainer();
+    const gamesContainer = getGamesContainer();
+    
+    // Generate different types of commentary
+    const commentaryTypes = ['hot_player', 'leader', 'matchup', 'fact'];
+    const selectedType = commentaryTypes[Math.floor(Math.random() * commentaryTypes.length)];
+    
+    let commentaryText = '';
+    
+    switch (selectedType) {
+      case 'hot_player':
+        commentaryText = await generateHotPlayerCommentary(goalsContainer, gameId, division);
+        break;
+      case 'leader':
+        commentaryText = await generateLeaderCommentary(goalsContainer, division);
+        break;
+      case 'matchup':
+        commentaryText = await generateMatchupCommentary(gamesContainer, division);
+        break;
+      case 'fact':
+        commentaryText = await generateFactCommentary(goalsContainer, penaltiesContainer, division);
+        break;
+      default:
+        commentaryText = 'Welcome to hockey night!';
+    }
+    
+    // Generate TTS audio for random commentary
+    const audioResult = await ttsService.generateSpeech(commentaryText, gameId || 'random', 'announcement');
+    const audioFilename = audioResult?.success ? audioResult.filename : null;
+    
+    console.log('✅ Random commentary generated successfully');
+    
+    res.status(200).json({
+      success: true,
+      type: selectedType,
+      text: commentaryText,
+      audioPath: audioFilename
+    });
+  } catch (error) {
+    console.error('❌ Error generating random commentary:', error.message);
+    res.status(500).json({
+      error: 'Failed to generate random commentary',
+      message: error.message
+    });
+  } finally {
+    // Restore original voice
+    ttsService.selectedVoice = originalVoice;
+  }
+});
+
+// Helper functions for random commentary generation
+async function generateHotPlayerCommentary(goalsContainer, gameId, division) {
+  try {
+    // Get recent goals (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const { resources: recentGoals } = await goalsContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c._ts > @timestamp",
+        parameters: [{ name: '@timestamp', value: Math.floor(sevenDaysAgo.getTime() / 1000) }]
+      })
+      .fetchAll();
+    
+    // Count goals by player
+    const playerGoals = {};
+    recentGoals.forEach(goal => {
+      const player = goal.playerName || goal.scorer;
+      if (player) {
+        playerGoals[player] = (playerGoals[player] || 0) + 1;
+      }
+    });
+    
+    // Find hot players (3+ goals)
+    const hotPlayers = Object.entries(playerGoals)
+      .filter(([player, goals]) => goals >= 3)
+      .sort(([,a], [,b]) => b - a);
+    
+    if (hotPlayers.length > 0) {
+      const [player, goals] = hotPlayers[0];
+      const templates = [
+        `${player} is on fire with ${goals} goals in the last week!`,
+        `Look out for ${player} - ${goals} goals in their last few games!`,
+        `${player} has been lighting up the scoreboard with ${goals} recent goals!`
+      ];
+      return templates[Math.floor(Math.random() * templates.length)];
+    }
+    
+    return 'Players are battling hard on the ice tonight!';
+  } catch (error) {
+    console.error('Error generating hot player commentary:', error);
+    return 'The competition is heating up on the ice!';
+  }
+}
+
+async function generateLeaderCommentary(goalsContainer, division) {
+  try {
+    // Get all goals for season leaders
+    const { resources: allGoals } = await goalsContainer.items
+      .query({
+        query: "SELECT * FROM c"
+      })
+      .fetchAll();
+    
+    // Count total goals by player
+    const playerTotals = {};
+    allGoals.forEach(goal => {
+      const player = goal.playerName || goal.scorer;
+      if (player) {
+        playerTotals[player] = (playerTotals[player] || 0) + 1;
+      }
+    });
+    
+    // Find top scorers
+    const leaders = Object.entries(playerTotals)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3);
+    
+    if (leaders.length > 0) {
+      const [topPlayer, topGoals] = leaders[0];
+      const templates = [
+        `${topPlayer} leads the league with ${topGoals} goals this season!`,
+        `Current scoring leader ${topPlayer} has found the net ${topGoals} times!`,
+        `With ${topGoals} goals, ${topPlayer} is setting the pace this year!`
+      ];
+      return templates[Math.floor(Math.random() * templates.length)];
+    }
+    
+    return 'The race for the scoring title is heating up!';
+  } catch (error) {
+    console.error('Error generating leader commentary:', error);
+    return 'Great hockey being played across the league!';
+  }
+}
+
+async function generateMatchupCommentary(gamesContainer, division) {
+  try {
+    // Get recent games for matchup insights
+    const { resources: recentGames } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.eventType = 'game-submission' ORDER BY c._ts DESC"
+      })
+      .fetchAll();
+    
+    if (recentGames.length >= 2) {
+      const recentGame = recentGames[0];
+      const templates = [
+        `Earlier today, ${recentGame.gameSummary?.goalsByTeam ? Object.keys(recentGame.gameSummary.goalsByTeam)[0] : 'a team'} put up a strong performance!`,
+        `The competition has been intense across all matchups this week!`,
+        `Teams are battling for playoff position in every game!`
+      ];
+      return templates[Math.floor(Math.random() * templates.length)];
+    }
+    
+    return 'Every game matters as teams fight for position!';
+  } catch (error) {
+    console.error('Error generating matchup commentary:', error);
+    return 'The intensity is building as the season progresses!';
+  }
+}
+
+async function generateFactCommentary(goalsContainer, penaltiesContainer, division) {
+  try {
+    // Get some fun stats
+    const { resources: allGoals } = await goalsContainer.items
+      .query({
+        query: "SELECT COUNT(1) as totalGoals FROM c"
+      })
+      .fetchAll();
+    
+    const { resources: allPenalties } = await penaltiesContainer.items
+      .query({
+        query: "SELECT COUNT(1) as totalPenalties FROM c"
+      })
+      .fetchAll();
+    
+    const totalGoals = allGoals[0]?.totalGoals || 0;
+    const totalPenalties = allPenalties[0]?.totalPenalties || 0;
+    
+    const facts = [
+      `Over ${totalGoals} goals have been scored this season!`,
+      `Players have accumulated ${totalPenalties} penalty minutes so far!`,
+      `Hockey is a game of speed, skill, and determination!`,
+      `Every shift could be the difference maker in this game!`,
+      `The pace of play keeps getting faster every season!`
+    ];
+    
+    return facts[Math.floor(Math.random() * facts.length)];
+  } catch (error) {
+    console.error('Error generating fact commentary:', error);
+    return 'Hockey continues to be the greatest game on earth!';
+  }
+}
+
 // Game submission endpoint
 app.post('/api/games/submit', async (req, res) => {
   console.log('🏁 Submitting game...');

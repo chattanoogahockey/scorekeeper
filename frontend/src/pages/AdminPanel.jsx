@@ -8,8 +8,6 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(null); // Track which game is being deleted
   const [message, setMessage] = useState('');
-  const [voices, setVoices] = useState({ currentVoice: '', availableVoices: [] });
-  const [voiceLoading, setVoiceLoading] = useState(false);
   
   // Voice configuration state
   const [voiceConfig, setVoiceConfig] = useState({ maleVoice: '', femaleVoice: '' });
@@ -18,7 +16,6 @@ export default function AdminPanel() {
 
   useEffect(() => {
     fetchGames();
-    fetchVoices();
     fetchVoiceConfig();
     fetchAvailableVoices();
   }, []);
@@ -34,15 +31,6 @@ export default function AdminPanel() {
     } catch (error) {
       console.error('Error fetching submitted games:', error);
       setLoading(false);
-    }
-  };
-
-  const fetchVoices = async () => {
-    try {
-      const response = await axios.get('/api/admin/voices');
-      setVoices(response.data);
-    } catch (error) {
-      console.error('Error fetching voices:', error);
     }
   };
 
@@ -140,22 +128,6 @@ export default function AdminPanel() {
     navigate('/');
   };
 
-  const handleVoiceChange = async (voiceId) => {
-    setVoiceLoading(true);
-    try {
-      const response = await axios.post('/api/admin/voices/select', { voiceId });
-      if (response.data.success) {
-        setMessage(`Announcer voice changed to ${voiceId}`);
-        fetchVoices(); // Refresh voice info
-      }
-    } catch (error) {
-      console.error('Error changing voice:', error);
-      setMessage(`Error changing voice: ${error.response?.data?.error || error.message}`);
-    } finally {
-      setVoiceLoading(false);
-    }
-  };
-
   const handleTestVoice = async (voiceId, scenario = 'test') => {
     try {
       setMessage(`Testing ${voiceId} with ${scenario} scenario...`);
@@ -200,8 +172,8 @@ export default function AdminPanel() {
 
         {/* Voice Configuration Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4">Voice Configuration</h2>
-          <p className="text-gray-600 mb-4">Configure which Studio voices to use for male and female announcements.</p>
+          <h2 className="text-2xl font-bold mb-4">Announcer Voice Configuration</h2>
+          <p className="text-gray-600 mb-4">Configure which Studio voices to use for male and female announcements. Players can switch between these during games.</p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Male Voice Dropdown */}
@@ -212,7 +184,7 @@ export default function AdminPanel() {
               <select 
                 value={voiceConfig.maleVoice} 
                 onChange={(e) => setVoiceConfig({...voiceConfig, maleVoice: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
               >
                 {availableVoices.filter(voice => voice.gender === 'male').map(voice => (
                   <option key={voice.id} value={voice.id}>
@@ -220,6 +192,30 @@ export default function AdminPanel() {
                   </option>
                 ))}
               </select>
+              
+              {/* Male Voice Test Buttons */}
+              {voiceConfig.maleVoice && (
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    onClick={() => handleTestVoice(voiceConfig.maleVoice, 'test')}
+                    className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                  >
+                    Test General
+                  </button>
+                  <button
+                    onClick={() => handleTestVoice(voiceConfig.maleVoice, 'goal')}
+                    className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                  >
+                    Test Goal
+                  </button>
+                  <button
+                    onClick={() => handleTestVoice(voiceConfig.maleVoice, 'penalty')}
+                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                  >
+                    Test Penalty
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Female Voice Dropdown */}
@@ -230,7 +226,7 @@ export default function AdminPanel() {
               <select 
                 value={voiceConfig.femaleVoice} 
                 onChange={(e) => setVoiceConfig({...voiceConfig, femaleVoice: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 mb-2"
               >
                 {availableVoices.filter(voice => voice.gender === 'female').map(voice => (
                   <option key={voice.id} value={voice.id}>
@@ -238,10 +234,34 @@ export default function AdminPanel() {
                   </option>
                 ))}
               </select>
+              
+              {/* Female Voice Test Buttons */}
+              {voiceConfig.femaleVoice && (
+                <div className="flex flex-wrap gap-1">
+                  <button
+                    onClick={() => handleTestVoice(voiceConfig.femaleVoice, 'test')}
+                    className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                  >
+                    Test General
+                  </button>
+                  <button
+                    onClick={() => handleTestVoice(voiceConfig.femaleVoice, 'goal')}
+                    className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                  >
+                    Test Goal
+                  </button>
+                  <button
+                    onClick={() => handleTestVoice(voiceConfig.femaleVoice, 'penalty')}
+                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                  >
+                    Test Penalty
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="mt-4">
+          <div className="mt-6">
             <button
               onClick={handleVoiceConfigSave}
               disabled={voiceConfigLoading}
@@ -252,94 +272,16 @@ export default function AdminPanel() {
           </div>
 
           {/* Current Configuration Display */}
-          <div className="mt-4 p-3 bg-gray-50 rounded border">
+          <div className="mt-4 p-4 bg-gray-50 rounded border">
             <p className="text-sm text-gray-600">
               <strong>Current Configuration:</strong><br/>
               👨 Male: {voiceConfig.maleVoice}<br/>
               👩 Female: {voiceConfig.femaleVoice}
             </p>
+            <p className="text-xs text-gray-500 mt-2">
+              💡 Players can switch between male and female voices using the buttons in the game interface.
+            </p>
           </div>
-        </div>
-
-        {/* Announcer Voice Selection */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4">Announcer Voice Settings</h2>
-          
-          {voices.availableVoices.length > 0 && (
-            <div className="space-y-4">
-              <div>
-                <p className="text-gray-600 mb-2">
-                  Current Voice: <span className="font-semibold">{voices.currentVoice}</span>
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {voices.availableVoices.map((voice) => (
-                  <div 
-                    key={voice.id} 
-                    className={`border-2 rounded-lg p-4 transition-all ${
-                      voice.id === voices.currentVoice 
-                        ? 'border-blue-500 bg-blue-50' 
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex flex-col space-y-2">
-                      <h3 className="font-semibold text-gray-800">{voice.name}</h3>
-                      <p className="text-sm text-gray-600">{voice.description}</p>
-                      <div className="flex items-center space-x-2 text-xs">
-                        <span className={`px-2 py-1 rounded-full ${
-                          voice.type === 'Studio' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-blue-100 text-blue-800'
-                        }`}>
-                          {voice.type}
-                        </span>
-                        <span className={`px-2 py-1 rounded-full ${
-                          voice.gender === 'FEMALE' 
-                            ? 'bg-pink-100 text-pink-800' 
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {voice.gender}
-                        </span>
-                      </div>
-                      
-                      <div className="flex space-x-2 mt-3">
-                        <div className="flex flex-col space-y-1 flex-1">
-                          <button
-                            onClick={() => handleTestVoice(voice.id, 'test')}
-                            className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs transition-colors"
-                          >
-                            Test General
-                          </button>
-                          <button
-                            onClick={() => handleTestVoice(voice.id, 'goal')}
-                            className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs transition-colors"
-                          >
-                            Test Goal
-                          </button>
-                          <button
-                            onClick={() => handleTestVoice(voice.id, 'penalty')}
-                            className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition-colors"
-                          >
-                            Test Penalty
-                          </button>
-                        </div>
-                        {voice.id !== voices.currentVoice && (
-                          <button
-                            onClick={() => handleVoiceChange(voice.id)}
-                            disabled={voiceLoading}
-                            className="bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white px-3 py-2 rounded text-sm transition-colors"
-                          >
-                            {voiceLoading ? 'Setting...' : 'Select'}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6">

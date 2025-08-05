@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import axios from 'axios';
 import { GameContext } from '../contexts/GameContext.jsx';
 
@@ -22,17 +22,48 @@ export default function AnnouncerControls({ gameId }) {
     isPlaying: false 
   });
 
+  // Wake lock for keeping screen active during long announcements
+  const wakeLockRef = useRef(null);
+
   // Use gameId prop if provided, otherwise use context
   const currentGameId = gameId || selectedGameId;
+
+  // Request wake lock to keep screen active
+  const requestWakeLock = async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+        console.log('Wake lock acquired - screen will stay active');
+      }
+    } catch (err) {
+      console.log('Wake lock not supported or failed:', err);
+    }
+  };
+
+  // Release wake lock
+  const releaseWakeLock = async () => {
+    if (wakeLockRef.current) {
+      try {
+        await wakeLockRef.current.release();
+        wakeLockRef.current = null;
+        console.log('Wake lock released');
+      } catch (err) {
+        console.log('Error releasing wake lock:', err);
+      }
+    }
+  };
 
   /**
    * Use browser text-to-speech to speak the announcement text
    * Enhanced for mobile compatibility, especially iOS
    */
-  const speakText = (text) => {
+  const speakText = async (text) => {
     if ('speechSynthesis' in window) {
       // Cancel any ongoing speech
       speechSynthesis.cancel();
+      
+      // Request wake lock to keep screen active
+      await requestWakeLock();
       
       // Wait a moment for cancel to take effect on iOS
       setTimeout(() => {
@@ -70,19 +101,21 @@ export default function AnnouncerControls({ gameId }) {
             });
           }, 100);
           
-          // Store interval ID to clear it later
+          // Store interval ID so we can clear it on end
           utterance.progressInterval = progressInterval;
         };
         
-        utterance.onend = () => {
+        utterance.onend = async () => {
           setMessage('');
           setAudioProgress({ current: 0, duration: 0, isPlaying: false });
           if (utterance.progressInterval) {
             clearInterval(utterance.progressInterval);
           }
+          // Release wake lock when speech ends
+          await releaseWakeLock();
         };
         
-        utterance.onerror = (event) => {
+        utterance.onerror = async (event) => {
           console.error('Speech synthesis error:', event);
           setError('Text-to-speech failed');
           setMessage('');
@@ -90,6 +123,8 @@ export default function AnnouncerControls({ gameId }) {
           if (utterance.progressInterval) {
             clearInterval(utterance.progressInterval);
           }
+          // Release wake lock on error
+          await releaseWakeLock();
         };
         
         speechSynthesis.speak(utterance);
@@ -140,10 +175,12 @@ export default function AnnouncerControls({ gameId }) {
             audio.preload = 'auto';
             
             // Set up event handlers before attempting to play
-            const setupAudioHandlers = () => {
-              audio.onloadedmetadata = () => {
+            const setupAudioHandlers = async () => {
+              audio.onloadedmetadata = async () => {
                 setMessage('🔊 Playing announcement...');
                 setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
+                // Request wake lock for long audio
+                await requestWakeLock();
               };
               
               audio.ontimeupdate = () => {
@@ -153,14 +190,18 @@ export default function AnnouncerControls({ gameId }) {
                 }));
               };
               
-              audio.onended = () => {
+              audio.onended = async () => {
                 setMessage('');
                 setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+                // Release wake lock when audio ends
+                await releaseWakeLock();
               };
               
-              audio.onerror = (e) => {
+              audio.onerror = async (e) => {
                 console.error('Audio playback error:', e);
                 setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+                // Release wake lock on error
+                await releaseWakeLock();
                 // Immediately fallback to browser TTS
                 speakText(announcement.text);
               };

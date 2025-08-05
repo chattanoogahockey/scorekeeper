@@ -142,10 +142,10 @@ class TTSService {
     return [
       {
         id: 'en-US-Studio-Q',
-        name: 'Studio Q (Female - Professional)',
-        gender: 'FEMALE',
+        name: 'Studio Q (Male - Professional)',
+        gender: 'MALE',
         type: 'Studio', 
-        description: 'Professional female voice for clear, articulate announcements (Default)'
+        description: 'Professional male voice for clear, articulate announcements (Default)'
       },
       {
         id: 'en-US-Studio-O',
@@ -266,7 +266,14 @@ class TTSService {
         }
       };
 
-      const [response] = await this.client.synthesizeSpeech(request);
+      // Add timeout for TTS requests to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('TTS request timeout after 30 seconds')), 30000);
+      });
+
+      const synthesizePromise = this.client.synthesizeSpeech(request);
+      
+      const [response] = await Promise.race([synthesizePromise, timeoutPromise]);
       
       if (!response.audioContent) {
         throw new Error('No audio content received from Google Cloud TTS');

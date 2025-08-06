@@ -1988,6 +1988,85 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
   }
 });
 
+// DELETE endpoint for cleaning up Silver/Bronze and invalid games (admin function)
+app.delete('/api/games/cleanup', async (req, res) => {
+  console.log('🧹 Cleaning up invalid games...');
+
+  try {
+    const gamesContainer = getGamesContainer();
+    
+    // Get all games
+    const { resources: allGames } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c",
+        parameters: []
+      })
+      .fetchAll();
+    
+    console.log(`📊 Found ${allGames.length} total records to examine`);
+    
+    // Filter for problematic games
+    const problematicGames = allGames.filter(game => {
+      // Games with Silver or Bronze division
+      const isSilverOrBronze = game.division === 'Silver' || game.division === 'Bronze';
+      
+      // Games with missing or invalid team names
+      const missingTeams = !game.homeTeam || !game.awayTeam || 
+                          game.homeTeam.trim() === '' || game.awayTeam.trim() === '' ||
+                          game.homeTeam === 'vs' || game.awayTeam === 'vs';
+      
+      // Games with "Date TBD" or invalid dates
+      const invalidDate = !game.gameDate || game.gameDate === 'Date TBD';
+      
+      return isSilverOrBronze || missingTeams || invalidDate;
+    });
+    
+    console.log(`🎯 Found ${problematicGames.length} problematic games to delete`);
+    
+    let deletedCount = 0;
+    let errorCount = 0;
+    
+    for (const game of problematicGames) {
+      try {
+        // Try different partition key strategies
+        const partitionKey = game.league || game.division || game.gameId || game.id;
+        await gamesContainer.item(game.id, partitionKey).delete();
+        console.log(`✅ Deleted game: ${game.homeTeam || 'Unknown'} vs ${game.awayTeam || 'Unknown'} (${game.division})`);
+        deletedCount++;
+      } catch (deleteError) {
+        if (deleteError.code === 404) {
+          console.log(`ℹ️  Game ${game.id} already removed`);
+          deletedCount++; // Count as successful since it's gone
+        } else {
+          console.error(`❌ Failed to delete game ${game.id}:`, deleteError.message);
+          errorCount++;
+        }
+      }
+    }
+    
+    console.log(`✅ Cleanup complete: Successfully deleted ${deletedCount} problematic games`);
+    if (errorCount > 0) {
+      console.log(`⚠️  ${errorCount} games had deletion errors`);
+    }
+    
+    res.status(200).json({
+      success: true,
+      message: `Cleanup complete. Deleted ${deletedCount} problematic games.`,
+      deletedCount,
+      errorCount,
+      totalExamined: allGames.length,
+      problematicFound: problematicGames.length
+    });
+  } catch (error) {
+    console.error('❌ Error during cleanup:', error.message);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to cleanup games',
+      details: error.message
+    });
+  }
+});
+
 // GET endpoint for retrieving penalties
 app.get('/api/penalties', async (req, res) => {
   const { gameId, team, playerId } = req.query;

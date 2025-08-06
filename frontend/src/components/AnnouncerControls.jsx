@@ -149,6 +149,97 @@ export default function AnnouncerControls({ gameId }) {
   };
 
   /**
+   * Play dual announcer conversation with alternating voices
+   */
+  const playDualAnnouncement = async (conversation) => {
+    if (!conversation || !Array.isArray(conversation) || conversation.length === 0) {
+      setError('No conversation data available');
+      return;
+    }
+
+    setMessage('🎤 Playing dual announcer conversation...');
+    await requestWakeLock();
+
+    let totalDuration = 0;
+    conversation.forEach(line => {
+      const wordCount = line.text.split(' ').length;
+      totalDuration += (wordCount / 150) * 60; // Estimate duration
+    });
+
+    setAudioProgress({ current: 0, duration: totalDuration, isPlaying: true });
+
+    let currentTime = 0;
+    
+    try {
+      for (let i = 0; i < conversation.length; i++) {
+        const line = conversation[i];
+        
+        // Create promise to wait for each line to complete
+        await new Promise((resolve, reject) => {
+          if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(line.text);
+            
+            // Configure voice based on speaker
+            const voices = speechSynthesis.getVoices();
+            if (line.speaker === 'male') {
+              const maleVoices = voices.filter(voice => 
+                voice.lang.startsWith('en') && 
+                (voice.name.includes('Daniel') || voice.name.includes('David') || voice.name.includes('Alex'))
+              );
+              if (maleVoices.length > 0) utterance.voice = maleVoices[0];
+              utterance.rate = 0.85; // Slightly slower for NY sarcasm
+              utterance.pitch = 0.8;  // Lower pitch for male
+            } else {
+              const femaleVoices = voices.filter(voice => 
+                voice.lang.startsWith('en') && 
+                (voice.name.includes('Samantha') || voice.name.includes('Karen') || voice.name.includes('Moira'))
+              );
+              if (femaleVoices.length > 0) utterance.voice = femaleVoices[0];
+              utterance.rate = 1.0;   // Normal rate for female
+              utterance.pitch = 1.1;  // Higher pitch for female
+            }
+            
+            utterance.volume = 1.0;
+            
+            utterance.onstart = () => {
+              setMessage(`🎤 ${line.speaker === 'male' ? '👨' : '👩'} ${line.speaker.charAt(0).toUpperCase() + line.speaker.slice(1)} announcer speaking...`);
+            };
+            
+            utterance.onend = () => {
+              currentTime += (line.text.split(' ').length / 150) * 60;
+              setAudioProgress(prev => ({ ...prev, current: currentTime }));
+              
+              // Small pause between speakers
+              setTimeout(() => {
+                resolve();
+              }, 500);
+            };
+            
+            utterance.onerror = (event) => {
+              console.error('Dual announcer TTS error:', event);
+              reject(event);
+            };
+            
+            speechSynthesis.speak(utterance);
+          } else {
+            reject(new Error('Speech synthesis not supported'));
+          }
+        });
+      }
+      
+      setMessage('✅ Dual announcer conversation complete');
+      setTimeout(() => setMessage(''), 2000);
+      
+    } catch (error) {
+      console.error('Dual announcer playback error:', error);
+      setError('Failed to play dual announcer conversation');
+    } finally {
+      setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+      await releaseWakeLock();
+    }
+  };
+
+  /**
    * Announce the latest goal using AI-generated announcement
    * Or generate scoreless commentary if no goals yet
    */
@@ -169,12 +260,20 @@ export default function AnnouncerControls({ gameId }) {
       
       const response = await axios.post(apiUrl, { 
         gameId: currentGameId,
-        voiceGender: selectedVoice // Include selected voice
+        voiceGender: selectedVoice, // Include selected voice
+        announcerMode: selectedVoice // Add announcer mode for backend
       });
       
       if (response.data.success) {
-        const { announcement, scoreless } = response.data;
+        const { announcement, scoreless, conversation } = response.data;
         
+        // Handle dual announcer mode
+        if (selectedVoice === 'dual' && conversation) {
+          await playDualAnnouncement(conversation);
+          return;
+        }
+        
+        // Single announcer mode continues as before
         // Don't show the text message, just play the audio
         // Only show status when actually playing
         
@@ -298,12 +397,20 @@ export default function AnnouncerControls({ gameId }) {
       
       const response = await axios.post(apiUrl, { 
         gameId: currentGameId,
-        voiceGender: selectedVoice // Include selected voice
+        voiceGender: selectedVoice, // Include selected voice
+        announcerMode: selectedVoice // Add announcer mode for backend
       });
       
       if (response.data.success) {
-        const { announcement } = response.data;
+        const { announcement, conversation } = response.data;
         
+        // Handle dual announcer mode
+        if (selectedVoice === 'dual' && conversation) {
+          await playDualAnnouncement(conversation);
+          return;
+        }
+        
+        // Single announcer mode continues as before
         // Don't show the text message, just play the audio
         // Only show status when actually playing
         
@@ -423,12 +530,20 @@ export default function AnnouncerControls({ gameId }) {
       
       const response = await axios.post(apiUrl, { 
         gameId: currentGameId,
-        voiceGender: selectedVoice // Include selected voice
+        voiceGender: selectedVoice, // Include selected voice
+        announcerMode: selectedVoice // Add announcer mode for backend
       });
       
       if (response.data.success) {
-        const { text, audioPath } = response.data;
+        const { text, audioPath, conversation } = response.data;
         
+        // Handle dual announcer mode
+        if (selectedVoice === 'dual' && conversation) {
+          await playDualAnnouncement(conversation);
+          return;
+        }
+        
+        // Single announcer mode continues as before
         // Play the generated audio if available, otherwise use browser TTS
         if (audioPath && typeof audioPath === 'string' && audioPath.trim() !== '') {
           try {
@@ -563,6 +678,17 @@ export default function AnnouncerControls({ gameId }) {
             title="Female Voice"
           >
             👩
+          </button>
+          <button
+            onClick={() => handleVoiceSelection('dual')}
+            className={`flex items-center justify-center px-2 py-1 rounded border-2 transition-colors text-lg ${
+              selectedVoice === 'dual'
+                ? 'border-purple-500 bg-purple-50 text-purple-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+            }`}
+            title="Dual Announcer Mode"
+          >
+            🎤
           </button>
         </div>
       </div>

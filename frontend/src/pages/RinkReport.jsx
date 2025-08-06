@@ -7,43 +7,8 @@ export default function RinkReport() {
   const [reports, setReports] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedWeek, setSelectedWeek] = useState('current');
 
   const divisions = ['Gold', 'Silver', 'Bronze'];
-  const weeks = ['current', 'week-1', 'week-2', 'week-3'];
-
-  // Helper function to get current ISO week
-  const getCurrentWeekId = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const startOfYear = new Date(year, 0, 1);
-    const dayOfYear = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000)) + 1;
-    const weekNumber = Math.ceil(dayOfYear / 7);
-    return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
-  };
-
-  // Convert week format to ISO week
-  const getISOWeek = (week) => {
-    if (week === 'current') return getCurrentWeekId();
-    
-    const now = new Date();
-    const year = now.getFullYear();
-    
-    if (week.startsWith('week-')) {
-      const weeksBack = parseInt(week.split('-')[1]);
-      const targetDate = new Date(now);
-      targetDate.setDate(now.getDate() - (weeksBack * 7));
-      
-      const targetYear = targetDate.getFullYear();
-      const startOfYear = new Date(targetYear, 0, 1);
-      const dayOfYear = Math.floor((targetDate - startOfYear) / (24 * 60 * 60 * 1000)) + 1;
-      const weekNumber = Math.ceil(dayOfYear / 7);
-      
-      return `${targetYear}-W${weekNumber.toString().padStart(2, '0')}`;
-    }
-    
-    return week; // Already in ISO format
-  };
 
   // Load reports data
   useEffect(() => {
@@ -58,28 +23,20 @@ export default function RinkReport() {
       
       const reportsData = await response.json();
       
-      // Organize reports by division and week
+      // Organize reports by division - show all available reports
       const organizedReports = {};
       divisions.forEach(division => {
-        organizedReports[division] = {};
-        weeks.forEach(week => {
-          const isoWeek = getISOWeek(week);
-          // Try to find report by ISO week format or old format
-          const report = reportsData.find(r => 
-            r.division === division && (r.week === isoWeek || r.week === week)
-          );
-          // Only add real reports, no fake data
-          if (report) {
-            organizedReports[division][week] = report;
-          }
-        });
+        const divisionReports = reportsData.filter(r => r.division === division);
+        if (divisionReports.length > 0) {
+          // Use the most recent report for each division
+          organizedReports[division] = divisionReports[0];
+        }
       });
       
       setReports(organizedReports);
     } catch (err) {
       console.error('Error fetching reports:', err);
       setError(err.message);
-      // Don't generate fake data, just show empty state
       setReports({});
     } finally {
       setLoading(false);
@@ -87,7 +44,7 @@ export default function RinkReport() {
   };
 
   const getCurrentReport = () => {
-    return reports[activeTab]?.[selectedWeek];
+    return reports[activeTab];
   };
 
   if (loading) {
@@ -146,24 +103,6 @@ export default function RinkReport() {
                 </button>
               ))}
             </nav>
-          </div>
-
-          {/* Week Selector */}
-          <div className="px-6 py-4 bg-gray-50 border-b">
-            <div className="flex items-center space-x-4">
-              <span className="text-sm font-medium text-gray-700">Week:</span>
-              <select
-                value={selectedWeek}
-                onChange={(e) => setSelectedWeek(e.target.value)}
-                className="bg-white border border-gray-300 rounded-md px-3 py-1 text-sm"
-              >
-                {weeks.map(week => (
-                  <option key={week} value={week}>
-                    {getCurrentReport()?.weekLabel || week}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
         </div>
 
@@ -274,7 +213,7 @@ export default function RinkReport() {
               No Report Available
             </h3>
             <p className="text-gray-500">
-              No rink report has been generated for {activeTab} Division - {selectedWeek} yet.
+              No games submitted yet for {activeTab} Division. Reports will generate automatically after games are submitted.
             </p>
           </div>
         )}

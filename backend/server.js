@@ -133,7 +133,7 @@ app.post('/api/attendance', async (req, res) => {
 });
 
 
-// Add the `/api/games` endpoint - Filtered to Gold division only
+// Add the `/api/games` endpoint
 app.get('/api/games', async (req, res) => {
   const { league } = req.query;
   if (!league) {
@@ -145,34 +145,24 @@ app.get('/api/games', async (req, res) => {
     let querySpec;
     
     if (league === 'all') {
-      // Return only Gold division games
+      // Return all games
       querySpec = {
-        query: 'SELECT * FROM c WHERE c.league = @league OR c.division = @division',
-        parameters: [
-          { name: '@league', value: 'Gold' },
-          { name: '@division', value: 'Gold' }
-        ],
+        query: 'SELECT * FROM c',
+        parameters: [],
       };
     } else {
-      // Return games for specific league/division (prioritize Gold)
+      // Return games for specific league/division
       querySpec = {
-        query: 'SELECT * FROM c WHERE c.league = @league OR c.division = @division',
+        query: 'SELECT * FROM c WHERE c.league = @league OR c.division = @league',
         parameters: [
-          { name: '@league', value: league === 'Gold' ? league : 'Gold' },
-          { name: '@division', value: league === 'Gold' ? league : 'Gold' }
+          { name: '@league', value: league },
+          { name: '@league', value: league }
         ],
       };
     }
 
     const { resources: games } = await container.items.query(querySpec).fetchAll();
-    
-    // Additional client-side filtering for Gold division teams only
-    const goldTeams = ['Purpetrators', 'Skateful Dead', 'Bachstreet Boys', 'Toe Draggins'];
-    const filteredGames = games.filter(game => 
-      goldTeams.includes(game.homeTeam) || goldTeams.includes(game.awayTeam)
-    );
-    
-    res.status(200).json(filteredGames);
+    res.status(200).json(games);
   } catch (error) {
     console.error('Error fetching games:', error);
     res.status(500).json({ error: 'Failed to fetch games' });
@@ -192,10 +182,7 @@ app.get('/api/games/submitted', async (req, res) => {
       })
       .fetchAll();
     
-    // Gold division teams filter
-    const goldTeams = ['Purpetrators', 'Skateful Dead', 'Bachstreet Boys', 'Toe Draggins'];
-    
-    // For each submission, get the corresponding game and filter for Gold teams
+    // For each submission, get the corresponding game data
     const submittedGames = [];
     for (const submission of submissions) {
       try {
@@ -209,20 +196,17 @@ app.get('/api/games/submitted', async (req, res) => {
         if (gameQuery.length > 0) {
           const game = gameQuery[0];
           
-          // Only include games with Gold division teams
-          if (goldTeams.includes(game.homeTeam) || goldTeams.includes(game.awayTeam)) {
-            // Add submission info to the game
-            submittedGames.push({
-              ...game,
-              gameStatus: 'submitted',
-              submittedAt: submission.submittedAt,
-              finalScore: submission.finalScore,
-              totalGoals: submission.totalGoals,
-              totalPenalties: submission.totalPenalties,
-              gameSummary: submission.gameSummary,
-              submissionId: submission.id // Add submission ID for admin panel operations
-            });
-          }
+          // Add submission info to the game (no division filtering)
+          submittedGames.push({
+            ...game,
+            gameStatus: 'submitted',
+            submittedAt: submission.submittedAt,
+            finalScore: submission.finalScore,
+            totalGoals: submission.totalGoals,
+            totalPenalties: submission.totalPenalties,
+            gameSummary: submission.gameSummary,
+            submissionId: submission.id // Add submission ID for admin panel operations
+          });
         } else {
           // Game was deleted but submission record still exists - clean it up
           console.log(`🗑️ Cleaning up orphaned submission record for deleted game ${submission.gameId}`);

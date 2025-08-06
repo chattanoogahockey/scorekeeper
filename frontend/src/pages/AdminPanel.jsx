@@ -173,7 +173,7 @@ export default function AdminPanel() {
         {/* Voice Configuration Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-2xl font-bold mb-4">Announcer Voice Configuration</h2>
-          <p className="text-gray-600 mb-4">Configure which Studio voices to use for male and female announcements. Players can switch between these during games.</p>
+          <p className="text-gray-600 mb-4">Configure which Studio or Neural voices to use for male and female announcements. Studio voices are premium quality, Neural voices are more natural. Players can switch between these during games.</p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Male Voice Dropdown */}

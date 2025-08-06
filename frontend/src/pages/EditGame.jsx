@@ -20,7 +20,6 @@ export default function EditGame() {
     homeTeam: '',
     awayTeam: '',
     gameDate: '',
-    league: '',
     homeScore: 0,
     awayScore: 0
   });
@@ -43,7 +42,6 @@ export default function EditGame() {
         homeTeam: gameData.homeTeam || '',
         awayTeam: gameData.awayTeam || '',
         gameDate: gameData.gameDate ? gameData.gameDate.split('T')[0] : '',
-        league: gameData.league || '',
         homeScore: gameData.homeScore || 0,
         awayScore: gameData.awayScore || 0
       });
@@ -281,18 +279,6 @@ export default function EditGame() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  League
-                </label>
-                <input
-                  type="text"
-                  value={editedGame.league}
-                  onChange={(e) => handleInputChange('league', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Game Date
                 </label>
                 <input
@@ -341,7 +327,7 @@ export default function EditGame() {
                 {editedGame.homeTeam || 'Home'} {editedGame.homeScore} - {editedGame.awayScore} {editedGame.awayTeam || 'Away'}
               </div>
               <p className="text-gray-600">
-                {editedGame.league} League • {editedGame.gameDate ? new Date(editedGame.gameDate).toLocaleDateString() : 'No date set'}
+                {editedGame.gameDate ? new Date(editedGame.gameDate).toLocaleDateString() : 'No date set'}
               </p>
             </div>
           </div>
@@ -359,10 +345,10 @@ export default function EditGame() {
                 <div key={goal.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
                   <div>
                     <span className="font-semibold">Goal #{index + 1}</span>
-                    <span className="ml-2 text-gray-600">by {goal.scoredBy} ({goal.team})</span>
-                    {goal.assistedBy && <span className="ml-2 text-gray-500">• Assist: {goal.assistedBy}</span>}
+                    <span className="ml-2 text-gray-600">by {goal.scorer || goal.playerName} ({goal.scoringTeam || goal.teamName})</span>
+                    {(goal.assists || goal.assistedBy) && <span className="ml-2 text-gray-500">• Assist: {Array.isArray(goal.assists) ? goal.assists.join(', ') : goal.assistedBy}</span>}
                     <div className="text-sm text-gray-500 mt-1">
-                      {new Date(goal.timeScored).toLocaleString()}
+                      {goal.recordedAt ? new Date(goal.recordedAt).toLocaleString() : 'Time not recorded'}
                     </div>
                   </div>
                   <button
@@ -389,10 +375,10 @@ export default function EditGame() {
                 <div key={penalty.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
                   <div>
                     <span className="font-semibold">Penalty #{index + 1}</span>
-                    <span className="ml-2 text-gray-600">{penalty.playerName} ({penalty.team})</span>
+                    <span className="ml-2 text-gray-600">{penalty.penalizedPlayer || penalty.playerName} ({penalty.penalizedTeam || penalty.teamName})</span>
                     <span className="ml-2 text-orange-600">• {penalty.penaltyType}</span>
                     <div className="text-sm text-gray-500 mt-1">
-                      {new Date(penalty.timeRecorded).toLocaleString()}
+                      {penalty.recordedAt ? new Date(penalty.recordedAt).toLocaleString() : 'Time not recorded'}
                     </div>
                   </div>
                   <button

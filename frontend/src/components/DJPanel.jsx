@@ -10,6 +10,7 @@ export default function DJPanel() {
   const currentAudioRef = useRef(null);
   const [currentOrganIndex, setCurrentOrganIndex] = useState(0);
   const [volume, setVolume] = useState(1.0); // Default to 100% volume
+  const [isFading, setIsFading] = useState(false);
   
   // Audio progress state
   const [audioProgress, setAudioProgress] = useState({ 
@@ -18,6 +19,35 @@ export default function DJPanel() {
     isPlaying: false,
     fileName: ''
   });
+
+  // Fade-out function
+  const fadeOut = () => {
+    if (!currentAudioRef.current || !isPlaying) return;
+    
+    setIsFading(true);
+    const audio = currentAudioRef.current;
+    const originalVolume = audio.volume;
+    const fadeSteps = 50;
+    const fadeDuration = 2000; // 2 seconds
+    const stepTime = fadeDuration / fadeSteps;
+    const volumeStep = originalVolume / fadeSteps;
+
+    let step = 0;
+    const fadeInterval = setInterval(() => {
+      step++;
+      audio.volume = Math.max(0, originalVolume - (volumeStep * step));
+      
+      if (step >= fadeSteps || audio.volume <= 0) {
+        clearInterval(fadeInterval);
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = originalVolume; // Reset volume for next play
+        setIsPlaying(false);
+        setIsFading(false);
+        setAudioProgress({ current: 0, duration: 0, isPlaying: false, fileName: '' });
+      }
+    }, stepTime);
+  };
   
   // Array of organ sound files
   const organSounds = [
@@ -154,108 +184,100 @@ export default function DJPanel() {
   };
 
   return (
-    <div className="border rounded shadow p-4">
-      <h4 className="text-xl font-semibold mb-2">DJ Panel</h4>
+    <div className="border rounded shadow p-3">
+      <h4 className="text-lg font-semibold mb-2">🎵 DJ Panel</h4>
       
-      {/* Volume Fader */}
-      <div className="mb-4 p-3 bg-gray-50 rounded border">
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-sm font-medium text-gray-700">🔊 Master Volume</label>
-          <span className="text-sm text-gray-600">{Math.round(volume * 100)}%</span>
+      {/* Fade Out Control */}
+      <div className="mb-3 p-2 bg-gray-50 rounded border">
+        <div className="flex items-center justify-between">
+          <label className="text-xs font-medium text-gray-700">🎛️ Audio</label>
+          <button
+            onClick={fadeOut}
+            disabled={!isPlaying || isFading}
+            className={`px-2 py-1 rounded transition-colors text-xs ${
+              isPlaying && !isFading
+                ? 'bg-orange-500 hover:bg-orange-600 text-white'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+          >
+            {isFading ? '🔄 Fading...' : '🔉 Fade Out'}
+          </button>
         </div>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.05"
-          value={volume}
-          onChange={(e) => {
-            const newVolume = parseFloat(e.target.value);
-            setVolume(newVolume);
-            // If audio is currently playing, update its volume immediately
-            if (currentAudioRef.current) {
-              currentAudioRef.current.volume = newVolume;
-            }
-          }}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-          style={{
-            background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${volume * 100}%, #e5e7eb ${volume * 100}%, #e5e7eb 100%)`
-          }}
-        />
-        <div className="flex justify-between text-xs text-gray-500 mt-1">
-          <span>Silent</span>
-          <span>100%</span>
-        </div>
+        {isPlaying && (
+          <div className="mt-1 text-xs text-gray-600">
+            Playing: {audioProgress.fileName}
+          </div>
+        )}
       </div>
       
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-1">
         <button
           onClick={() => playSound('goal_horn', 'mp3')}
           disabled={isPlaying}
-          className={`px-4 py-2 text-white rounded transition-all duration-200 ${
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
           }`}
         >
-          Goal Horn
+          🥅 Goal Horn
         </button>
         <button
           onClick={() => playSound('whistle')}
           disabled={isPlaying}
-          className={`px-4 py-2 text-white rounded transition-all duration-200 ${
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
           }`}
         >
-          Whistle
+          🔔 Whistle
         </button>
         <button
           onClick={() => playSound('dj_air_horn', 'mp3')}
           disabled={isPlaying}
-          className={`px-4 py-2 text-white rounded transition-all duration-200 ${
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
           }`}
         >
-          Air Horn
+          📯 Air Horn
         </button>
         <button
           onClick={() => playSound('buzzer')}
           disabled={isPlaying}
-          className={`px-4 py-2 text-white rounded transition-all duration-200 ${
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
           }`}
         >
-          Period Buzzer
+          🚨 Buzzer
         </button>
         <button
           onClick={playOrganSound}
           disabled={isPlaying}
-          className={`px-4 py-2 text-white rounded transition-all duration-200 col-span-2 ${
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs col-span-2 ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
           }`}
         >
-          Organs
+          🎹 Organs
         </button>
       </div>
       
-      {/* Audio Progress Bar */}
+      {/* Audio Progress Bar - Compact */}
       {audioProgress.isPlaying && (
-        <div className="mt-3 p-2 bg-gray-50 rounded border">
+        <div className="mt-2 p-2 bg-gray-50 rounded border">
           <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-            <span>🎵 Playing: {audioProgress.fileName}</span>
+            <span>🎵 {audioProgress.fileName}</span>
             <span>{Math.round(audioProgress.current)}s / {Math.round(audioProgress.duration)}s</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-gray-200 rounded-full h-1">
             <div 
-              className="bg-blue-500 h-2 rounded-full transition-all duration-100"
+              className="bg-blue-500 h-1 rounded-full transition-all duration-100"
               style={{ 
                 width: `${Math.min((audioProgress.current / audioProgress.duration) * 100, 100)}%` 
               }}

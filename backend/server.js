@@ -133,7 +133,7 @@ app.post('/api/attendance', async (req, res) => {
 });
 
 
-// Add the `/api/games` endpoint
+// Add the `/api/games` endpoint - Filtered to Gold division only
 app.get('/api/games', async (req, res) => {
   const { league } = req.query;
   if (!league) {
@@ -145,28 +145,41 @@ app.get('/api/games', async (req, res) => {
     let querySpec;
     
     if (league === 'all') {
-      // Return all games to extract leagues
+      // Return only Gold division games
       querySpec = {
-        query: 'SELECT * FROM c',
-        parameters: [],
+        query: 'SELECT * FROM c WHERE c.league = @league OR c.division = @division',
+        parameters: [
+          { name: '@league', value: 'Gold' },
+          { name: '@division', value: 'Gold' }
+        ],
       };
     } else {
-      // Return games for specific league
+      // Return games for specific league/division (prioritize Gold)
       querySpec = {
-        query: 'SELECT * FROM c WHERE c.league = @league',
-        parameters: [{ name: '@league', value: league }],
+        query: 'SELECT * FROM c WHERE c.league = @league OR c.division = @division',
+        parameters: [
+          { name: '@league', value: league === 'Gold' ? league : 'Gold' },
+          { name: '@division', value: league === 'Gold' ? league : 'Gold' }
+        ],
       };
     }
 
     const { resources: games } = await container.items.query(querySpec).fetchAll();
-    res.status(200).json(games);
+    
+    // Additional client-side filtering for Gold division teams only
+    const goldTeams = ['Purpetrators', 'Skateful Dead', 'Bachstreet Boys', 'Toe Draggins'];
+    const filteredGames = games.filter(game => 
+      goldTeams.includes(game.homeTeam) || goldTeams.includes(game.awayTeam)
+    );
+    
+    res.status(200).json(filteredGames);
   } catch (error) {
     console.error('Error fetching games:', error);
     res.status(500).json({ error: 'Failed to fetch games' });
   }
 });
 
-// Add endpoint for submitted games
+// Add endpoint for submitted games - Filtered to Gold division only
 app.get('/api/games/submitted', async (req, res) => {
   try {
     const gamesContainer = getGamesContainer();
@@ -179,7 +192,10 @@ app.get('/api/games/submitted', async (req, res) => {
       })
       .fetchAll();
     
-    // For each submission, get the corresponding game
+    // Gold division teams filter
+    const goldTeams = ['Purpetrators', 'Skateful Dead', 'Bachstreet Boys', 'Toe Draggins'];
+    
+    // For each submission, get the corresponding game and filter for Gold teams
     const submittedGames = [];
     for (const submission of submissions) {
       try {
@@ -192,17 +208,21 @@ app.get('/api/games/submitted', async (req, res) => {
         
         if (gameQuery.length > 0) {
           const game = gameQuery[0];
-          // Add submission info to the game
-          submittedGames.push({
-            ...game,
-            gameStatus: 'submitted',
-            submittedAt: submission.submittedAt,
-            finalScore: submission.finalScore,
-            totalGoals: submission.totalGoals,
-            totalPenalties: submission.totalPenalties,
-            gameSummary: submission.gameSummary,
-            submissionId: submission.id // Add submission ID for admin panel operations
-          });
+          
+          // Only include games with Gold division teams
+          if (goldTeams.includes(game.homeTeam) || goldTeams.includes(game.awayTeam)) {
+            // Add submission info to the game
+            submittedGames.push({
+              ...game,
+              gameStatus: 'submitted',
+              submittedAt: submission.submittedAt,
+              finalScore: submission.finalScore,
+              totalGoals: submission.totalGoals,
+              totalPenalties: submission.totalPenalties,
+              gameSummary: submission.gameSummary,
+              submissionId: submission.id // Add submission ID for admin panel operations
+            });
+          }
         } else {
           // Game was deleted but submission record still exists - clean it up
           console.log(`🗑️ Cleaning up orphaned submission record for deleted game ${submission.gameId}`);
@@ -1155,13 +1175,22 @@ app.post('/api/randomCommentary', async (req, res) => {
     const penaltiesContainer = getPenaltiesContainer();
     const gamesContainer = getGamesContainer();
     
-    // Generate different types of commentary
-    const commentaryTypes = ['hot_player', 'leader', 'matchup', 'fact'];
+    // Generate different types of commentary, prioritizing game-specific content when gameId is provided
+    let commentaryTypes = ['hot_player', 'leader', 'matchup', 'fact'];
+    
+    // If we have a gameId, add game-specific commentary types and prioritize them
+    if (gameId) {
+      commentaryTypes = ['game_specific', 'hot_player', 'game_specific', 'leader', 'game_specific', 'matchup', 'fact'];
+    }
+    
     const selectedType = commentaryTypes[Math.floor(Math.random() * commentaryTypes.length)];
     
     let commentaryText = '';
     
     switch (selectedType) {
+      case 'game_specific':
+        commentaryText = await generateGameSpecificCommentary(goalsContainer, penaltiesContainer, gamesContainer, gameId);
+        break;
       case 'hot_player':
         commentaryText = await generateHotPlayerCommentary(goalsContainer, gameId, division);
         break;
@@ -1203,6 +1232,72 @@ app.post('/api/randomCommentary', async (req, res) => {
 });
 
 // Helper functions for random commentary generation
+async function generateGameSpecificCommentary(goalsContainer, penaltiesContainer, gamesContainer, gameId) {
+  try {
+    // Get game details first
+    const { resources: gameDetails } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId",
+        parameters: [{ name: '@gameId', value: gameId }]
+      })
+      .fetchAll();
+    
+    if (gameDetails.length === 0) {
+      return 'Both teams are battling hard on the ice tonight!';
+    }
+    
+    const game = gameDetails[0];
+    const homeTeam = game.homeTeam || 'Home Team';
+    const awayTeam = game.awayTeam || 'Away Team';
+    
+    // Get goals for this specific game
+    const { resources: gameGoals } = await goalsContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId",
+        parameters: [{ name: '@gameId', value: gameId }]
+      })
+      .fetchAll();
+    
+    // Get penalties for this game
+    const { resources: gamePenalties } = await penaltiesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId",
+        parameters: [{ name: '@gameId', value: gameId }]
+      })
+      .fetchAll();
+    
+    // Generate commentary based on current game state
+    const templates = [];
+    
+    if (gameGoals.length > 0) {
+      const recentGoal = gameGoals[gameGoals.length - 1];
+      const scorer = recentGoal.playerName || recentGoal.scorer || 'a player';
+      const team = recentGoal.teamName || recentGoal.scoringTeam || 'their team';
+      templates.push(`What a goal by ${scorer} for ${team}!`);
+      templates.push(`${team} finds the back of the net with that goal from ${scorer}!`);
+    }
+    
+    if (gamePenalties.length > 0) {
+      templates.push(`We've seen some physical play out there with ${gamePenalties.length} penalties tonight!`);
+    }
+    
+    // Add general game-specific templates
+    templates.push(`It's a great matchup between ${awayTeam} and ${homeTeam} tonight!`);
+    templates.push(`${homeTeam} and ${awayTeam} are giving it their all on home ice!`);
+    templates.push(`The intensity is building between these two teams!`);
+    
+    if (gameGoals.length === 0) {
+      templates.push(`Both goaltenders are standing on their heads - no goals scored yet!`);
+      templates.push(`Defensive battle out there between ${homeTeam} and ${awayTeam}!`);
+    }
+    
+    return templates[Math.floor(Math.random() * templates.length)];
+  } catch (error) {
+    console.error('Error generating game-specific commentary:', error);
+    return 'What an exciting game we have here tonight!';
+  }
+}
+
 async function generateHotPlayerCommentary(goalsContainer, gameId, division) {
   try {
     // Get recent goals (last 7 days)
@@ -2569,17 +2664,30 @@ app.post('/api/admin/voice-config', async (req, res) => {
 
 app.get('/api/admin/available-voices', (req, res) => {
   try {
-    // Provide a list of Google TTS Studio voices for the dropdowns
+    // Provide a list of Google TTS Studio and Neural voices for the dropdowns
     const studioVoices = [
-      { id: 'en-US-Studio-Q', name: 'Studio Q (Male - Professional)', gender: 'male', type: 'Studio' },
-      { id: 'en-US-Studio-O', name: 'Studio O (Female - Professional)', gender: 'female', type: 'Studio' },
-      { id: 'en-US-Studio-M', name: 'Studio M (Male - Dynamic)', gender: 'male', type: 'Studio' },
-      { id: 'en-US-Studio-F', name: 'Studio F (Female - Dynamic)', gender: 'female', type: 'Studio' }
+      { id: 'en-US-Studio-Q', name: 'Studio Q (Male - Authoritative Sports Announcer)', gender: 'male', type: 'Studio' },
+      { id: 'en-US-Studio-O', name: 'Studio O (Female - Professional Broadcaster)', gender: 'female', type: 'Studio' },
+      { id: 'en-US-Studio-M', name: 'Studio M (Male - Dynamic Play-by-Play)', gender: 'male', type: 'Studio' },
+      { id: 'en-US-Studio-F', name: 'Studio F (Female - Energetic Commentator)', gender: 'female', type: 'Studio' }
     ];
+
+    const neuralVoices = [
+      { id: 'en-US-Neural2-A', name: 'Neural A (Male - Natural Conversational)', gender: 'male', type: 'Neural' },
+      { id: 'en-US-Neural2-C', name: 'Neural C (Female - Natural Friendly)', gender: 'female', type: 'Neural' },
+      { id: 'en-US-Neural2-D', name: 'Neural D (Male - Deep Authoritative)', gender: 'male', type: 'Neural' },
+      { id: 'en-US-Neural2-F', name: 'Neural F (Female - Warm Engaging)', gender: 'female', type: 'Neural' },
+      { id: 'en-US-Neural2-G', name: 'Neural G (Female - Calm Professional)', gender: 'female', type: 'Neural' },
+      { id: 'en-US-Neural2-H', name: 'Neural H (Female - Confident Clear)', gender: 'female', type: 'Neural' },
+      { id: 'en-US-Neural2-I', name: 'Neural I (Male - Casual Relaxed)', gender: 'male', type: 'Neural' },
+      { id: 'en-US-Neural2-J', name: 'Neural J (Male - Energetic Upbeat)', gender: 'male', type: 'Neural' }
+    ];
+
+    const allVoices = [...studioVoices, ...neuralVoices];
     
     res.json({
       success: true,
-      voices: studioVoices
+      voices: allVoices
     });
   } catch (error) {
     console.error('❌ Error getting available voices:', error);

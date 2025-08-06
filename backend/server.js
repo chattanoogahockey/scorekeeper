@@ -1486,11 +1486,10 @@ app.post('/api/games/submit', async (req, res) => {
       }
       
       if (gameDetails && gameDetails.division) {
-        const currentWeek = getCurrentWeekId();
-        console.log(`📰 Generating report for ${gameDetails.division} division, week ${currentWeek}`);
+        console.log(`📰 Generating report for ${gameDetails.division} division`);
         
         // Generate report asynchronously (don't wait for completion)
-        generateRinkReport(gameDetails.division, currentWeek)
+        generateRinkReport(gameDetails.division, null) // Pass null for week to generate for all submitted games
           .then((report) => {
             console.log(`✅ Rink report generated successfully for ${gameDetails.division} division`);
           })

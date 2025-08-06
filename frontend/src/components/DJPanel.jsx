@@ -30,6 +30,9 @@ export default function DJPanel() {
     'organ_build_up.mp3'
   ];
 
+  // Prevent audio from stopping during re-renders
+  const [audioElement, setAudioElement] = useState(null);
+
   const playSound = (filename, extension = 'wav') => {
     // If audio is already playing, ignore the new request
     if (isPlaying) {
@@ -45,6 +48,7 @@ export default function DJPanel() {
 
     const audio = new Audio(`/sounds/${filename}.${extension}`);
     currentAudioRef.current = audio;
+    setAudioElement(audio); // Store audio element in state to prevent garbage collection
     
     // Set volume based on the fader
     audio.volume = volume;
@@ -73,6 +77,7 @@ export default function DJPanel() {
     const resetPlaying = () => {
       setIsPlaying(false);
       currentAudioRef.current = null;
+      setAudioElement(null);
       setAudioProgress({ current: 0, duration: 0, isPlaying: false, fileName: '' });
     };
     
@@ -103,6 +108,7 @@ export default function DJPanel() {
 
     const audio = new Audio(`/sounds/${currentOrganFile}`);
     currentAudioRef.current = audio;
+    setAudioElement(audio); // Store audio element in state to prevent garbage collection
     
     // Set volume based on the fader
     audio.volume = volume;
@@ -131,6 +137,7 @@ export default function DJPanel() {
     const resetPlaying = () => {
       setIsPlaying(false);
       currentAudioRef.current = null;
+      setAudioElement(null);
       setAudioProgress({ current: 0, duration: 0, isPlaying: false, fileName: '' });
     };
     

@@ -3,8 +3,9 @@ import { getGamesContainer, getGoalsContainer, getPenaltiesContainer, getRinkRep
 /**
  * Generate a comprehensive rink report for a specific division and week
  */
-export async function generateRinkReport(division, weekId) {
-  console.log(`📰 Generating rink report for ${division} division, week ${weekId}`);
+export async function generateRinkReport(division, weekId = null) {
+  const reportId = weekId ? `${division}-${weekId}` : `${division}-all-submitted`;
+  console.log(`📰 Generating rink report for ${division} division${weekId ? `, week ${weekId}` : ' (all submitted games)'}`);
   
   try {
     const weekData = await aggregateWeekData(division, weekId);
@@ -12,13 +13,13 @@ export async function generateRinkReport(division, weekId) {
     
     // Store the report in Cosmos DB
     const report = {
-      id: `${division}-${weekId}`,
+      id: reportId,
       division,
-      week: weekId,
-      weekLabel: getWeekLabel(weekId),
+      week: weekId || 'all-submitted',
+      weekLabel: weekId ? getWeekLabel(weekId) : 'All Submitted Games',
       publishedAt: new Date().toISOString(),
       author: 'AI Report Generator',
-      title: `${division} Division Weekly Roundup`,
+      title: `${division} Division${weekId ? ' Weekly' : ''} Roundup`,
       html: reportContent.html,
       highlights: reportContent.highlights,
       standoutPlayers: reportContent.standoutPlayers,
@@ -31,10 +32,10 @@ export async function generateRinkReport(division, weekId) {
     const container = getRinkReportsContainer();
     await container.items.upsert(report);
     
-    console.log(`✅ Rink report generated and stored for ${division} week ${weekId}`);
+    console.log(`✅ Rink report generated and stored for ${division}${weekId ? ` week ${weekId}` : ' (all submitted games)'}`);
     return report;
   } catch (error) {
-    console.error(`❌ Error generating rink report for ${division} week ${weekId}:`, error);
+    console.error(`❌ Error generating rink report for ${division}${weekId ? ` week ${weekId}` : ' (all submitted games)'}:`, error);
     throw error;
   }
 }
@@ -47,25 +48,42 @@ async function aggregateWeekData(division, weekId) {
   const goalsContainer = getGoalsContainer();
   const penaltiesContainer = getPenaltiesContainer();
   
-  // Get week date range
-  const { startDate, endDate } = getWeekDateRange(weekId);
+  let gamesQuery;
   
-  // Get all submitted games for this division and week
-  const gamesQuery = {
-    query: `
-      SELECT * FROM c 
-      WHERE c.division = @division 
-      AND c.eventType = 'game-submission'
-      AND c.submittedAt >= @startDate 
-      AND c.submittedAt <= @endDate
-      ORDER BY c.submittedAt DESC
-    `,
-    parameters: [
-      { name: '@division', value: division },
-      { name: '@startDate', value: startDate },
-      { name: '@endDate', value: endDate }
-    ]
-  };
+  if (weekId) {
+    // Get week date range
+    const { startDate, endDate } = getWeekDateRange(weekId);
+    
+    // Get all submitted games for this division and week
+    gamesQuery = {
+      query: `
+        SELECT * FROM c 
+        WHERE c.division = @division 
+        AND c.eventType = 'game-submission'
+        AND c.submittedAt >= @startDate 
+        AND c.submittedAt <= @endDate
+        ORDER BY c.submittedAt DESC
+      `,
+      parameters: [
+        { name: '@division', value: division },
+        { name: '@startDate', value: startDate },
+        { name: '@endDate', value: endDate }
+      ]
+    };
+  } else {
+    // Get all submitted games for this division (no week filter)
+    gamesQuery = {
+      query: `
+        SELECT * FROM c 
+        WHERE c.division = @division 
+        AND c.eventType = 'game-submission'
+        ORDER BY c.submittedAt DESC
+      `,
+      parameters: [
+        { name: '@division', value: division }
+      ]
+    };
+  }
   
   const { resources: games } = await gamesContainer.items.query(gamesQuery).fetchAll();
   

@@ -17,15 +17,29 @@ try {
     };
   } catch (gitError) {
     console.log('Git info not available:', gitError.message);
+    // Use GitHub environment variables if git commands fail
     gitInfo = {
-      commit: 'unknown',
-      branch: 'unknown'
+      commit: process.env.GITHUB_SHA || 'unknown',
+      branch: process.env.GITHUB_REF_NAME || 'unknown'
     };
   }
 
+  // Use GitHub Actions workflow time if available, otherwise current time
+  let deploymentTime;
+  
+  // In GitHub Actions, use environment variables for deployment time
+  if (process.env.GITHUB_ACTIONS && process.env.DEPLOYMENT_TIMESTAMP) {
+    // Use GitHub workflow deployment timestamp
+    deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
+    console.log('Using GitHub Actions deployment time:', process.env.DEPLOYMENT_TIMESTAMP);
+  } else {
+    // Fallback to current time for local builds
+    deploymentTime = new Date();
+    console.log('Using local build time');
+  }
+  
   // Convert to EST timezone
-  const now = new Date();
-  const estTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+  const estTime = new Date(deploymentTime.toLocaleString("en-US", {timeZone: "America/New_York"}));
 
   const versionInfo = {
     version: packageJson.version,

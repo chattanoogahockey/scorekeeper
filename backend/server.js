@@ -109,9 +109,19 @@ app.get('/api/version', (req, res) => {
       };
     }
 
+    // Use GitHub Actions workflow time if available, otherwise current time
+    let deploymentTime;
+    
+    if (process.env.GITHUB_ACTIONS && process.env.DEPLOYMENT_TIMESTAMP) {
+      // Use GitHub workflow deployment timestamp
+      deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
+    } else {
+      // Fallback to current time for local builds
+      deploymentTime = new Date();
+    }
+    
     // Convert to EST timezone
-    const now = new Date();
-    const estTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    const estTime = new Date(deploymentTime.toLocaleString("en-US", {timeZone: "America/New_York"}));
     
     res.json({
       version: packageJson.version,
@@ -2825,8 +2835,8 @@ app.post('/api/tts/dual-line', async (req, res) => {
       AND c.id = 'default-config'
     `;
     
-    const voiceConfigResult = await cosmosClient.database('hockey-league')
-      .container('penalties')
+    const penaltiesContainer = await getPenaltiesContainer();
+    const voiceConfigResult = await penaltiesContainer
       .items.query(voiceConfigQuery)
       .fetchAll();
     

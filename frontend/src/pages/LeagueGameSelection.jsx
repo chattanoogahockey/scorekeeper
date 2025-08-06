@@ -178,7 +178,7 @@ export default function LeagueGameSelection() {
             teamName: awayTeamName,
             teamId: awayTeamName,
             players: awayPlayers.map(player => ({
-              name: player.fullName || `${player.firstName} ${player.lastName}`,
+              name: player.name || `${player.firstName || ''} ${player.lastName || ''}`.trim(),
               jerseyNumber: player.jerseyNumber,
               position: player.position || 'Player' // Use actual position from roster
             }))
@@ -196,7 +196,7 @@ export default function LeagueGameSelection() {
             teamName: homeTeamName,
             teamId: homeTeamName,
             players: homePlayers.map(player => ({
-              name: player.fullName || `${player.firstName} ${player.lastName}`,
+              name: player.name || `${player.firstName || ''} ${player.lastName || ''}`.trim(),
               jerseyNumber: player.jerseyNumber,
               position: player.position || 'Player' // Use actual position from roster
             }))

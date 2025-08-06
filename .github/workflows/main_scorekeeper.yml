@@ -16,6 +16,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set deployment timestamp
+      run: echo "DEPLOYMENT_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> $GITHUB_ENV
+
     - name: Set up Node.js version
       uses: actions/setup-node@v4
       with:
@@ -31,6 +34,8 @@ jobs:
       run: |
         cd frontend
         npm install
+        # Generate version info with deployment timestamp
+        node generate-version.js
         npm run build
     
     - name: Install backend dependencies

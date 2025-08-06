@@ -185,7 +185,7 @@ export default function DJPanel() {
 
   return (
     <div className="border rounded shadow p-3">
-      <h4 className="text-lg font-semibold mb-2">🎵 DJ Panel</h4>
+      <h4 className="text-lg font-semibold mb-2">🎵 DJ</h4>
       
       {/* Fade Out Control */}
       <div className="mb-3 p-2 bg-gray-50 rounded border">

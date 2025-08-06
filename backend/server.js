@@ -2799,6 +2799,88 @@ app.post('/api/admin/voices/select', (req, res) => {
   }
 });
 
+// Dual announcer TTS endpoint - Generate Studio voice audio for individual conversation lines
+app.post('/api/tts/dual-line', async (req, res) => {
+  try {
+    const { text, speaker, gameId } = req.body;
+    
+    if (!text || !speaker) {
+      return res.status(400).json({ 
+        error: 'Text and speaker are required for dual announcer TTS' 
+      });
+    }
+    
+    // Check if TTS client is available
+    if (!ttsService.client) {
+      return res.status(503).json({
+        error: 'Google Cloud TTS not available',
+        message: 'Studio voices require Google Cloud credentials to be configured'
+      });
+    }
+    
+    console.log(`🎤 Generating dual announcer TTS for ${speaker}: "${text.substring(0, 50)}..."`);
+    
+    // Get current voice configuration from database
+    const voiceConfigQuery = `
+      SELECT * FROM c 
+      WHERE c.type = 'voice-config' 
+      AND c.id = 'default-config'
+    `;
+    
+    const voiceConfigResult = await cosmosClient.database('hockey-league')
+      .container('penalties')
+      .items.query(voiceConfigQuery)
+      .fetchAll();
+    
+    let maleVoice = 'en-US-Studio-Q';
+    let femaleVoice = 'en-US-Studio-O';
+    
+    if (voiceConfigResult.resources.length > 0) {
+      const config = voiceConfigResult.resources[0];
+      maleVoice = config.maleVoice || 'en-US-Studio-Q';
+      femaleVoice = config.femaleVoice || 'en-US-Studio-O';
+    }
+    
+    // Select voice based on speaker
+    const selectedVoice = speaker === 'male' ? maleVoice : femaleVoice;
+    
+    // Temporarily set the voice in TTS service for this request
+    const originalVoice = ttsService.selectedVoice;
+    ttsService.selectedVoice = selectedVoice;
+    
+    try {
+      // Generate TTS audio using the dual-announcer scenario
+      const audioResult = await ttsService.generateSpeech(text, gameId || 'dual', 'announcement');
+      
+      if (audioResult.success) {
+        console.log(`✅ Generated dual announcer TTS for ${speaker} using ${selectedVoice}`);
+        res.json({
+          success: true,
+          audioPath: audioResult.audioPath,
+          speaker: speaker,
+          voice: selectedVoice
+        });
+      } else {
+        console.error('❌ Failed to generate dual announcer TTS:', audioResult.error);
+        res.status(500).json({
+          success: false,
+          error: audioResult.error || 'Failed to generate dual announcer TTS'
+        });
+      }
+    } finally {
+      // Restore original voice
+      ttsService.selectedVoice = originalVoice;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error in dual announcer TTS endpoint:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error generating dual announcer TTS'
+    });
+  }
+});
+
 app.post('/api/admin/voices/test', async (req, res) => {
   try {
     const { voiceId, text, scenario } = req.body;

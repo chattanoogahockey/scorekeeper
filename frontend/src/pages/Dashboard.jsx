@@ -159,13 +159,16 @@ export default function Dashboard() {
       <h2 className="text-3xl font-bold mb-4 text-center">
         Game Dashboard: {selectedGame.awayTeam} vs {selectedGame.homeTeam}
       </h2>
-      {/* Forms Section */}
-      <div className="grid gap-8 md:grid-cols-2">
-        {/* Goal Form */}
-        <div className="border rounded shadow p-4">
-          <h3 className="text-xl font-semibold mb-2">Record Goal</h3>
-          {goalError && <p className="text-red-500 mb-1">{goalError}</p>}
-          <form onSubmit={handleGoalSubmit} className="space-y-2">
+      
+      {/* Scorekeeper Section */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h3 className="text-2xl font-bold mb-4">Scorekeeper</h3>
+        <div className="grid gap-8 md:grid-cols-2">
+          {/* Goal Form */}
+          <div className="border rounded shadow p-4">
+            <h4 className="text-xl font-semibold mb-2">Record Goal</h4>
+            {goalError && <p className="text-red-500 mb-1">{goalError}</p>}
+            <form onSubmit={handleGoalSubmit} className="space-y-2">
             <div className="flex flex-col">
               <label>Period</label>
               <select
@@ -290,7 +293,7 @@ export default function Dashboard() {
         </div>
         {/* Penalty Form */}
         <div className="border rounded shadow p-4">
-          <h3 className="text-xl font-semibold mb-2">Record Penalty</h3>
+          <h4 className="text-xl font-semibold mb-2">Record Penalty</h4>
           {penaltyError && <p className="text-red-500 mb-1">{penaltyError}</p>}
           <form onSubmit={handlePenaltySubmit} className="space-y-2">
             <div className="flex flex-col">
@@ -386,7 +389,9 @@ export default function Dashboard() {
             </button>
           </form>
         </div>
+        </div>
       </div>
+      
       {/* Announcer and DJ controls */}
       <div className="grid gap-8 md:grid-cols-2 mt-8">
         <AnnouncerControls gameId={selectedGame.id || selectedGame.gameId} />

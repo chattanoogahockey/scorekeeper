@@ -149,7 +149,7 @@ export default function AnnouncerControls({ gameId }) {
   };
 
   /**
-   * Play dual announcer conversation with alternating voices
+   * Play dual announcer conversation with alternating voices using backend TTS
    */
   const playDualAnnouncement = async (conversation) => {
     if (!conversation || !Array.isArray(conversation) || conversation.length === 0) {
@@ -174,56 +174,94 @@ export default function AnnouncerControls({ gameId }) {
       for (let i = 0; i < conversation.length; i++) {
         const line = conversation[i];
         
-        // Create promise to wait for each line to complete
-        await new Promise((resolve, reject) => {
-          if ('speechSynthesis' in window) {
-            const utterance = new SpeechSynthesisUtterance(line.text);
-            
-            // Configure voice based on speaker
-            const voices = speechSynthesis.getVoices();
-            if (line.speaker === 'male') {
-              const maleVoices = voices.filter(voice => 
-                voice.lang.startsWith('en') && 
-                (voice.name.includes('Daniel') || voice.name.includes('David') || voice.name.includes('Alex'))
-              );
-              if (maleVoices.length > 0) utterance.voice = maleVoices[0];
-              utterance.rate = 0.95; // More natural, less snarky
-              utterance.pitch = 0.65;  // Lower pitch for proper male announcer
-            } else {
-              const femaleVoices = voices.filter(voice => 
-                voice.lang.startsWith('en') && 
-                (voice.name.includes('Samantha') || voice.name.includes('Karen') || voice.name.includes('Moira'))
-              );
-              if (femaleVoices.length > 0) utterance.voice = femaleVoices[0];
-              utterance.rate = 1.0;   // Normal rate for female
-              utterance.pitch = 1.1;  // Higher pitch for female
-            }
-            utterance.volume = 1.0;
-            
-            utterance.onstart = () => {
-              setMessage(`🎤 ${line.speaker === 'male' ? '👨' : '👩'} ${line.speaker.charAt(0).toUpperCase() + line.speaker.slice(1)} announcer speaking...`);
-            };
-            
-            utterance.onend = () => {
-              currentTime += (line.text.split(' ').length / 150) * 60;
-              setAudioProgress(prev => ({ ...prev, current: currentTime }));
+        setMessage(`🎤 ${line.speaker === 'male' ? '👨' : '👩'} ${line.speaker.charAt(0).toUpperCase() + line.speaker.slice(1)} announcer speaking...`);
+        
+        // Generate TTS for this line using backend with Studio voices
+        try {
+          const response = await axios.post('/api/tts/dual-line', {
+            text: line.text,
+            speaker: line.speaker,
+            gameId: gameId
+          });
+          
+          if (response.data.success && response.data.audioPath) {
+            // Play the generated audio
+            await new Promise((resolve, reject) => {
+              const audio = new Audio(response.data.audioPath);
               
-              // Small pause between speakers
-              setTimeout(() => {
-                resolve();
-              }, 500);
-            };
-            
-            utterance.onerror = (event) => {
-              console.error('Dual announcer TTS error:', event);
-              reject(event);
-            };
-            
-            speechSynthesis.speak(utterance);
+              audio.oncanplaythrough = () => {
+                audio.play().then(() => {
+                  // Audio is playing
+                }).catch(reject);
+              };
+              
+              audio.onended = () => {
+                currentTime += (line.text.split(' ').length / 150) * 60;
+                setAudioProgress(prev => ({ ...prev, current: currentTime }));
+                
+                // Small pause between speakers
+                setTimeout(() => {
+                  resolve();
+                }, 500);
+              };
+              
+              audio.onerror = (event) => {
+                console.error('Dual announcer audio error:', event);
+                reject(event);
+              };
+            });
           } else {
-            reject(new Error('Speech synthesis not supported'));
+            throw new Error('Failed to generate TTS for dual announcer line');
           }
-        });
+        } catch (ttsError) {
+          console.error('TTS generation failed, falling back to browser TTS:', ttsError);
+          
+          // Fallback to browser TTS if backend fails
+          await new Promise((resolve, reject) => {
+            if ('speechSynthesis' in window) {
+              const utterance = new SpeechSynthesisUtterance(line.text);
+              
+              // Configure voice based on speaker with improved settings
+              const voices = speechSynthesis.getVoices();
+              if (line.speaker === 'male') {
+                const maleVoices = voices.filter(voice => 
+                  voice.lang.startsWith('en') && 
+                  (voice.name.includes('Daniel') || voice.name.includes('David') || voice.name.includes('Alex'))
+                );
+                if (maleVoices.length > 0) utterance.voice = maleVoices[0];
+                utterance.rate = 0.95;
+                utterance.pitch = 0.65;
+              } else {
+                const femaleVoices = voices.filter(voice => 
+                  voice.lang.startsWith('en') && 
+                  (voice.name.includes('Samantha') || voice.name.includes('Karen') || voice.name.includes('Moira'))
+                );
+                if (femaleVoices.length > 0) utterance.voice = femaleVoices[0];
+                utterance.rate = 1.0;
+                utterance.pitch = 1.1;
+              }
+              utterance.volume = 1.0;
+              
+              utterance.onend = () => {
+                currentTime += (line.text.split(' ').length / 150) * 60;
+                setAudioProgress(prev => ({ ...prev, current: currentTime }));
+                
+                setTimeout(() => {
+                  resolve();
+                }, 500);
+              };
+              
+              utterance.onerror = (event) => {
+                console.error('Dual announcer TTS error:', event);
+                reject(event);
+              };
+            
+              speechSynthesis.speak(utterance);
+            } else {
+              reject(new Error('Speech synthesis not supported'));
+            }
+          });
+        }
       }
       
       setMessage('✅ Dual announcer conversation complete');

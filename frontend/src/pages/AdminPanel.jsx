@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { GameContext } from '../contexts/GameContext';
 
 // Version information component
 const VersionInfo = () => {
@@ -56,6 +57,7 @@ const VersionInfo = () => {
 
 export default function AdminPanel() {
   const navigate = useNavigate();
+  const { gameData } = useContext(GameContext);
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(null); // Track which game is being deleted
@@ -65,6 +67,9 @@ export default function AdminPanel() {
   const [voiceConfig, setVoiceConfig] = useState({ maleVoice: '', femaleVoice: '' });
   const [availableVoices, setAvailableVoices] = useState([]);
   const [voiceConfigLoading, setVoiceConfigLoading] = useState(false);
+
+  // Check if there's an active game (has teams and not submitted)
+  const hasActiveGame = gameData && gameData.team1 && gameData.team2 && !gameData.submitted;
 
   useEffect(() => {
     fetchGames();
@@ -177,7 +182,13 @@ export default function AdminPanel() {
   };
 
   const handleBackToMain = () => {
-    navigate('/');
+    if (hasActiveGame) {
+      // Navigate back to the in-game menu if there's an active game
+      navigate('/in-game-menu');
+    } else {
+      // Navigate to main menu if no active game
+      navigate('/');
+    }
   };
 
   const handleTestVoice = async (voiceId, scenario = 'test') => {
@@ -211,7 +222,7 @@ export default function AdminPanel() {
               onClick={handleBackToMain}
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
             >
-              Back to Main
+              {hasActiveGame ? 'Back to Game' : 'Back to Main'}
             </button>
           </div>
           

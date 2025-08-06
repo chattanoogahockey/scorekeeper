@@ -323,7 +323,7 @@ GOAL DETAILS:
 ANNOUNCER PERSONALITIES:
 
 MALE ANNOUNCER (starts first):
-- From New York, snarky and sarcastic
+- From New York, professional, deep voice, less snark, more classic sports announcer
 - Rangers fan, hates Islanders
 - Slightly cranky but professional
 - Uses dry humor and strong opinions
@@ -426,7 +426,7 @@ ${gameContext ? `- Score: ${homeTeam} ${currentScore?.home || 0}, ${awayTeam} ${
 ANNOUNCER PERSONALITIES (same as before):
 
 MALE ANNOUNCER (starts first):
-- From New York, snarky and sarcastic
+- From New York, professional, deep voice, less snark, more classic sports announcer
 - Rangers fan, hates Islanders  
 - Slightly cranky but professional
 

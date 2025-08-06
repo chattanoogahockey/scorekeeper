@@ -96,17 +96,18 @@ app.get('/api/version', (req, res) => {
     let gitInfo = {};
     try {
       // Get git information
-      const gitCommit = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
-      const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+      const gitCommit = execSync('git rev-parse HEAD', { encoding: 'utf8', cwd: __dirname }).trim();
+      const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8', cwd: __dirname }).trim();
       gitInfo = {
         commit: gitCommit,
         branch: gitBranch
       };
     } catch (gitError) {
       console.log('Git info not available:', gitError.message);
+      // Try alternative approach - check if we're in Azure and use environment variables
       gitInfo = {
-        commit: 'unknown',
-        branch: 'unknown'
+        commit: process.env.BUILD_SOURCEVERSION || process.env.GITHUB_SHA || 'unknown',
+        branch: process.env.BUILD_SOURCEBRANCH?.replace('refs/heads/', '') || process.env.GITHUB_REF_NAME || 'unknown'
       };
     }
 

@@ -30,6 +30,9 @@ let generateScorelessCommentary = null;
 let generateGoalFeedDescription = null;
 let generatePenaltyFeedDescription = null;
 let generatePenaltyAnnouncement = null;
+let generateDualGoalAnnouncement = null;
+let generateDualPenaltyAnnouncement = null;
+let generateDualRandomCommentary = null;
 
 try {
   const announcerModule = await import('./announcerService.js');
@@ -38,7 +41,10 @@ try {
   generateGoalFeedDescription = announcerModule.generateGoalFeedDescription;
   generatePenaltyFeedDescription = announcerModule.generatePenaltyFeedDescription;
   generatePenaltyAnnouncement = announcerModule.generatePenaltyAnnouncement;
-  console.log('✅ Announcer service loaded');
+  generateDualGoalAnnouncement = announcerModule.generateDualGoalAnnouncement;
+  generateDualPenaltyAnnouncement = announcerModule.generateDualPenaltyAnnouncement;
+  generateDualRandomCommentary = announcerModule.generateDualRandomCommentary;
+  console.log('✅ Announcer service loaded with dual announcer support');
 } catch (error) {
   console.log('⚠️ Announcer service not available');
 }
@@ -759,11 +765,19 @@ app.delete('/api/goals/:id', async (req, res) => {
 // Announce last goal endpoint
 app.post('/api/goals/announce-last', async (req, res) => {
   console.log('📢 Announcing last goal...');
-  const { gameId, voiceGender } = req.body;
+  const { gameId, voiceGender, announcerMode } = req.body;
 
   if (!gameId) {
     return res.status(400).json({
       error: 'Invalid request. Required: gameId.'
+    });
+  }
+
+  // Check if announcer service is available
+  if (!generateGoalAnnouncement || (announcerMode === 'dual' && !generateDualGoalAnnouncement)) {
+    return res.status(503).json({
+      error: 'Announcer service not available. This feature requires additional dependencies.',
+      fallback: true
     });
   }
 
@@ -803,18 +817,14 @@ app.post('/api/goals/announce-last', async (req, res) => {
     selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
   }
   
-  console.log(`🎤 Using voice: ${selectedVoice} (requested: ${voiceGender})`);
+  console.log(`🎤 Using voice: ${selectedVoice} (requested: ${voiceGender}, mode: ${announcerMode})`);
   
-  // Temporarily set the voice in TTS service for this request
-  const originalVoice = ttsService.selectedVoice;
-  ttsService.selectedVoice = selectedVoice;
-
-  // Check if announcer service is available
-  if (!generateGoalAnnouncement) {
-    return res.status(503).json({
-      error: 'Announcer service not available. This feature requires additional dependencies.',
-      fallback: true
-    });
+  // For dual mode, we don't use TTS service - conversation is handled in frontend
+  let originalVoice;
+  if (announcerMode !== 'dual') {
+    // Temporarily set the voice in TTS service for single announcer mode
+    originalVoice = ttsService.selectedVoice;
+    ttsService.selectedVoice = selectedVoice;
   }
 
   try {
@@ -853,30 +863,54 @@ app.post('/api/goals/announce-last', async (req, res) => {
     // If no goals, generate scoreless commentary
     if (goals.length === 0) {
       try {
-        const scorelessCommentary = await generateScorelessCommentary({
-          homeTeam: game.homeTeam,
-          awayTeam: game.awayTeam,
-          period: 1 // Default to first period for scoreless games
-        });
-        
-        // Generate TTS audio for scoreless commentary using admin-selected voice
-        const audioResult = await ttsService.generateSpeech(scorelessCommentary, gameId, 'announcement');
-        const audioFilename = audioResult?.success ? audioResult.filename : null;
-        
-        return res.status(200).json({
-          success: true,
-          scoreless: true,
-          announcement: {
-            text: scorelessCommentary,
-            audioPath: audioFilename
-          },
-          gameData: {
+        if (announcerMode === 'dual') {
+          // For dual mode with no goals, create a conversation about the scoreless game
+          const conversationStarter = `Still scoreless between ${game.homeTeam} and ${game.awayTeam}`;
+          const scorelessConversation = await generateDualRandomCommentary(gameId, {
             homeTeam: game.homeTeam,
             awayTeam: game.awayTeam,
-            homeScore: 0,
-            awayScore: 0
-          }
-        });
+            period: 1,
+            scoreless: true,
+            conversationStarter
+          });
+          
+          return res.status(200).json({
+            success: true,
+            scoreless: true,
+            conversation: scorelessConversation,
+            gameData: {
+              homeTeam: game.homeTeam,
+              awayTeam: game.awayTeam,
+              homeScore: 0,
+              awayScore: 0
+            }
+          });
+        } else {
+          const scorelessCommentary = await generateScorelessCommentary({
+            homeTeam: game.homeTeam,
+            awayTeam: game.awayTeam,
+            period: 1 // Default to first period for scoreless games
+          });
+          
+          // Generate TTS audio for scoreless commentary using admin-selected voice
+          const audioResult = await ttsService.generateSpeech(scorelessCommentary, gameId, 'announcement');
+          const audioFilename = audioResult?.success ? audioResult.filename : null;
+          
+          return res.status(200).json({
+            success: true,
+            scoreless: true,
+            announcement: {
+              text: scorelessCommentary,
+              audioPath: audioFilename
+            },
+            gameData: {
+              homeTeam: game.homeTeam,
+              awayTeam: game.awayTeam,
+              homeScore: 0,
+              awayScore: 0
+            }
+          });
+        }
       } catch (error) {
         return res.status(500).json({
           error: 'Failed to generate scoreless commentary'
@@ -913,41 +947,66 @@ app.post('/api/goals/announce-last', async (req, res) => {
       seasonGoals: playerGoalsThisGame - 1 // For now, use game stats as season stats
     };
 
-    // Generate the announcement
-    const announcementText = await generateGoalAnnouncement(goalData, playerStats);
-    
-    // Generate TTS audio for goal announcement using optimized goal speech
-    const audioResult = await ttsService.generateGoalSpeech(announcementText, gameId);
-    const audioFilename = audioResult?.success ? audioResult.filename : null;
-    
-    console.log('✅ Goal announcement generated successfully');
-    
-    res.status(200).json({
-      success: true,
-      goal: lastGoal,
-      announcement: {
-        text: announcementText,
-        audioPath: audioFilename
-      },
-      goalData,
-      playerStats
-    });
+    if (announcerMode === 'dual') {
+      // Generate dual announcer conversation
+      const conversation = await generateDualGoalAnnouncement(goalData, playerStats);
+      
+      console.log('✅ Dual goal announcement generated successfully');
+      
+      res.status(200).json({
+        success: true,
+        goal: lastGoal,
+        conversation,
+        goalData,
+        playerStats
+      });
+    } else {
+      // Generate single announcer text
+      const announcementText = await generateGoalAnnouncement(goalData, playerStats);
+      
+      // Generate TTS audio for goal announcement using optimized goal speech
+      const audioResult = await ttsService.generateGoalSpeech(announcementText, gameId);
+      const audioFilename = audioResult?.success ? audioResult.filename : null;
+      
+      console.log('✅ Goal announcement generated successfully');
+      
+      res.status(200).json({
+        success: true,
+        goal: lastGoal,
+        announcement: {
+          text: announcementText,
+          audioPath: audioFilename
+        },
+        goalData,
+        playerStats
+      });
+    }
   } catch (error) {
     console.error('❌ Error announcing last goal:', error.message);
     handleError(res, error);
   } finally {
-    // Restore original voice
-    ttsService.selectedVoice = originalVoice;
+    // Restore original voice for single announcer mode
+    if (announcerMode !== 'dual') {
+      ttsService.selectedVoice = originalVoice;
+    }
   }
 });
 
 // Penalty announcement endpoint
 app.post('/api/penalties/announce-last', async (req, res) => {
-  const { gameId, voiceGender } = req.body;
+  const { gameId, voiceGender, announcerMode } = req.body;
 
   if (!gameId) {
     return res.status(400).json({
       error: 'Game ID is required'
+    });
+  }
+
+  // Check if announcer service is available
+  if (!generatePenaltyAnnouncement || (announcerMode === 'dual' && !generateDualPenaltyAnnouncement)) {
+    return res.status(503).json({
+      error: 'Penalty announcer service not available. This feature requires additional dependencies.',
+      fallback: true
     });
   }
 
@@ -987,18 +1046,14 @@ app.post('/api/penalties/announce-last', async (req, res) => {
     selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
   }
   
-  console.log(`🎤 Using voice for penalty: ${selectedVoice} (requested: ${voiceGender})`);
+  console.log(`🎤 Using voice for penalty: ${selectedVoice} (requested: ${voiceGender}, mode: ${announcerMode})`);
   
-  // Temporarily set the voice in TTS service for this request
-  const originalVoice = ttsService.selectedVoice;
-  ttsService.selectedVoice = selectedVoice;
-
-  // Check if announcer service is available
-  if (!generatePenaltyAnnouncement) {
-    return res.status(503).json({
-      error: 'Penalty announcer service not available. This feature requires additional dependencies.',
-      fallback: true
-    });
+  // For dual mode, we don't use TTS service
+  let originalVoice;
+  if (announcerMode !== 'dual') {
+    // Temporarily set the voice in TTS service for single announcer mode
+    originalVoice = ttsService.selectedVoice;
+    ttsService.selectedVoice = selectedVoice;
   }
 
   try {
@@ -1073,38 +1128,56 @@ app.post('/api/penalties/announce-last', async (req, res) => {
       }
     };
 
-    // Generate the announcement
-    const announcementText = await generatePenaltyAnnouncement(penaltyData, gameContext);
-    
-    // Generate TTS audio for penalty announcement (using special penalty voice)
-    const audioResult = await ttsService.generatePenaltySpeech(announcementText, gameId);
-    const audioFilename = audioResult?.success ? audioResult.filename : null;
-    
-    console.log('✅ Penalty announcement generated successfully');
-    
-    res.status(200).json({
-      success: true,
-      penalty: lastPenalty,
-      announcement: {
-        text: announcementText,
-        audioPath: audioFilename
-      },
-      penaltyData,
-      gameContext
-    });
+    if (announcerMode === 'dual') {
+      // Generate dual announcer conversation
+      const conversation = await generateDualPenaltyAnnouncement(penaltyData, gameContext);
+      
+      console.log('✅ Dual penalty announcement generated successfully');
+      
+      res.status(200).json({
+        success: true,
+        penalty: lastPenalty,
+        conversation,
+        penaltyData,
+        gameContext
+      });
+    } else {
+      // Generate single announcer text
+      const announcementText = await generatePenaltyAnnouncement(penaltyData, gameContext);
+      
+      // Generate TTS audio for penalty announcement (using special penalty voice)
+      const audioResult = await ttsService.generatePenaltySpeech(announcementText, gameId);
+      const audioFilename = audioResult?.success ? audioResult.filename : null;
+      
+      console.log('✅ Penalty announcement generated successfully');
+      
+      res.status(200).json({
+        success: true,
+        penalty: lastPenalty,
+        announcement: {
+          text: announcementText,
+          audioPath: audioFilename
+        },
+        penaltyData,
+        gameContext
+      });
+    }
   } catch (error) {
     console.error('❌ Error announcing last penalty:', error.message);
     handleError(res, error);
   } finally {
-    // Restore original voice
-    ttsService.selectedVoice = originalVoice;
+    // Restore original voice for single announcer mode
+    if (announcerMode !== 'dual') {
+      ttsService.selectedVoice = originalVoice;
+    }
   }
 });
 
 // Random Commentary endpoint
+// Random Commentary endpoint
 app.post('/api/randomCommentary', async (req, res) => {
   console.log('🎲 Generating random commentary...');
-  const { gameId, division, voiceGender } = req.body;
+  const { gameId, division, voiceGender, announcerMode } = req.body;
 
   if (!gameId && !division) {
     return res.status(400).json({
@@ -1112,6 +1185,88 @@ app.post('/api/randomCommentary', async (req, res) => {
     });
   }
 
+  // Check if dual announcer mode is requested and available
+  if (announcerMode === 'dual' && !generateDualRandomCommentary) {
+    return res.status(503).json({
+      error: 'Dual announcer service not available. This feature requires additional dependencies.',
+      fallback: true
+    });
+  }
+
+  // Handle dual announcer mode
+  if (announcerMode === 'dual') {
+    try {
+      const goalsContainer = getGoalsContainer();
+      const penaltiesContainer = getPenaltiesContainer();
+      const gamesContainer = getGamesContainer();
+      
+      // Gather game context for the conversation
+      let gameContext = { gameId, division };
+      
+      if (gameId) {
+        // Get game details
+        const { resources: gameDetails } = await gamesContainer.items
+          .query({
+            query: "SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId",
+            parameters: [{ name: '@gameId', value: gameId }]
+          })
+          .fetchAll();
+        
+        if (gameDetails.length > 0) {
+          const game = gameDetails[0];
+          gameContext.homeTeam = game.homeTeam;
+          gameContext.awayTeam = game.awayTeam;
+          gameContext.division = game.division || game.league;
+        }
+        
+        // Get recent goals and penalties for context
+        const { resources: goals } = await goalsContainer.items
+          .query({
+            query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
+            parameters: [{ name: '@gameId', value: gameId }]
+          })
+          .fetchAll();
+        
+        const { resources: penalties } = await penaltiesContainer.items
+          .query({
+            query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
+            parameters: [{ name: '@gameId', value: gameId }]
+          })
+          .fetchAll();
+        
+        gameContext.goalsCount = goals.length;
+        gameContext.penaltiesCount = penalties.length;
+        
+        if (goals.length > 0) {
+          const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === gameContext.homeTeam).length;
+          const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === gameContext.awayTeam).length;
+          gameContext.currentScore = { home: homeGoals, away: awayGoals };
+        }
+      }
+      
+      // Generate the dual announcer conversation
+      const conversation = await generateDualRandomCommentary(gameId, gameContext);
+      
+      console.log('✅ Dual random commentary conversation generated successfully');
+      
+      res.status(200).json({
+        success: true,
+        type: 'dual_conversation',
+        conversation,
+        gameContext
+      });
+      
+    } catch (error) {
+      console.error('❌ Error generating dual random commentary:', error.message);
+      res.status(500).json({
+        error: 'Failed to generate dual random conversation',
+        message: error.message
+      });
+    }
+    return;
+  }
+
+  // Single announcer mode continues as before
   // Map voice gender to Google TTS Studio voices using database configuration
   let selectedVoice = 'en-US-Studio-Q'; // Default fallback
   

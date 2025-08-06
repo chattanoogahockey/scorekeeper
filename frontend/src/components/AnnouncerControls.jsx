@@ -577,26 +577,26 @@ export default function AnnouncerControls({ gameId }) {
         <button
           onClick={announceLatestGoal}
           disabled={goalLoading || !currentGameId}
-          className="px-2 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 text-xl transition-colors"
+          className="px-2 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
           title="Announce Latest Goal"
         >
-          {goalLoading ? '⏳' : '⚽'}
+          {goalLoading ? '⏳' : 'Goal'}
         </button>
         <button
           onClick={announceLatestPenalty}
           disabled={penaltyLoading || !currentGameId}
-          className="px-2 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400 text-xl transition-colors"
+          className="px-2 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
           title="Announce Latest Penalty"
         >
-          {penaltyLoading ? '⏳' : '🚨'}
+          {penaltyLoading ? '⏳' : 'Penalty'}
         </button>
         <button
           onClick={announceRandomCommentary}
           disabled={randomLoading || !currentGameId}
-          className="px-2 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 text-xl transition-colors"
+          className="px-2 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
           title="Random Commentary"
         >
-          {randomLoading ? '⏳' : '🎲'}
+          {randomLoading ? '⏳' : 'Random'}
         </button>
       </div>
       

@@ -1,6 +1,8 @@
 import express from 'express';
 import path from 'path';
 import cors from 'cors';
+import fs from 'fs';
+import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { 
   getGamesContainer, 
@@ -82,6 +84,68 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     port: process.env.PORT || 8080
   });
+});
+
+// VERSION ENDPOINT for deployment verification
+app.get('/api/version', (req, res) => {
+  try {
+    // Read package.json for version
+    const packagePath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'package.json');
+    const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
+    
+    let gitInfo = {};
+    try {
+      // Get git information
+      const gitCommit = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+      const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+      gitInfo = {
+        commit: gitCommit,
+        branch: gitBranch
+      };
+    } catch (gitError) {
+      console.log('Git info not available:', gitError.message);
+      gitInfo = {
+        commit: 'unknown',
+        branch: 'unknown'
+      };
+    }
+
+    // Convert to EST timezone
+    const now = new Date();
+    const estTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    
+    res.json({
+      version: packageJson.version,
+      name: packageJson.name,
+      ...gitInfo,
+      buildTime: estTime.toLocaleString("en-US", {
+        timeZone: "America/New_York",
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+      }),
+      timestamp: estTime.toLocaleString("en-US", {
+        timeZone: "America/New_York",
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+      })
+    });
+  } catch (error) {
+    console.error('Error getting version info:', error);
+    res.status(500).json({ 
+      error: 'Unable to retrieve version information',
+      message: error.message 
+    });
+  }
 });
 
 // Utility function for error handling

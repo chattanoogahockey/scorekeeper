@@ -1,0 +1,58 @@
+import fs from 'fs';
+import { execSync } from 'child_process';
+import path from 'path';
+
+try {
+  // Read package.json
+  const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  
+  let gitInfo = {};
+  try {
+    // Get git information
+    const gitCommit = execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim();
+    const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8' }).trim();
+    gitInfo = {
+      commit: gitCommit,
+      branch: gitBranch
+    };
+  } catch (gitError) {
+    console.log('Git info not available:', gitError.message);
+    gitInfo = {
+      commit: 'unknown',
+      branch: 'unknown'
+    };
+  }
+
+  // Convert to EST timezone
+  const now = new Date();
+  const estTime = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
+
+  const versionInfo = {
+    version: packageJson.version,
+    name: packageJson.name,
+    ...gitInfo,
+    buildTime: estTime.toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short'
+    })
+  };
+
+  // Ensure public directory exists
+  if (!fs.existsSync('public')) {
+    fs.mkdirSync('public', { recursive: true });
+  }
+
+  // Write version info to public directory
+  fs.writeFileSync('public/version.json', JSON.stringify(versionInfo, null, 2));
+  
+  console.log('✅ Version info generated:', versionInfo);
+} catch (error) {
+  console.error('❌ Error generating version info:', error);
+  process.exit(1);
+}

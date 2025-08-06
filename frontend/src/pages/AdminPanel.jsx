@@ -2,6 +2,58 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+// Version information component
+const VersionInfo = () => {
+  const [versionInfo, setVersionInfo] = useState(null);
+
+  useEffect(() => {
+    const fetchVersionInfo = async () => {
+      try {
+        // Try backend API first
+        const response = await axios.get('/api/version');
+        setVersionInfo(response.data);
+      } catch (error) {
+        console.error('Error fetching version from API:', error);
+        
+        // Fallback to static version file
+        try {
+          const staticResponse = await fetch('/version.json');
+          if (staticResponse.ok) {
+            const staticData = await staticResponse.json();
+            setVersionInfo(staticData);
+          } else {
+            throw new Error('Static version file not found');
+          }
+        } catch (staticError) {
+          console.error('Error fetching static version:', staticError);
+          // Final fallback
+          setVersionInfo({
+            version: '1.0.0',
+            commit: 'unknown',
+            branch: 'unknown',
+            buildTime: new Date().toISOString()
+          });
+        }
+      }
+    };
+
+    fetchVersionInfo();
+  }, []);
+
+  if (!versionInfo) return null;
+
+  return (
+    <div className="text-sm text-gray-500 bg-gray-100 px-3 py-2 rounded-lg mb-4">
+      <div className="flex flex-wrap items-center gap-4">
+        <span><strong>Version:</strong> {versionInfo.version}</span>
+        <span><strong>Commit:</strong> {versionInfo.commit?.substring(0, 8) || 'unknown'}</span>
+        <span><strong>Branch:</strong> {versionInfo.branch || 'unknown'}</span>
+        <span><strong>Build:</strong> {new Date(versionInfo.buildTime).toLocaleString()}</span>
+      </div>
+    </div>
+  );
+};
+
 export default function AdminPanel() {
   const navigate = useNavigate();
   const [games, setGames] = useState([]);
@@ -162,6 +214,9 @@ export default function AdminPanel() {
               Back to Main
             </button>
           </div>
+          
+          {/* Version Information */}
+          <VersionInfo />
           
           {message && (
             <div className="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded mb-4">

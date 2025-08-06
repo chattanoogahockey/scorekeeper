@@ -16,9 +16,9 @@ export default function AnnouncerControls({ gameId }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   
-  // Voice selection state - get from localStorage or default to 'male'
+  // Voice selection state - get from localStorage or default to 'female'
   const [selectedVoice, setSelectedVoice] = useState(() => {
-    return localStorage.getItem('selectedVoice') || 'male';
+    return localStorage.getItem('selectedVoice') || 'female';
   });
   
   // Audio progress state
@@ -187,8 +187,8 @@ export default function AnnouncerControls({ gameId }) {
                 (voice.name.includes('Daniel') || voice.name.includes('David') || voice.name.includes('Alex'))
               );
               if (maleVoices.length > 0) utterance.voice = maleVoices[0];
-              utterance.rate = 0.85; // Slightly slower for NY sarcasm
-              utterance.pitch = 0.8;  // Lower pitch for male
+              utterance.rate = 0.95; // More natural, less snarky
+              utterance.pitch = 0.65;  // Lower pitch for proper male announcer
             } else {
               const femaleVoices = voices.filter(voice => 
                 voice.lang.startsWith('en') && 
@@ -198,7 +198,6 @@ export default function AnnouncerControls({ gameId }) {
               utterance.rate = 1.0;   // Normal rate for female
               utterance.pitch = 1.1;  // Higher pitch for female
             }
-            
             utterance.volume = 1.0;
             
             utterance.onstart = () => {
@@ -653,79 +652,81 @@ export default function AnnouncerControls({ gameId }) {
   return (
     <div className="border rounded shadow p-3">
       <h4 className="text-lg font-semibold mb-3">🎙️ Announcer</h4>
-      
-      {/* Voice Selection - More Compact */}
-      <div className="mb-3">
-        <div className="flex gap-1">
-          <button
-            onClick={() => handleVoiceSelection('male')}
-            className={`flex items-center justify-center px-2 py-1 rounded border-2 transition-colors text-lg ${
-              selectedVoice === 'male'
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-            }`}
-            title="Male Voice"
-          >
-            👨
-          </button>
-          <button
-            onClick={() => handleVoiceSelection('female')}
-            className={`flex items-center justify-center px-2 py-1 rounded border-2 transition-colors text-lg ${
-              selectedVoice === 'female'
-                ? 'border-pink-500 bg-pink-50 text-pink-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-            }`}
-            title="Female Voice"
-          >
-            👩
-          </button>
-          <button
-            onClick={() => handleVoiceSelection('dual')}
-            className={`flex items-center justify-center px-2 py-1 rounded border-2 transition-colors text-lg ${
-              selectedVoice === 'dual'
-                ? 'border-purple-500 bg-purple-50 text-purple-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
-            }`}
-            title="Dual Announcer Mode"
-          >
-            🎤
-          </button>
+      <div className="grid grid-cols-2 gap-4">
+        {/* Left column: Voice selection */}
+        <div>
+          <div className="mb-3">
+            <div className="flex gap-1">
+              <button
+                onClick={() => handleVoiceSelection('male')}
+                className={`flex items-center justify-center px-2 py-1 rounded border-2 transition-colors text-lg ${
+                  selectedVoice === 'male'
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                }`}
+                title="Male Voice"
+              >
+                👨
+              </button>
+              <button
+                onClick={() => handleVoiceSelection('female')}
+                className={`flex items-center justify-center px-2 py-1 rounded border-2 transition-colors text-lg ${
+                  selectedVoice === 'female'
+                    ? 'border-pink-500 bg-pink-50 text-pink-700'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                }`}
+                title="Female Voice"
+              >
+                👩
+              </button>
+              <button
+                onClick={() => handleVoiceSelection('dual')}
+                className={`flex items-center justify-center px-2 py-1 rounded border-2 transition-colors text-lg ${
+                  selectedVoice === 'dual'
+                    ? 'border-purple-500 bg-purple-50 text-purple-700'
+                    : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                }`}
+                title="Dual Announcer Mode"
+              >
+                👨👩
+              </button>
+            </div>
+          </div>
+          {!currentGameId && (
+            <p className="text-yellow-600 mb-2 text-xs">⚠️ No game selected</p>
+          )}
+          {error && <p className="text-red-500 mb-2 text-xs">{error}</p>}
+        </div>
+        {/* Right column: Announcer buttons */}
+        <div>
+          <div className="grid grid-cols-3 gap-1">
+            <button
+              onClick={announceLatestGoal}
+              disabled={goalLoading || !currentGameId}
+              className="px-2 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
+              title="Announce Latest Goal"
+            >
+              {goalLoading ? '⏳' : 'Goal'}
+            </button>
+            <button
+              onClick={announceLatestPenalty}
+              disabled={penaltyLoading || !currentGameId}
+              className="px-2 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
+              title="Announce Latest Penalty"
+            >
+              {penaltyLoading ? '⏳' : 'Penalty'}
+            </button>
+            <button
+              onClick={announceRandomCommentary}
+              disabled={randomLoading || !currentGameId}
+              className="px-2 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
+              title="Random Commentary"
+            >
+              {randomLoading ? '⏳' : 'Random'}
+            </button>
+          </div>
         </div>
       </div>
-      
-      {!currentGameId && (
-        <p className="text-yellow-600 mb-2 text-xs">⚠️ No game selected</p>
-      )}
-      {error && <p className="text-red-500 mb-2 text-xs">{error}</p>}
-      
-      {/* Compact Button Grid */}
-      <div className="grid grid-cols-3 gap-1">
-        <button
-          onClick={announceLatestGoal}
-          disabled={goalLoading || !currentGameId}
-          className="px-2 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
-          title="Announce Latest Goal"
-        >
-          {goalLoading ? '⏳' : 'Goal'}
-        </button>
-        <button
-          onClick={announceLatestPenalty}
-          disabled={penaltyLoading || !currentGameId}
-          className="px-2 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
-          title="Announce Latest Penalty"
-        >
-          {penaltyLoading ? '⏳' : 'Penalty'}
-        </button>
-        <button
-          onClick={announceRandomCommentary}
-          disabled={randomLoading || !currentGameId}
-          className="px-2 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
-          title="Random Commentary"
-        >
-          {randomLoading ? '⏳' : 'Random'}
-        </button>
-      </div>
-      
       {/* Audio Progress Bar */}
       {audioProgress.isPlaying && (
         <div className="mt-3 p-2 bg-gray-50 rounded border">
@@ -743,7 +744,6 @@ export default function AnnouncerControls({ gameId }) {
           </div>
         </div>
       )}
-      
       {message && (
         <p className="text-sm mt-3 italic text-gray-600">Latest announcement: {message}</p>
       )}

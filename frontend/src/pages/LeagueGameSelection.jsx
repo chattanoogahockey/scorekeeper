@@ -14,15 +14,27 @@ export default function LeagueGameSelection() {
   useEffect(() => {
     // Reset context when visiting selection page
     reset();
-    
     // Load all games directly
     setLoading(true);
     axios.get('/api/games?league=all')
       .then((res) => {
-        // Filter out completed/submitted games
+        // Filter out completed/submitted games and games with status Scheduled in Silver/Bronze
         const availableGames = res.data.filter(game => {
           // Hide games that have been submitted or completed
-          return !game.status || (game.status !== 'completed' && game.status !== 'submitted');
+          const isSubmittedOrCompleted = game.status === 'completed' || game.status === 'submitted';
+          
+          // Hide all Silver/Bronze division games (they don't have proper rosters)
+          const isSilverOrBronze = game.division === 'Silver' || game.division === 'Bronze';
+          
+          // Hide games with missing teams or incomplete team names
+          const missingTeams = !game.homeTeam || !game.awayTeam || 
+                              game.homeTeam.trim() === '' || game.awayTeam.trim() === '' ||
+                              game.homeTeam === 'vs' || game.awayTeam === 'vs';
+          
+          // Only show Gold division games with proper team names
+          const isValidGame = game.division === 'Gold' && !missingTeams && !isSubmittedOrCompleted;
+          
+          return isValidGame;
         });
         setGames(availableGames);
         setError(null);

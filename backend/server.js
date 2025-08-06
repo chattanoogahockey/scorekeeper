@@ -15,8 +15,7 @@ import {
   getSettingsContainer,
   getAnalyticsContainer,
   getPlayersContainer,
-  initializeContainers,
-  testDatabaseConnection
+  initializeContainers
 } from './cosmosClient.js';
 
 // Import TTS service
@@ -67,7 +66,6 @@ console.log(`🚀 Starting Hockey Scorekeeper API (${isProduction ? 'PRODUCTION'
 // Initialize database containers
 try {
   await initializeContainers();
-  await testDatabaseConnection();
   console.log('🗄️ Database ready');
 } catch (error) {
   console.error('💥 Database initialization failed:', error.message);
@@ -2881,63 +2879,7 @@ app.post('/api/tts/dual-line', async (req, res) => {
   }
 });
 
-app.post('/api/admin/voices/test', async (req, res) => {
-  try {
-    const { voiceId, text, scenario } = req.body;
-    
-    if (!voiceId) {
-      return res.status(400).json({ 
-        error: 'Voice ID is required for testing' 
-      });
-    }
-    
-    // Check if TTS client is available
-    if (!ttsService.client) {
-      return res.status(503).json({
-        error: 'Google Cloud TTS not available',
-        message: 'Studio voices require Google Cloud credentials to be configured'
-      });
-    }
-    
-    console.log(`🎤 Testing voice: ${voiceId} with optimal ${scenario || 'test'} settings`);
-    
-    // Use the new optimal testing method
-    const result = await ttsService.testVoiceWithOptimalSettings(voiceId, scenario || 'test');
-    
-    if (result && result.success) {
-      console.log(`🎯 Voice test successful with optimized settings:`);
-      console.log(`   - Voice: ${result.voice}`);
-      console.log(`   - Scenario: ${result.scenario}`);
-      console.log(`   - Settings: Rate=${result.settings.speakingRate}, Pitch=${result.settings.pitch}, Volume=${result.settings.volumeGainDb}`);
-      
-      res.json({
-        success: true,
-        message: 'Test audio generated with optimal announcer settings',
-        audioUrl: `/api/audio/${result.filename}`,
-        voiceId,
-        scenario: result.scenario,
-        settings: result.settings,
-        size: result.size
-      });
-    } else {
-      const errorMsg = result?.error || 'TTS synthesis failed - check server logs for details';
-      console.error(`❌ Test voice failed: ${errorMsg}`);
-      res.status(500).json({
-        error: 'Failed to generate test audio',
-        message: errorMsg,
-        voiceId
-      });
-    }
-  } catch (error) {
-    console.error('❌ Voice test error:', error);
-    res.status(500).json({
-      error: 'Voice test failed',
-      message: error.message,
-      voiceId: req.body.voiceId
-    });
-  }
-});
-
+// Voice Configuration Endpoint
 // Voice configuration endpoints for male/female voice mapping
 app.get('/api/admin/voice-config', async (req, res) => {
   try {

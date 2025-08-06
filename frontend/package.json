@@ -7,7 +7,6 @@
     "dev": "vite",
     "build": "node generate-version.js && node ./node_modules/vite/bin/vite.js build || npx vite build || npm exec vite build",
     "preview": "vite preview",
-    "test": "echo 'No tests specified' && exit 0",
     "version": "node generate-version.js"
   },
   "dependencies": {

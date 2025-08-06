@@ -25,44 +25,37 @@ class TTSService {
       'en-US-Studio-Q': {
         goal: { speakingRate: 1.25, pitch: 0, volumeGainDb: 4.0, emphasis: 'none' },
         penalty: { speakingRate: 0.75, pitch: 0, volumeGainDb: 1.0, emphasis: 'none' },
-        announcement: { speakingRate: 0.9, pitch: 0, volumeGainDb: 0.5, emphasis: 'none' },
-        test: { speakingRate: 1.0, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' }
+        announcement: { speakingRate: 0.9, pitch: 0, volumeGainDb: 0.5, emphasis: 'none' }
       },
       'en-US-Studio-O': {
         goal: { speakingRate: 1.35, pitch: 0, volumeGainDb: 6.0, emphasis: 'none' },
         penalty: { speakingRate: 1.0, pitch: 0, volumeGainDb: 3.0, emphasis: 'none' },
-        announcement: { speakingRate: 1.1, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' },
-        test: { speakingRate: 1.2, pitch: 0, volumeGainDb: 3.0, emphasis: 'none' }
+        announcement: { speakingRate: 1.1, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' }
       },
       'en-US-Studio-M': {
         goal: { speakingRate: 1.4, pitch: 0, volumeGainDb: 7.0, emphasis: 'none' },
         penalty: { speakingRate: 0.65, pitch: 0, volumeGainDb: 5.0, emphasis: 'none' },
-        announcement: { speakingRate: 0.8, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' },
-        test: { speakingRate: 0.9, pitch: 0, volumeGainDb: 3.0, emphasis: 'none' }
+        announcement: { speakingRate: 0.8, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' }
       },
       'en-US-Studio-F': {
         goal: { speakingRate: 1.3, pitch: 0, volumeGainDb: 6.0, emphasis: 'none' },
         penalty: { speakingRate: 0.8, pitch: 0, volumeGainDb: 4.0, emphasis: 'none' },
-        announcement: { speakingRate: 1.0, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' },
-        test: { speakingRate: 1.1, pitch: 0, volumeGainDb: 3.0, emphasis: 'none' }
+        announcement: { speakingRate: 1.0, pitch: 0, volumeGainDb: 2.0, emphasis: 'none' }
       },
       'en-US-Neural2-F': {
         goal: { speakingRate: 1.2, pitch: 2.0, volumeGainDb: 2.0, emphasis: 'moderate' },
         penalty: { speakingRate: 0.95, pitch: -0.5, volumeGainDb: 1.0, emphasis: 'moderate' },
-        announcement: { speakingRate: 1.0, pitch: 0.0, volumeGainDb: 0.0, emphasis: 'none' },
-        test: { speakingRate: 1.1, pitch: 1.0, volumeGainDb: 1.0, emphasis: 'moderate' }
+        announcement: { speakingRate: 1.0, pitch: 0.0, volumeGainDb: 0.0, emphasis: 'none' }
       },
       'en-US-Neural2-D': {
         goal: { speakingRate: 1.15, pitch: 1.5, volumeGainDb: 2.0, emphasis: 'moderate' },
         penalty: { speakingRate: 0.9, pitch: -1.0, volumeGainDb: 1.0, emphasis: 'moderate' },
-        announcement: { speakingRate: 1.0, pitch: 0.0, volumeGainDb: 0.0, emphasis: 'none' },
-        test: { speakingRate: 1.05, pitch: 0.5, volumeGainDb: 1.0, emphasis: 'moderate' }
+        announcement: { speakingRate: 1.0, pitch: 0.0, volumeGainDb: 0.0, emphasis: 'none' }
       },
       'en-US-Neural2-I': {
         goal: { speakingRate: 1.2, pitch: 1.0, volumeGainDb: 3.0, emphasis: 'strong' },
         penalty: { speakingRate: 0.85, pitch: -2.0, volumeGainDb: 2.0, emphasis: 'strong' },
-        announcement: { speakingRate: 0.95, pitch: -0.5, volumeGainDb: 1.0, emphasis: 'moderate' },
-        test: { speakingRate: 1.0, pitch: 0.0, volumeGainDb: 2.0, emphasis: 'moderate' }
+        announcement: { speakingRate: 0.95, pitch: -0.5, volumeGainDb: 1.0, emphasis: 'moderate' }
       }
     };
 
@@ -216,14 +209,7 @@ class TTSService {
       
       this.client = new textToSpeech.TextToSpeechClient();
       
-      console.log('🧪 Testing Google Cloud TTS connection...');
-      const [response] = await this.client.listVoices({ languageCode: 'en-US' });
-      const voices = response?.voices || [];
-      console.log(`✅ Google Cloud TTS connected! Found ${voices.length} voices`);
-      
-      const studioVoices = voices.filter(v => v.name && v.name.includes('Studio'));
-      console.log(`🎉 Studio voices available: ${studioVoices.length}`);
-      
+      // Initialize audio cache directory
       await fs.mkdir(this.audioDir, { recursive: true });
       console.log(`📁 Audio cache directory ready: ${this.audioDir}`);
       
@@ -353,29 +339,6 @@ class TTSService {
   async generatePenaltySpeech(text, gameId) {
     // Use the admin-selected voice instead of auto-switching
     const result = await this.generateSpeech(text, gameId, 'penalty');
-    return result;
-  }
-
-  /**
-   * Test a voice with optimal announcer settings
-   */
-  async testVoiceWithOptimalSettings(voiceId, scenario = 'test') {
-    const testTexts = {
-      goal: "GOAL! What an incredible shot! The crowd erupts as the puck finds the back of the net!",
-      penalty: "Two minutes for boarding. Player number twelve heads to the penalty box.",
-      test: "Welcome to tonight's hockey game! This is your arena announcer bringing you all the action!"
-    };
-    
-    const originalVoice = this.selectedVoice;
-    this.setAnnouncerVoice(voiceId);
-    
-    const result = await this.generateSpeech(
-      testTexts[scenario] || testTexts.test, 
-      'voice-test', 
-      scenario
-    );
-    
-    this.selectedVoice = originalVoice;
     return result;
   }
 

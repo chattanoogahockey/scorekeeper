@@ -49,7 +49,7 @@ const VersionInfo = () => {
         <span><strong>Version:</strong> {versionInfo.version}</span>
         <span><strong>Commit:</strong> {versionInfo.commit?.substring(0, 8) || 'unknown'}</span>
         <span><strong>Branch:</strong> {versionInfo.branch || 'unknown'}</span>
-        <span><strong>Build:</strong> {new Date(versionInfo.buildTime).toLocaleString()}</span>
+        <span><strong>Build:</strong> {new Date(versionInfo.buildTime).toLocaleString('en-US', { timeZone: 'America/New_York' })}</span>
       </div>
     </div>
   );
@@ -191,27 +191,6 @@ export default function AdminPanel() {
     }
   };
 
-  const handleTestVoice = async (voiceId, scenario = 'test') => {
-    try {
-      setMessage(`Testing ${voiceId} with ${scenario} scenario...`);
-      const response = await axios.post('/api/admin/voices/test', { voiceId, scenario });
-      if (response.data.success) {
-        // Play the test audio
-        const audio = new Audio(response.data.audioUrl);
-        audio.play().catch(audioError => {
-          console.error('Error playing audio:', audioError);
-          setMessage(`Test audio generated but playback failed: ${audioError.message}`);
-        });
-        const settings = response.data.settings;
-        setMessage(`🎯 Playing optimized ${scenario} audio for ${voiceId} (Rate: ${settings.speakingRate}, Pitch: ${settings.pitch}, Volume: ${settings.volumeGainDb})`);
-      }
-    } catch (error) {
-      console.error('Error testing voice:', error);
-      const errorMsg = error.response?.data?.message || error.response?.data?.error || error.message;
-      setMessage(`Error testing voice: ${errorMsg}`);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
@@ -258,30 +237,6 @@ export default function AdminPanel() {
                   </option>
                 ))}
               </select>
-              
-              {/* Male Voice Test Buttons */}
-              {voiceConfig.maleVoice && (
-                <div className="flex flex-wrap gap-1">
-                  <button
-                    onClick={() => handleTestVoice(voiceConfig.maleVoice, 'test')}
-                    className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs transition-colors"
-                  >
-                    Test General
-                  </button>
-                  <button
-                    onClick={() => handleTestVoice(voiceConfig.maleVoice, 'goal')}
-                    className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs transition-colors"
-                  >
-                    Test Goal
-                  </button>
-                  <button
-                    onClick={() => handleTestVoice(voiceConfig.maleVoice, 'penalty')}
-                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition-colors"
-                  >
-                    Test Penalty
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Female Voice Dropdown */}
@@ -300,30 +255,6 @@ export default function AdminPanel() {
                   </option>
                 ))}
               </select>
-              
-              {/* Female Voice Test Buttons */}
-              {voiceConfig.femaleVoice && (
-                <div className="flex flex-wrap gap-1">
-                  <button
-                    onClick={() => handleTestVoice(voiceConfig.femaleVoice, 'test')}
-                    className="bg-gray-500 hover:bg-gray-600 text-white px-2 py-1 rounded text-xs transition-colors"
-                  >
-                    Test General
-                  </button>
-                  <button
-                    onClick={() => handleTestVoice(voiceConfig.femaleVoice, 'goal')}
-                    className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-xs transition-colors"
-                  >
-                    Test Goal
-                  </button>
-                  <button
-                    onClick={() => handleTestVoice(voiceConfig.femaleVoice, 'penalty')}
-                    className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs transition-colors"
-                  >
-                    Test Penalty
-                  </button>
-                </div>
-              )}
             </div>
           </div>
 

@@ -323,29 +323,6 @@ export async function initializeContainers() {
 }
 
 /**
- * Test database connection and container accessibility
- */
-export async function testDatabaseConnection() {
-  try {
-    console.log('🔍 Testing database connection...');
-    
-    // Test basic connectivity
-    const { resource: dbInfo } = await database.read();
-    console.log(`✅ Connected to database: ${dbInfo.id}`);
-    
-    // Test container access
-    const settingsContainer = getSettingsContainer();
-    await settingsContainer.read();
-    console.log('✅ Container access verified');
-    
-    return true;
-  } catch (error) {
-    console.error('❌ Database connection test failed:', error.message);
-    throw error;
-  }
-}
-
-/**
  * Get container definitions for documentation/debugging
  */
 export function getContainerDefinitions() {

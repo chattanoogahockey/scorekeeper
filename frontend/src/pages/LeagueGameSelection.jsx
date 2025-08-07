@@ -87,20 +87,25 @@ export default function LeagueGameSelection() {
   };
 
   const handleGameSelect = async (game) => {
-    console.log('Selected game:', game);
-    console.log('Build timestamp:', new Date().toISOString());
+    console.log('🎯 Selected game:', game);
+    console.log('🕐 Build timestamp:', new Date().toISOString());
     
     // Check if this game has existing data (goals or penalties)
     try {
       const gameId = game.id || game.gameId;
+      console.log('📋 Checking existing data for gameId:', gameId);
       
       // Check for existing goals
+      console.log('🥅 Checking for existing goals...');
       const goalsResponse = await axios.get('/api/goals', { params: { gameId } });
       const goals = goalsResponse.data || [];
+      console.log(`Found ${goals.length} existing goals`);
       
       // Check for existing penalties
+      console.log('🚫 Checking for existing penalties...');
       const penaltiesResponse = await axios.get('/api/penalties', { params: { gameId } });
       const penalties = penaltiesResponse.data || [];
+      console.log(`Found ${penalties.length} existing penalties`);
       
       const hasExistingData = goals.length > 0 || penalties.length > 0;
       
@@ -155,21 +160,24 @@ export default function LeagueGameSelection() {
         }
       }
     } catch (error) {
-      console.error('Error checking existing game data:', error);
+      console.error('❌ Error checking existing game data:', error);
+      console.error('Error details:', error.response?.data || error.message);
       // Continue anyway if we can't check
     }
     
+    console.log('🎮 Setting selected game and league...');
     setSelectedGame(game);
     setSelectedLeague(game.division);
     
     try {
       // Load rosters for the game's teams using gameId
-      console.log('Loading rosters for game:', game.id || game.gameId);
+      console.log('👥 Loading rosters for game:', game.id || game.gameId);
       const rostersResponse = await axios.get('/api/rosters', {
         params: { gameId: game.id || game.gameId }
       });
       const gameRosters = rostersResponse.data;
-      console.log('Game rosters loaded:', gameRosters.length, 'teams');
+      console.log('✅ Game rosters loaded:', gameRosters.length, 'teams');
+      console.log('📋 Roster data:', gameRosters);
       
       // Process the rosters (they're already filtered to just the two teams for this game)
       const processedRosters = gameRosters.map(roster => ({
@@ -187,16 +195,19 @@ export default function LeagueGameSelection() {
       console.log('Processed rosters:', processedRosters.map(r => `${r.teamName}: ${r.players.length} players`));
       
       if (processedRosters.length === 0) {
-        console.warn('No rosters found for this game');
+        console.warn('⚠️ No rosters found for this game');
         alert('No team rosters found for this game. Please contact an administrator.');
         return;
       }
       
+      console.log('🎯 About to navigate to roster-attendance...');
       // Store the rosters and navigate to attendance
       setRosters(processedRosters);
-      navigate('/roster-attendance');
+      navigate('/roster');
+      console.log('✅ Navigation completed!');
     } catch (error) {
-      console.error('Error loading rosters:', error);
+      console.error('❌ Error loading rosters:', error);
+      console.error('Error details:', error.response?.data || error.message);
       alert('Failed to load team rosters. Please try again or contact support.');
     }
   };

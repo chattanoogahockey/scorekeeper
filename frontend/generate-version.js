@@ -34,28 +34,28 @@ try {
     deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
     console.log('Using deployment timestamp from environment:', process.env.DEPLOYMENT_TIMESTAMP);
   } else {
-    // Fallback to current time for local builds, force to Eastern time
-    deploymentTime = new Date(new Date().toLocaleString("en-US", {timeZone: "America/New_York"}));
-    console.log('Using local build time in Eastern timezone');
+    // Fallback to current time for local builds
+    deploymentTime = new Date();
+    console.log('Using local build time');
   }
   
-  // Ensure we're working with Eastern time
-  const estTime = new Date(deploymentTime.toLocaleString("en-US", {timeZone: "America/New_York"}));
+  // Format the time in Eastern timezone properly
+  const buildTime = deploymentTime.toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    timeZoneName: 'short'
+  });
 
   const versionInfo = {
     version: packageJson.version,
     name: packageJson.name,
     ...gitInfo,
-    buildTime: estTime.toLocaleString("en-US", {
-      timeZone: "America/New_York",
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZoneName: 'short'
-    })
+    buildTime: buildTime
   };
 
   // Ensure public directory exists

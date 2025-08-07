@@ -231,27 +231,27 @@ app.post('/api/attendance', async (req, res) => {
 });
 
 
-// Add the `/api/games` endpoint
+// Add the `/api/games` endpoint - DIVISION ONLY
 app.get('/api/games', async (req, res) => {
   const { division } = req.query;
   if (!division) {
-    return res.status(400).json({ error: 'Missing required query parameter: division' });
+    return res.status(400).json({ error: 'Missing required query parameter: division (Gold, Silver, Bronze, or all)' });
   }
 
   try {
     const container = getGamesContainer();
     let querySpec;
     
-    if (division === 'all') {
+    if (division.toLowerCase() === 'all') {
       // Return all games
       querySpec = {
         query: 'SELECT * FROM c',
         parameters: [],
       };
     } else {
-      // Return games for specific division
+      // Return games for specific division only
       querySpec = {
-        query: 'SELECT * FROM c WHERE LOWER(c.division) = LOWER(@division) OR LOWER(c.league) = LOWER(@division)',
+        query: 'SELECT * FROM c WHERE LOWER(c.division) = LOWER(@division)',
         parameters: [
           { name: '@division', value: division }
         ],
@@ -259,6 +259,7 @@ app.get('/api/games', async (req, res) => {
     }
 
     const { resources: games } = await container.items.query(querySpec).fetchAll();
+    console.log(`Games API: Found ${games.length} games for division: ${division}`);
     res.status(200).json(games);
   } catch (error) {
     console.error('Error fetching games:', error);

@@ -11,7 +11,7 @@ import { readFileSync } from 'fs';
 // Read package.json for version info
 const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 
-const API_BASE = process.env.API_BASE_URL || 'http://localhost:3001';
+const API_BASE = process.argv[2] || process.env.API_BASE_URL || 'http://localhost:3001';
 
 async function testEndpoint(url, description) {
   try {

@@ -5,6 +5,11 @@ import fs from 'fs';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
+
 import { 
   getGamesContainer, 
   getAttendanceContainer, 
@@ -97,44 +102,41 @@ app.get('/api/version', (req, res) => {
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
     
     let gitInfo = {};
-    try {
-      // Get git information
-      const currentDir = path.dirname(fileURLToPath(import.meta.url));
-      const gitCommit = execSync('git rev-parse HEAD', { encoding: 'utf8', cwd: currentDir }).trim();
-      const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8', cwd: currentDir }).trim();
-      gitInfo = {
-        commit: gitCommit,
-        branch: gitBranch
-      };
-    } catch (gitError) {
-      console.log('Git info not available:', gitError.message);
-      console.log('Available environment variables for git info:');
-      console.log('  GITHUB_SHA:', process.env.GITHUB_SHA);
-      console.log('  GITHUB_REF_NAME:', process.env.GITHUB_REF_NAME);
-      console.log('  BUILD_SOURCEVERSION:', process.env.BUILD_SOURCEVERSION);
-      console.log('  BUILD_SOURCEBRANCH:', process.env.BUILD_SOURCEBRANCH);
-      // Try alternative approach - check if we're in Azure and use environment variables
+    
+    // First try environment variables (production deployment)
+    if (process.env.BUILD_SOURCEVERSION || process.env.GITHUB_SHA) {
       gitInfo = {
         commit: process.env.BUILD_SOURCEVERSION || process.env.GITHUB_SHA || 'unknown',
-        branch: process.env.BUILD_SOURCEBRANCH?.replace('refs/heads/', '') || process.env.GITHUB_REF_NAME || 'unknown'
+        branch: process.env.BUILD_SOURCEBRANCH?.replace('refs/heads/', '') || process.env.GITHUB_REF_NAME || 'main'
       };
+    } else {
+      // Only try git commands if environment variables are not available (local development)
+      try {
+        const currentDir = path.dirname(fileURLToPath(import.meta.url));
+        const gitCommit = execSync('git rev-parse HEAD', { encoding: 'utf8', cwd: currentDir }).trim();
+        const gitBranch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf8', cwd: currentDir }).trim();
+        gitInfo = {
+          commit: gitCommit,
+          branch: gitBranch
+        };
+      } catch (gitError) {
+        // Silent fallback for production environments without git
+        gitInfo = {
+          commit: 'unknown',
+          branch: 'main'
+        };
+      }
     }
 
     // Use GitHub Actions workflow time if available, otherwise current time
     let deploymentTime;
     
-    console.log('Deployment timestamp environment variables:');
-    console.log('  GITHUB_ACTIONS:', process.env.GITHUB_ACTIONS);
-    console.log('  DEPLOYMENT_TIMESTAMP:', process.env.DEPLOYMENT_TIMESTAMP);
-    
     if (process.env.GITHUB_ACTIONS && process.env.DEPLOYMENT_TIMESTAMP) {
       // Use GitHub workflow deployment timestamp
       deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
-      console.log('Using GitHub Actions deployment timestamp');
     } else {
       // Fallback to current time for local builds
       deploymentTime = new Date();
-      console.log('Using current time as fallback');
     }
     
     // Convert to EST timezone

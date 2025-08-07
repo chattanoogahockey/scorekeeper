@@ -68,6 +68,16 @@ jobs:
         echo "Backend dependencies copied:"
         ls -la deploy/node_modules/ | head -10
     
+    - name: Create deployment environment
+      run: |
+        # Create .env file for deployment with git info
+        echo "BUILD_SOURCEVERSION=${{ github.sha }}" >> deploy/.env
+        echo "BUILD_SOURCEBRANCH=${{ github.ref_name }}" >> deploy/.env
+        echo "DEPLOYMENT_TIMESTAMP=${{ github.event.head_commit.timestamp }}" >> deploy/.env
+        echo "GITHUB_ACTIONS=true" >> deploy/.env
+        echo "Environment variables for deployment:"
+        cat deploy/.env
+
     - name: 'Deploy to Azure Web App'
       uses: azure/webapps-deploy@v3
       with: 

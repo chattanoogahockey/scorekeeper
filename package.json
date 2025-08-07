@@ -16,7 +16,7 @@
     "test:backend": "cd backend && npm test",
     "test:frontend": "cd frontend && npm test",
     "test:api": "node test-api.js",
-    "test:api:remote": "API_BASE_URL=https://scorekeeper.azurewebsites.net node test-api.js",
+    "test:api:remote": "node test-api.js https://scorekeeper.azurewebsites.net",
     "postinstall": "echo 'Post-install complete'"
   },
   "keywords": [

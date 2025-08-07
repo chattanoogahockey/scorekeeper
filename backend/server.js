@@ -198,6 +198,41 @@ app.get('/api/version', (req, res) => {
   }
 });
 
+// ADMIN ENDPOINT to update deployment timestamp after deployment completes
+app.post('/api/admin/update-deployment-time', (req, res) => {
+  try {
+    const { deploymentTimestamp, githubSha } = req.body;
+    
+    console.log('🔄 Deployment timestamp update request:', { deploymentTimestamp, githubSha });
+    
+    if (!deploymentTimestamp) {
+      return res.status(400).json({ error: 'Missing deploymentTimestamp' });
+    }
+    
+    // Verify this is a valid GitHub deployment by checking SHA
+    if (githubSha && process.env.BUILD_SOURCEVERSION && githubSha !== process.env.BUILD_SOURCEVERSION) {
+      console.warn('⚠️ GitHub SHA mismatch:', { provided: githubSha, expected: process.env.BUILD_SOURCEVERSION });
+    }
+    
+    // Update the environment variable for this process instance
+    process.env.DEPLOYMENT_TIMESTAMP = deploymentTimestamp;
+    console.log('✅ Updated deployment timestamp to:', deploymentTimestamp);
+    
+    res.json({ 
+      success: true, 
+      message: 'Deployment timestamp updated',
+      timestamp: deploymentTimestamp,
+      updatedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error updating deployment timestamp:', error);
+    res.status(500).json({ 
+      error: 'Failed to update deployment timestamp',
+      message: error.message 
+    });
+  }
+});
+
 // Utility function for error handling
 function handleError(res, error) {
   console.error('API Error:', error);

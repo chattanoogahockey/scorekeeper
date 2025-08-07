@@ -82,7 +82,6 @@ jobs:
         # Create .env file for deployment with git info
         echo "BUILD_SOURCEVERSION=${{ github.sha }}" >> deploy/.env
         echo "BUILD_SOURCEBRANCH=${{ github.ref_name }}" >> deploy/.env
-        echo "DEPLOYMENT_TIMESTAMP=$DEPLOYMENT_TIMESTAMP" >> deploy/.env
         echo "GITHUB_ACTIONS=true" >> deploy/.env
         echo "Environment variables for deployment:"
         cat deploy/.env
@@ -94,6 +93,22 @@ jobs:
         slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_aa98474905f14a53afdc3e9da94e0ae4 }}
         package: './deploy'
+
+    - name: Set final deployment timestamp
+      run: |
+        # Set the actual deployment completion timestamp
+        FINAL_DEPLOYMENT_TIMESTAMP=$(TZ='America/New_York' date +%Y-%m-%dT%H:%M:%S%z)
+        echo "FINAL_DEPLOYMENT_TIMESTAMP=$FINAL_DEPLOYMENT_TIMESTAMP" >> $GITHUB_ENV
+        echo "Final deployment completed at: $FINAL_DEPLOYMENT_TIMESTAMP"
+        
+        # Wait a moment for Azure to fully initialize
+        sleep 15
+        
+        # Update the deployed app with the actual completion timestamp
+        curl -X POST "https://scorekeeper.azurewebsites.net/api/admin/update-deployment-time" \
+          -H "Content-Type: application/json" \
+          -d "{\"deploymentTimestamp\": \"$FINAL_DEPLOYMENT_TIMESTAMP\", \"githubSha\": \"${{ github.sha }}\"}" \
+          || echo "Could not update deployment timestamp via API"
 
     - name: Verify deployment
       run: |

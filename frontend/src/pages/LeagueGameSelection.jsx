@@ -99,7 +99,7 @@ export default function LeagueGameSelection() {
         console.error('Request URL was:', apiUrl);
         
         // Retry logic with exponential backoff
-        if (retryCount < maxRetries && !err.response?.status === 400) {
+        if (retryCount < maxRetries && err.response?.status !== 400) {
           console.log(`🔄 Retrying in ${retryDelay}ms... (attempt ${retryCount + 2}/${maxRetries + 1})`);
           setTimeout(() => {
             if (!isCancelled) {
@@ -114,7 +114,7 @@ export default function LeagueGameSelection() {
         setGames([]);
         
       } finally {
-        if (!isCancelled && (retryCount >= maxRetries || setGames.length > 0)) {
+        if (!isCancelled && (retryCount >= maxRetries || error || games.length > 0)) {
           setLoading(false);
         }
       }

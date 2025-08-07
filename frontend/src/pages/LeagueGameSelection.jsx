@@ -154,67 +154,42 @@ export default function LeagueGameSelection() {
     setSelectedLeague(game.league);
     
     try {
-      // Load rosters for the game's teams
-      console.log('Loading rosters for division:', game.division);
-      const rostersResponse = await axios.get(`/api/rosters?division=${game.division}`);
-      const teamRosters = rostersResponse.data;
-      console.log('All team rosters loaded:', teamRosters.length, 'teams for', game.division, 'division');
+      // Load rosters for the game's teams using gameId
+      console.log('Loading rosters for game:', game.id || game.gameId);
+      const rostersResponse = await axios.get('/api/rosters', {
+        params: { gameId: game.id || game.gameId }
+      });
+      const gameRosters = rostersResponse.data;
+      console.log('Game rosters loaded:', gameRosters.length, 'teams');
       
-      // Get team names from the game
-      const awayTeamName = game.awayTeam || game.awayTeamId;
-      const homeTeamName = game.homeTeam || game.homeTeamId;
-      console.log('Looking for teams:', awayTeamName, 'vs', homeTeamName);
+      // Process the rosters (they're already filtered to just the two teams for this game)
+      const processedRosters = gameRosters.map(roster => ({
+        teamName: roster.teamName,
+        teamId: roster.teamName,
+        players: roster.players.map(player => ({
+          name: player.name,
+          firstName: player.firstName || player.name.split(' ')[0],
+          lastName: player.lastName || player.name.split(' ').slice(1).join(' '),
+          jerseyNumber: player.jerseyNumber,
+          position: player.position || 'Player'
+        }))
+      }));
       
-      // Find rosters for the selected teams
-      const gameRosters = [];
+      console.log('Processed rosters:', processedRosters.map(r => `${r.teamName}: ${r.players.length} players`));
       
-      if (awayTeamName) {
-        const awayTeamRoster = teamRosters.find(team => 
-          team.teamName === awayTeamName
-        );
-        console.log('Away team roster found:', awayTeamRoster ? awayTeamRoster.players.length : 0, 'players for', awayTeamName);
-        if (awayTeamRoster && awayTeamRoster.players.length > 0) {
-          gameRosters.push({
-            teamName: awayTeamName,
-            teamId: awayTeamName,
-            players: awayTeamRoster.players.map(player => ({
-              name: player.name || `${player.firstName || ''} ${player.lastName || ''}`.trim(),
-              firstName: player.firstName,
-              lastName: player.lastName,
-              jerseyNumber: player.jerseyNumber,
-              position: player.position || 'Player'
-            }))
-          });
-        }
+      if (processedRosters.length === 0) {
+        console.warn('No rosters found for this game');
+        alert('No team rosters found for this game. Please contact an administrator.');
+        return;
       }
       
-      if (homeTeamName) {
-        const homeTeamRoster = teamRosters.find(team => 
-          team.teamName === homeTeamName
-        );
-        console.log('Home team roster found:', homeTeamRoster ? homeTeamRoster.players.length : 0, 'players for', homeTeamName);
-        if (homeTeamRoster && homeTeamRoster.players.length > 0) {
-          gameRosters.push({
-            teamName: homeTeamName,
-            teamId: homeTeamName,
-            players: homeTeamRoster.players.map(player => ({
-              name: player.name || `${player.firstName || ''} ${player.lastName || ''}`.trim(),
-              firstName: player.firstName,
-              lastName: player.lastName,
-              jerseyNumber: player.jerseyNumber,
-              position: player.position || 'Player'
-            }))
-          });
-        }
-      }
-      
-      console.log('Final game rosters:', gameRosters);
-      setRosters(gameRosters);
-    } catch (err) {
-      console.error('Failed to load rosters', err);
-      setRosters([]); // Fallback to empty rosters
+      // Store the rosters and navigate to attendance
+      setRosters(processedRosters);
+      navigate('/roster-attendance');
+    } catch (error) {
+      console.error('Error loading rosters:', error);
+      alert('Failed to load team rosters. Please try again or contact support.');
     }
-    navigate('/roster');
   };
 
   return (

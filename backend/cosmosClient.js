@@ -19,7 +19,7 @@ const containerNames = {
   analytics: process.env.COSMOS_DB_ANALYTICS_CONTAINER || 'analytics',
   rink_reports: process.env.COSMOS_DB_RINK_REPORTS_CONTAINER || 'rink_reports',
   games: process.env.COSMOS_DB_GAMES_CONTAINER || 'games',
-  players: process.env.COSMOS_DB_PLAYERS_CONTAINER || 'playerStats',
+  players: process.env.COSMOS_DB_PLAYERS_CONTAINER || 'players',
   goals: process.env.COSMOS_DB_GOALS_CONTAINER || 'goals',
   penalties: process.env.COSMOS_DB_PENALTIES_CONTAINER || 'penalties',
   rosters: process.env.COSMOS_DB_ROSTERS_CONTAINER || 'rosters',

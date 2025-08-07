@@ -329,12 +329,49 @@ app.get('/api/games/submitted', async (req, res) => {
   }
 });
 
-// Add the `/api/rosters` endpoint
+// Add the `/api/rosters` endpoint with gameId support
 app.get('/api/rosters', async (req, res) => {
-  const { teamName, season, division } = req.query;
+  const { gameId, teamName, season, division } = req.query;
 
   try {
-    const container = getRostersContainer();
+    const rostersContainer = getRostersContainer();
+    const gamesContainer = getGamesContainer();
+
+    // If gameId is provided, look up the game and fetch the rosters for its teams
+    if (gameId) {
+      console.log('Fetching rosters for gameId:', gameId);
+      
+      const gameQuery = {
+        query: 'SELECT * FROM c WHERE c.id = @id OR c.gameId = @id',
+        parameters: [{ name: '@id', value: gameId }]
+      };
+      
+      const { resources: games } = await gamesContainer.items.query(gameQuery).fetchAll();
+      if (games.length === 0) {
+        console.log('Game not found for gameId:', gameId);
+        return res.status(404).json({ error: 'Game not found' });
+      }
+      
+      const game = games[0];
+      const homeTeam = game.homeTeam || game.homeTeamId;
+      const awayTeam = game.awayTeam || game.awayTeamId;
+      
+      console.log('Looking for rosters for teams:', homeTeam, 'vs', awayTeam);
+      
+      const rosterQuery = {
+        query: 'SELECT * FROM c WHERE c.teamName IN (@home, @away)',
+        parameters: [
+          { name: '@home', value: homeTeam },
+          { name: '@away', value: awayTeam }
+        ]
+      };
+      
+      const { resources: rosterResults } = await rostersContainer.items.query(rosterQuery).fetchAll();
+      console.log('Found rosters:', rosterResults.length, 'teams');
+      return res.status(200).json(rosterResults);
+    }
+
+    // Original filtering by teamName, season, division
     let querySpec;
     
     if (!teamName && !season && !division) {
@@ -359,7 +396,7 @@ app.get('/api/rosters', async (req, res) => {
       }
       
       if (division) {
-        conditions.push('c.division = @division');
+        conditions.push('LOWER(c.division) = LOWER(@division)');
         parameters.push({ name: '@division', value: division });
       }
       
@@ -369,11 +406,88 @@ app.get('/api/rosters', async (req, res) => {
       };
     }
 
-    const { resources: rosters } = await container.items.query(querySpec).fetchAll();
+    const { resources: rosters } = await rostersContainer.items.query(querySpec).fetchAll();
     res.status(200).json(rosters);
   } catch (error) {
     console.error('Error fetching rosters:', error);
     res.status(500).json({ error: 'Failed to fetch rosters' });
+  }
+});
+
+// Create a new roster
+app.post('/api/rosters', async (req, res) => {
+  try {
+    const { teamName, season, division, players } = req.body;
+    
+    if (!teamName || !season || !division || !players) {
+      return res.status(400).json({ error: 'Missing required fields: teamName, season, division, players' });
+    }
+    
+    const container = getRostersContainer();
+    const rosterDoc = {
+      id: teamName.replace(/\s+/g, '_').toLowerCase(),
+      teamName,
+      season,
+      division,
+      players: players.map(player => ({
+        name: player.name,
+        firstName: player.firstName || player.name.split(' ')[0],
+        lastName: player.lastName || player.name.split(' ').slice(1).join(' '),
+        jerseyNumber: player.jerseyNumber,
+        position: player.position || 'Player'
+      })),
+      totalPlayers: players.length,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    const { resource } = await container.items.create(rosterDoc);
+    res.status(201).json(resource);
+  } catch (error) {
+    console.error('Error creating roster:', error);
+    res.status(500).json({ error: 'Failed to create roster' });
+  }
+});
+
+// Update a roster by ID
+app.put('/api/rosters/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+    
+    const container = getRostersContainer();
+    const { resource: existingRoster } = await container.item(id, id).read();
+    
+    if (!existingRoster) {
+      return res.status(404).json({ error: 'Roster not found' });
+    }
+    
+    const updatedRoster = {
+      ...existingRoster,
+      ...updates,
+      id: existingRoster.id, // Preserve ID
+      updatedAt: new Date().toISOString()
+    };
+    
+    const { resource } = await container.item(id, id).replace(updatedRoster);
+    res.status(200).json(resource);
+  } catch (error) {
+    console.error('Error updating roster:', error);
+    res.status(500).json({ error: 'Failed to update roster' });
+  }
+});
+
+// Delete a roster by ID
+app.delete('/api/rosters/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const container = getRostersContainer();
+    
+    await container.item(id, id).delete();
+    res.status(200).json({ message: 'Roster deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting roster:', error);
+    res.status(500).json({ error: 'Failed to delete roster' });
   }
 });
 

@@ -18,10 +18,12 @@ export default function LeagueGameSelection() {
     const loadGames = async () => {
       console.log('🎮 Loading games from API...');
       console.log('📍 Current window location:', window.location.href);
+      console.log('🕐 Current timestamp:', new Date().toISOString());
       setLoading(true);
       
-      // Use direct query string to avoid any axios parameter serialization issues
-      const apiUrl = '/api/games?division=all';
+      // Use direct query string with timestamp to force fresh request
+      const timestamp = Date.now();
+      const apiUrl = `/api/games?division=all&t=${timestamp}`;
       console.log('🔗 Making direct request to:', apiUrl);
       
       try {
@@ -77,7 +79,7 @@ export default function LeagueGameSelection() {
     
     // Execute immediately
     loadGames();
-  }, [reset]);
+  }, []); // Empty dependency array - only run on mount
 
   // Real-time clock update
   useEffect(() => {

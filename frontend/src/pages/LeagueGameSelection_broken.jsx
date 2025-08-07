@@ -10,28 +10,44 @@ export default function LeagueGameSelection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [hasLoaded, setHasLoaded] = useState(false); // Prevent multiple loads
 
   useEffect(() => {
+    // Prevent multiple executions
+    if (hasLoaded) {
+      console.log('🚫 Already loaded, skipping...');
+      return;
+    }
+    
+    console.log('🎮 LeagueGameSelection useEffect triggered');
+    console.log('🔍 hasLoaded state:', hasLoaded);
+    console.log('🔍 Current games state:', games.length);
+    
     // Reset context when visiting selection page
     reset();
     
-    const loadGames = async () => {
-      console.log('🎮 Loading games from API...');
-      console.log('📍 Current window location:', window.location.href);
-      setLoading(true);
-      
-      // Use direct query string to avoid any axios parameter serialization issues
-      const apiUrl = '/api/games?division=all';
-      console.log('🔗 Making direct request to:', apiUrl);
-      
-      try {
-        const res = await axios.get(apiUrl, {
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
-          }
-        });
+    // Execute immediately without delay to catch timing issues
+    loadGames();
+  }, [hasLoaded]); // Add hasLoaded to dependency array
+
+  const loadGames = async () => {
+    console.log('🎮 Loading games from API...');
+    console.log('📍 Current window location:', window.location.href);
+    setLoading(true);
+    setHasLoaded(true); // Mark as loading started
+    
+    // Use direct query string to avoid any axios parameter serialization issues
+    const apiUrl = '/api/games?division=all';
+    console.log('🔗 Making direct request to:', apiUrl);
+    
+    try {
+      const res = await axios.get(apiUrl, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
         
         console.log(`📊 SUCCESS: Received ${res.data.length} games from API:`, res.data);
         
@@ -75,9 +91,9 @@ export default function LeagueGameSelection() {
       }
     };
     
-    // Execute immediately
+    // Execute immediately without delay to catch timing issues
     loadGames();
-  }, [reset]);
+  }, []);
 
   // Real-time clock update
   useEffect(() => {
@@ -249,7 +265,7 @@ export default function LeagueGameSelection() {
           <div className="flex-1 text-center">
             <h1 className="text-2xl font-bold">Select Game</h1>
           </div>
-          <div className="text-right">
+          <div className="text-right">"
             <div className="text-lg font-semibold">
               {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>

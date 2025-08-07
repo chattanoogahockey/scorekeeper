@@ -7,9 +7,6 @@ import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import dotenv from 'dotenv';
 
-// Import error handling middleware
-import { errorHandler, asyncHandler, notFoundHandler, validateRequired } from './middleware/errorHandler.js';
-
 // Load environment variables from .env file
 dotenv.config();
 
@@ -3288,10 +3285,6 @@ app.get('*', (req, res) => {
   res.set('Expires', '0');
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
-
-// Add error handling middleware (must be at the end)
-app.use(notFoundHandler);
-app.use(errorHandler);
 
 const server = app.listen(process.env.PORT || 8080, () => {
   console.log(`🚀 Hockey Scorekeeper API running on port ${process.env.PORT || 8080}`);

@@ -61,7 +61,8 @@ app.use(cors());
 const startTime = Date.now();
 const isProduction = process.env.NODE_ENV === 'production';
 
-console.log(`🚀 Starting Hockey Scorekeeper API (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'})`);
+console.log(`🚀 Starting Hockey Scorekeeper API v2.1 (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'})`);
+console.log(`⏰ Server start time: ${new Date().toISOString()}`);
 
 // Initialize database containers
 try {
@@ -292,7 +293,10 @@ app.get('/api/games/submitted', async (req, res) => {
           try {
             await gamesContainer.item(submission.id, submission.gameId).delete();
           } catch (cleanupError) {
-            console.error(`Error cleaning up submission ${submission.id}:`, cleanupError);
+            // Ignore 404 errors - the record was already deleted
+            if (cleanupError.code !== 404) {
+              console.error(`Error cleaning up submission ${submission.id}:`, cleanupError);
+            }
           }
         }
       } catch (error) {

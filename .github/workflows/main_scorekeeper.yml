@@ -16,6 +16,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Fetch full git history
+      run: |
+        git fetch --unshallow --tags || true
+
     - name: Set deployment timestamp
       run: echo "DEPLOYMENT_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> $GITHUB_ENV
 
@@ -28,20 +32,20 @@ jobs:
     - name: Clean and install dependencies
       run: |
         rm -rf node_modules package-lock.json
-        npm install
+        npm ci
     
     - name: Build frontend
       run: |
         cd frontend
-        npm install
+        npm ci
         # Generate version info with deployment timestamp
-        node generate-version.js
+        NODE_ENV=production node generate-version.js
         npm run build
     
     - name: Install backend dependencies
       run: |
         cd backend  
-        npm install --production
+        npm ci --production
     
     - name: Create deployment package
       run: |
@@ -71,3 +75,25 @@ jobs:
         slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_aa98474905f14a53afdc3e9da94e0ae4 }}
         package: './deploy'
+
+    - name: Verify deployment
+      run: |
+        # Wait a moment for deployment to complete
+        sleep 30
+        # Check health endpoint
+        curl -sSf https://scorekeeper.azurewebsites.net/api/health || echo "Health check failed"
+        # Check version endpoint and verify it matches package.json
+        curl -sSf https://scorekeeper.azurewebsites.net/api/version | tee /tmp/version.json
+        if command -v jq > /dev/null; then
+          DEPLOYED_VERSION=$(jq -r .version /tmp/version.json)
+          PACKAGE_VERSION=$(jq -r .version package.json)
+          echo "Deployed version: $DEPLOYED_VERSION"
+          echo "Package version: $PACKAGE_VERSION"
+          if [ "$DEPLOYED_VERSION" != "$PACKAGE_VERSION" ]; then
+            echo "ERROR: Version mismatch!"
+            exit 1
+          fi
+          echo "✅ Version verification successful"
+        else
+          echo "jq not available, skipping version verification"
+        fi

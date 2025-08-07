@@ -4,6 +4,7 @@ import cors from 'cors';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
+import pkg from './package.json' assert { type: "json" };
 import { 
   getGamesContainer, 
   getAttendanceContainer, 
@@ -61,7 +62,7 @@ app.use(cors());
 const startTime = Date.now();
 const isProduction = process.env.NODE_ENV === 'production';
 
-console.log(`🚀 Starting Hockey Scorekeeper API v2.1 (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'})`);
+console.log(`🚀 Starting Hockey Scorekeeper API v${pkg.version} (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'})`);
 console.log(`⏰ Server start time: ${new Date().toISOString()}`);
 
 // Initialize database containers
@@ -3033,7 +3034,14 @@ app.get('/api/admin/available-voices', (req, res) => {
 
 // Serve static frontend files (after all API routes)
 const frontendDist = path.resolve(__dirname, 'frontend');
-app.use(express.static(frontendDist));
+app.use(express.static(frontendDist, { 
+  maxAge: isProduction ? '1d' : '0',
+  setHeaders: (res, path) => {
+    if (path.endsWith('version.json')) {
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 
 // Catch-all route to serve index.html for SPA (MUST be last!)
 app.get('*', (req, res) => {

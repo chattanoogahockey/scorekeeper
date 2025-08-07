@@ -1,13 +1,14 @@
 {
   "name": "hockey-scorekeeper-frontend",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "type": "module",
   "description": "Frontend for real-time hockey scorekeeping application.",
   "scripts": {
     "dev": "vite",
     "build": "node generate-version.js && node ./node_modules/vite/bin/vite.js build || npx vite build || npm exec vite build",
     "preview": "vite preview",
-    "version": "node generate-version.js"
+    "version": "node generate-version.js",
+    "test": "echo 'No frontend tests configured yet' && exit 0"
   },
   "dependencies": {
     "axios": "^1.6.2",

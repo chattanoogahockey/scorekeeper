@@ -11,6 +11,23 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: './.env' });
 
 /**
+ * Configurable Container Names
+ * Can be overridden via environment variables for different environments
+ */
+const containerNames = {
+  settings: process.env.COSMOS_DB_SETTINGS_CONTAINER || 'settings',
+  analytics: process.env.COSMOS_DB_ANALYTICS_CONTAINER || 'analytics',
+  rink_reports: process.env.COSMOS_DB_RINK_REPORTS_CONTAINER || 'rink_reports',
+  games: process.env.COSMOS_DB_GAMES_CONTAINER || 'games',
+  players: process.env.COSMOS_DB_PLAYERS_CONTAINER || 'playerStats',
+  goals: process.env.COSMOS_DB_GOALS_CONTAINER || 'goals',
+  penalties: process.env.COSMOS_DB_PENALTIES_CONTAINER || 'penalties',
+  rosters: process.env.COSMOS_DB_ROSTERS_CONTAINER || 'rosters',
+  attendance: process.env.COSMOS_DB_ATTENDANCE_CONTAINER || 'attendance',
+  otshootout: process.env.COSMOS_DB_OTSHOOTOUT_CONTAINER || 'otshootout',
+};
+
+/**
  * Production Cosmos DB Container Definitions
  * 
  * Container Schema:
@@ -29,7 +46,7 @@ dotenv.config({ path: './.env' });
 const CONTAINER_DEFINITIONS = {
   // Global application settings
   settings: {
-    name: 'settings',
+    name: containerNames.settings,
     partitionKey: '/type',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -40,7 +57,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Pre-aggregated analytics and statistics
   analytics: {
-    name: 'analytics',
+    name: containerNames.analytics,
     partitionKey: '/division', 
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -56,7 +73,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Weekly rink reports and articles
   rink_reports: {
-    name: 'rink_reports',
+    name: containerNames.rink_reports,
     partitionKey: '/division',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -71,7 +88,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Game records and submissions
   games: {
-    name: 'games',
+    name: containerNames.games,
     partitionKey: '/league',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -88,7 +105,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Player statistics and profiles
   players: {
-    name: 'playerStats',
+    name: containerNames.players,
     partitionKey: '/_partitionKey',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -104,7 +121,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Goal events and scoring data
   goals: {
-    name: 'goals',
+    name: containerNames.goals,
     partitionKey: '/gameId',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -120,7 +137,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Penalty events and infractions
   penalties: {
-    name: 'penalties',
+    name: containerNames.penalties,
     partitionKey: '/gameId',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -136,7 +153,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Team rosters and player assignments
   rosters: {
-    name: 'rosters',
+    name: containerNames.rosters,
     partitionKey: '/teamId',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -152,7 +169,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Game attendance tracking
   attendance: {
-    name: 'attendance',
+    name: containerNames.attendance,
     partitionKey: '/gameId',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -166,7 +183,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Overtime and shootout results
   otshootout: {
-    name: 'otshootout',
+    name: containerNames.otshootout,
     partitionKey: '/gameId',
     indexingPolicy: {
       indexingMode: 'consistent',

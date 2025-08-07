@@ -3,8 +3,9 @@ import { execSync } from 'child_process';
 import path from 'path';
 
 try {
-  // Read package.json
-  const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  // Read package.json from root directory for unified versioning
+  const packageJsonPath = path.join('..', 'package.json');
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   
   let gitInfo = {};
   try {
@@ -28,10 +29,10 @@ try {
   let deploymentTime;
   
   // In GitHub Actions, use environment variables for deployment time
-  if (process.env.GITHUB_ACTIONS && process.env.DEPLOYMENT_TIMESTAMP) {
-    // Use GitHub workflow deployment timestamp
+  if (process.env.DEPLOYMENT_TIMESTAMP) {
+    // Use GitHub workflow deployment timestamp (UTC)
     deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
-    console.log('Using GitHub Actions deployment time:', process.env.DEPLOYMENT_TIMESTAMP);
+    console.log('Using deployment timestamp from environment:', process.env.DEPLOYMENT_TIMESTAMP);
   } else {
     // Fallback to current time for local builds
     deploymentTime = new Date();

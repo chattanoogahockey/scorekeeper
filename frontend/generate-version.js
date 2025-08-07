@@ -30,16 +30,16 @@ try {
   
   // In GitHub Actions, use environment variables for deployment time
   if (process.env.DEPLOYMENT_TIMESTAMP) {
-    // Use GitHub workflow deployment timestamp (UTC)
+    // Use GitHub workflow deployment timestamp (already in EST from workflow)
     deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
     console.log('Using deployment timestamp from environment:', process.env.DEPLOYMENT_TIMESTAMP);
   } else {
-    // Fallback to current time for local builds
-    deploymentTime = new Date();
-    console.log('Using local build time');
+    // Fallback to current time for local builds, force to Eastern time
+    deploymentTime = new Date(new Date().toLocaleString("en-US", {timeZone: "America/New_York"}));
+    console.log('Using local build time in Eastern timezone');
   }
   
-  // Convert to EST timezone
+  // Ensure we're working with Eastern time
   const estTime = new Date(deploymentTime.toLocaleString("en-US", {timeZone: "America/New_York"}));
 
   const versionInfo = {

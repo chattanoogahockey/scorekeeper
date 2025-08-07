@@ -32,8 +32,8 @@ jobs:
       run: |
         git fetch --unshallow --tags || true
 
-    - name: Set deployment timestamp
-      run: echo "DEPLOYMENT_TIMESTAMP=$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)" >> $GITHUB_ENV
+    - name: Set deployment timestamp (Eastern Time)
+      run: echo "DEPLOYMENT_TIMESTAMP=$(TZ='America/New_York' date +%Y-%m-%dT%H:%M:%S%z)" >> $GITHUB_ENV
 
     - name: Set up Node.js version
       uses: actions/setup-node@v4

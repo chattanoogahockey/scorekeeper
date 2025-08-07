@@ -19,6 +19,7 @@ export default function LeagueGameSelection() {
       console.log('🎮 Loading games from API...');
       console.log('📍 Current window location:', window.location.href);
       console.log('🕐 Current timestamp:', new Date().toISOString());
+      console.log('🔍 Frontend build check: Latest deployment sync test');
       setLoading(true);
       
       // Use direct query string with timestamp to force fresh request

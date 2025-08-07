@@ -32,9 +32,6 @@ jobs:
       run: |
         git fetch --unshallow --tags || true
 
-    - name: Set deployment timestamp (Eastern Time)
-      run: echo "DEPLOYMENT_TIMESTAMP=$(TZ='America/New_York' date +%Y-%m-%dT%H:%M:%S%z)" >> $GITHUB_ENV
-
     - name: Set up Node.js version
       uses: actions/setup-node@v4
       with:
@@ -89,6 +86,9 @@ jobs:
         echo "GITHUB_ACTIONS=true" >> deploy/.env
         echo "Environment variables for deployment:"
         cat deploy/.env
+
+    - name: Set deployment timestamp (Eastern Time) - Just before deployment
+      run: echo "DEPLOYMENT_TIMESTAMP=$(TZ='America/New_York' date +%Y-%m-%dT%H:%M:%S%z)" >> $GITHUB_ENV
 
     - name: 'Deploy to Azure Web App'
       uses: azure/webapps-deploy@v3

@@ -51,7 +51,7 @@ jobs:
         cd frontend
         npm install
         # Generate version info with deployment timestamp
-        NODE_ENV=production node generate-version.js
+        NODE_ENV=production DEPLOYMENT_TIMESTAMP=$DEPLOYMENT_TIMESTAMP node generate-version.js
         npm run build
     
     - name: Install backend dependencies

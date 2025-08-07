@@ -6,7 +6,10 @@
  */
 
 import fetch from 'node-fetch';
-import pkg from './package.json' assert { type: "json" };
+import { readFileSync } from 'fs';
+
+// Read package.json for version info
+const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 
 const API_BASE = process.env.API_BASE_URL || 'http://localhost:3001';
 

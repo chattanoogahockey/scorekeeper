@@ -31,13 +31,13 @@ jobs:
     
     - name: Clean and install dependencies
       run: |
-        rm -rf node_modules package-lock.json
-        npm ci
+        rm -rf node_modules
+        npm install
     
     - name: Build frontend
       run: |
         cd frontend
-        npm ci
+        npm install
         # Generate version info with deployment timestamp
         NODE_ENV=production node generate-version.js
         npm run build
@@ -45,7 +45,7 @@ jobs:
     - name: Install backend dependencies
       run: |
         cd backend  
-        npm ci --production
+        npm install --production
     
     - name: Create deployment package
       run: |

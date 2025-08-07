@@ -4,7 +4,7 @@ import cors from 'cors';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import pkg from './package.json' assert { type: "json" };
+import { readFileSync } from 'fs';
 import { 
   getGamesContainer, 
   getAttendanceContainer, 
@@ -18,6 +18,9 @@ import {
   getPlayersContainer,
   initializeContainers
 } from './cosmosClient.js';
+
+// Read package.json for version info
+const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 
 // Import TTS service
 import ttsService from './ttsService.js';

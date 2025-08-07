@@ -33,6 +33,7 @@ try {
     // Use GitHub workflow deployment timestamp (already in EST from workflow)
     deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
     console.log('Using deployment timestamp from environment:', process.env.DEPLOYMENT_TIMESTAMP);
+    console.log('Parsed deployment time:', deploymentTime.toString());
   } else {
     // Fallback to current time for local builds
     deploymentTime = new Date();
@@ -50,6 +51,8 @@ try {
     second: '2-digit',
     timeZoneName: 'short'
   });
+  
+  console.log('Final formatted build time:', buildTime);
 
   const versionInfo = {
     version: packageJson.version,

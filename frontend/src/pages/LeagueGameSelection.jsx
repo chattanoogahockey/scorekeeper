@@ -12,19 +12,42 @@ export default function LeagueGameSelection() {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
+    // Prevent double execution with a ref
+    let isCancelled = false;
+    
     // Reset context when visiting selection page
     reset();
     
-    const loadGames = async () => {
-      console.log('🎮 Loading games from API...');
+    const verifyBackendSync = async () => {
+      try {
+        const versionResponse = await axios.get(`/api/version?t=${Date.now()}`);
+        console.log('🔄 Backend sync check:', versionResponse.data);
+        console.log('⏰ Backend build time:', versionResponse.data.buildTime);
+        console.log('🆔 Backend timestamp:', versionResponse.data.timestamp);
+      } catch (error) {
+        console.warn('⚠️ Could not verify backend sync:', error.message);
+      }
+    };
+    
+    const loadGames = async (retryCount = 0) => {
+      if (isCancelled) return;
+      
+      const maxRetries = 3;
+      const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+      
+      console.log(`🎮 Loading games from API... (attempt ${retryCount + 1}/${maxRetries + 1})`);
       console.log('📍 Current window location:', window.location.href);
       console.log('🕐 Current timestamp:', new Date().toISOString());
-      console.log('🔍 Frontend build check: Latest deployment sync test');
+      console.log('🔍 Frontend build check: Comprehensive sync fix v2');
+      console.log('🛡️ Request ID:', Math.random().toString(36).substr(2, 9));
       setLoading(true);
+      
+      // First verify backend sync
+      await verifyBackendSync();
       
       // Use direct query string with timestamp to force fresh request
       const timestamp = Date.now();
-      const apiUrl = `/api/games?division=all&t=${timestamp}`;
+      const apiUrl = `/api/games?division=all&t=${timestamp}&v=2`;
       console.log('🔗 Making direct request to:', apiUrl);
       
       try {
@@ -32,9 +55,13 @@ export default function LeagueGameSelection() {
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
-            'Expires': '0'
-          }
+            'Expires': '0',
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          timeout: 10000 // 10 second timeout
         });
+        
+        if (isCancelled) return;
         
         console.log(`📊 SUCCESS: Received ${res.data.length} games from API:`, res.data);
         
@@ -64,22 +91,47 @@ export default function LeagueGameSelection() {
         setError(null);
         
       } catch (err) {
-        console.error('❌ FIRST REQUEST FAILED:', err);
+        if (isCancelled) return;
+        
+        console.error(`❌ REQUEST FAILED (attempt ${retryCount + 1}):`, err);
         console.error('Error details:', err.response?.data || err.message);
         console.error('Error status:', err.response?.status);
         console.error('Request URL was:', apiUrl);
         
-        // Set error immediately, don't retry
+        // Retry logic with exponential backoff
+        if (retryCount < maxRetries && !err.response?.status === 400) {
+          console.log(`🔄 Retrying in ${retryDelay}ms... (attempt ${retryCount + 2}/${maxRetries + 1})`);
+          setTimeout(() => {
+            if (!isCancelled) {
+              loadGames(retryCount + 1);
+            }
+          }, retryDelay);
+          return; // Don't set loading to false or error state yet
+        }
+        
+        // Set error only after all retries exhausted
         setError('Failed to load games from server. Please refresh the page.');
         setGames([]);
         
       } finally {
-        setLoading(false);
+        if (!isCancelled && (retryCount >= maxRetries || setGames.length > 0)) {
+          setLoading(false);
+        }
       }
     };
     
-    // Execute immediately
-    loadGames();
+    // Execute immediately with a small delay to prevent race conditions
+    const timeoutId = setTimeout(() => {
+      if (!isCancelled) {
+        loadGames();
+      }
+    }, 10);
+    
+    // Cleanup function
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, []); // Empty dependency array - only run on mount
 
   // Real-time clock update

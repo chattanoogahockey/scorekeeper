@@ -87,9 +87,6 @@ jobs:
         echo "Environment variables for deployment:"
         cat deploy/.env
 
-    - name: Set deployment timestamp (Eastern Time) - Just before deployment
-      run: echo "DEPLOYMENT_TIMESTAMP=$(TZ='America/New_York' date +%Y-%m-%dT%H:%M:%S%z)" >> $GITHUB_ENV
-
     - name: 'Deploy to Azure Web App'
       uses: azure/webapps-deploy@v3
       with: 

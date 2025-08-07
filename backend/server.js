@@ -106,6 +106,14 @@ app.get('/health', (req, res) => {
 
 // VERSION ENDPOINT for deployment verification
 app.get('/api/version', (req, res) => {
+  // Set aggressive cache-busting headers for version endpoint
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'Last-Modified': new Date().toUTCString()
+  });
+  
   try {
     // Read package.json for version
     const packagePath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'package.json');
@@ -164,14 +172,23 @@ app.get('/api/version', (req, res) => {
     });
     
     console.log('Final backend buildTime:', buildTime);
+    console.log('🔄 Version endpoint called at:', new Date().toISOString());
+    console.log('⚡ Server uptime:', process.uptime(), 'seconds');
     
-    res.json({
+    const responseData = {
       version: packageJson.version,
       name: packageJson.name,
       ...gitInfo,
       buildTime: buildTime,
-      timestamp: deploymentTime.toISOString()
-    });
+      timestamp: deploymentTime.toISOString(),
+      serverTime: new Date().toISOString(),
+      uptime: process.uptime(),
+      nodeVersion: process.version,
+      deploymentEnv: process.env.GITHUB_ACTIONS ? 'GitHub Actions' : 'Local'
+    };
+    
+    console.log('📤 Sending version response:', JSON.stringify(responseData, null, 2));
+    res.json(responseData);
   } catch (error) {
     console.error('Error getting version info:', error);
     res.status(500).json({ 
@@ -238,12 +255,27 @@ app.post('/api/attendance', async (req, res) => {
 
 // Add the `/api/games` endpoint - DIVISION ONLY
 app.get('/api/games', async (req, res) => {
-  const { division } = req.query;
-  console.log(`🎮 Games API called with division: ${division}`);
+  const { division, t, v } = req.query;
+  const requestId = Math.random().toString(36).substr(2, 9);
+  
+  console.log(`🎮 Games API called with division: ${division}, timestamp: ${t}, version: ${v}, requestId: ${requestId}`);
+  
+  // Add aggressive cache-busting headers
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate, private',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'Last-Modified': new Date().toUTCString(),
+    'X-Request-ID': requestId
+  });
   
   if (!division) {
-    console.log('❌ Missing division parameter');
-    return res.status(400).json({ error: 'Missing required query parameter: division (Gold, Silver, Bronze, or all)' });
+    console.log(`❌ Missing division parameter (requestId: ${requestId})`);
+    return res.status(400).json({ 
+      error: 'Missing required query parameter: division (Gold, Silver, Bronze, or all)',
+      requestId: requestId,
+      timestamp: new Date().toISOString()
+    });
   }
 
   try {
@@ -271,12 +303,25 @@ app.get('/api/games', async (req, res) => {
     }
 
     const { resources: games } = await container.items.query(querySpec).fetchAll();
-    console.log(`✅ Games API: Found ${games.length} games for division: ${division}`);
+    console.log(`✅ Games API: Found ${games.length} games for division: ${division} (requestId: ${requestId})`);
     
     if (games.length > 0) {
-      console.log('📋 Sample game structure:', JSON.stringify(games[0], null, 2));
+      console.log(`📋 Sample game structure (requestId: ${requestId}):`, JSON.stringify(games[0], null, 2));
     }
     
+    const responseData = {
+      games: games,
+      meta: {
+        count: games.length,
+        division: division,
+        requestId: requestId,
+        timestamp: new Date().toISOString(),
+        queryVersion: v || '1'
+      }
+    };
+    
+    // Return games array directly for backward compatibility, but log meta info
+    console.log(`📤 Sending ${games.length} games (requestId: ${requestId})`);
     res.status(200).json(games);
   } catch (error) {
     console.error('❌ Error fetching games:', error);

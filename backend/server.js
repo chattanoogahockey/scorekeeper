@@ -234,12 +234,17 @@ app.post('/api/attendance', async (req, res) => {
 // Add the `/api/games` endpoint - DIVISION ONLY
 app.get('/api/games', async (req, res) => {
   const { division } = req.query;
+  console.log(`🎮 Games API called with division: ${division}`);
+  
   if (!division) {
+    console.log('❌ Missing division parameter');
     return res.status(400).json({ error: 'Missing required query parameter: division (Gold, Silver, Bronze, or all)' });
   }
 
   try {
     const container = getGamesContainer();
+    console.log('📦 Got games container');
+    
     let querySpec;
     
     if (division.toLowerCase() === 'all') {
@@ -248,6 +253,7 @@ app.get('/api/games', async (req, res) => {
         query: 'SELECT * FROM c',
         parameters: [],
       };
+      console.log('🔍 Querying for ALL games');
     } else {
       // Return games for specific division only
       querySpec = {
@@ -256,14 +262,20 @@ app.get('/api/games', async (req, res) => {
           { name: '@division', value: division }
         ],
       };
+      console.log(`🔍 Querying for division: ${division}`);
     }
 
     const { resources: games } = await container.items.query(querySpec).fetchAll();
-    console.log(`Games API: Found ${games.length} games for division: ${division}`);
+    console.log(`✅ Games API: Found ${games.length} games for division: ${division}`);
+    
+    if (games.length > 0) {
+      console.log('📋 Sample game structure:', JSON.stringify(games[0], null, 2));
+    }
+    
     res.status(200).json(games);
   } catch (error) {
-    console.error('Error fetching games:', error);
-    res.status(500).json({ error: 'Failed to fetch games' });
+    console.error('❌ Error fetching games:', error);
+    res.status(500).json({ error: 'Failed to fetch games', details: error.message });
   }
 });
 

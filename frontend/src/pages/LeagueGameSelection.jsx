@@ -15,9 +15,12 @@ export default function LeagueGameSelection() {
     // Reset context when visiting selection page
     reset();
     // Load all games directly
+    console.log('🎮 Loading games from API...');
     setLoading(true);
     axios.get('/api/games?division=all')
       .then((res) => {
+        console.log(`📊 Received ${res.data.length} games from API:`, res.data);
+        
         // Filter out completed/submitted games and games with status Scheduled in Silver/Bronze
         const availableGames = res.data.filter(game => {
           // Hide games that have been submitted or completed
@@ -34,14 +37,20 @@ export default function LeagueGameSelection() {
           // Only show Gold division games with proper team names
           const isValidGame = game.division === 'Gold' && !missingTeams && !isSubmittedOrCompleted;
           
+          console.log(`Game ${game.awayTeam} vs ${game.homeTeam}: division=${game.division}, valid=${isValidGame}, submitted=${isSubmittedOrCompleted}, missing=${missingTeams}`);
+          
           return isValidGame;
         });
+        
+        console.log(`✅ Filtered to ${availableGames.length} available games`);
         setGames(availableGames);
         setError(null);
       })
       .catch((err) => {
-        console.error('Failed to load games', err);
-        setError('Failed to load games');
+        console.error('❌ Failed to load games:', err);
+        console.error('Error details:', err.response?.data || err.message);
+        setError('Failed to load games from server');
+        setGames([]);
       })
       .finally(() => {
         setLoading(false);

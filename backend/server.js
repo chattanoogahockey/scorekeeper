@@ -7,6 +7,9 @@ import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import dotenv from 'dotenv';
 
+// Import error handling middleware
+import { errorHandler, asyncHandler, notFoundHandler, validateRequired } from './middleware/errorHandler.js';
+
 // Load environment variables from .env file
 dotenv.config();
 
@@ -290,8 +293,10 @@ app.post('/api/attendance', async (req, res) => {
 
 // Add the `/api/games` endpoint - DIVISION ONLY
 app.get('/api/games', async (req, res) => {
-  const { division, t, v } = req.query;
-  const requestId = Math.random().toString(36).substr(2, 9);
+  const { t, v, rid } = req.query;
+  // Provide default division to prevent undefined issues
+  const division = (req.query.division || 'all').toLowerCase();
+  const requestId = rid || Math.random().toString(36).substr(2, 9);
   
   console.log(`🎮 Games API called with division: ${division}, timestamp: ${t}, version: ${v}, requestId: ${requestId}`);
   
@@ -303,15 +308,6 @@ app.get('/api/games', async (req, res) => {
     'Last-Modified': new Date().toUTCString(),
     'X-Request-ID': requestId
   });
-  
-  if (!division) {
-    console.log(`❌ Missing division parameter (requestId: ${requestId})`);
-    return res.status(400).json({ 
-      error: 'Missing required query parameter: division (Gold, Silver, Bronze, or all)',
-      requestId: requestId,
-      timestamp: new Date().toISOString()
-    });
-  }
 
   try {
     const container = getGamesContainer();
@@ -455,8 +451,9 @@ app.get('/api/rosters', async (req, res) => {
       
       console.log('Looking for rosters for teams:', homeTeam, 'vs', awayTeam);
       
+      // Use case-insensitive query for team names
       const rosterQuery = {
-        query: 'SELECT * FROM c WHERE c.teamName IN (@home, @away)',
+        query: 'SELECT * FROM c WHERE LOWER(c.teamName) IN (LOWER(@home), LOWER(@away))',
         parameters: [
           { name: '@home', value: homeTeam },
           { name: '@away', value: awayTeam }
@@ -465,6 +462,33 @@ app.get('/api/rosters', async (req, res) => {
       
       const { resources: rosterResults } = await rostersContainer.items.query(rosterQuery).fetchAll();
       console.log('Found rosters:', rosterResults.length, 'teams');
+      
+      // Return 404 with helpful message if rosters are missing
+      if (rosterResults.length === 0) {
+        console.log(`⚠️ No rosters found for teams: ${homeTeam} vs ${awayTeam}`);
+        return res.status(404).json({ 
+          error: 'No rosters found for game teams',
+          gameId: gameId,
+          teams: { home: homeTeam, away: awayTeam },
+          message: 'Check that roster data exists for both teams'
+        });
+      }
+      
+      if (rosterResults.length < 2) {
+        const foundTeams = rosterResults.map(r => r.teamName);
+        const missingTeams = [homeTeam, awayTeam].filter(t => 
+          !foundTeams.some(f => f.toLowerCase() === t.toLowerCase())
+        );
+        console.log(`⚠️ Missing rosters for teams: ${missingTeams.join(', ')}`);
+        return res.status(404).json({ 
+          error: 'Incomplete roster data',
+          gameId: gameId,
+          foundTeams: foundTeams,
+          missingTeams: missingTeams,
+          message: `Missing roster data for: ${missingTeams.join(', ')}`
+        });
+      }
+      
       return res.status(200).json(rosterResults);
     }
 
@@ -3264,6 +3288,10 @@ app.get('*', (req, res) => {
   res.set('Expires', '0');
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
+
+// Add error handling middleware (must be at the end)
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 const server = app.listen(process.env.PORT || 8080, () => {
   console.log(`🚀 Hockey Scorekeeper API running on port ${process.env.PORT || 8080}`);

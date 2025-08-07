@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { GameContext } from '../contexts/GameContext.jsx';
@@ -10,10 +10,21 @@ export default function LeagueGameSelection() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
+  
+  // Use refs to prevent multiple executions
+  const isMountedRef = useRef(false);
+  const isLoadingRef = useRef(false);
+  const abortControllerRef = useRef(null);
 
   useEffect(() => {
-    // Prevent double execution with a ref
-    let isCancelled = false;
+    // Prevent multiple mounts
+    if (isMountedRef.current) {
+      console.log('⚠️ Component already mounted, skipping duplicate useEffect');
+      return;
+    }
+    
+    isMountedRef.current = true;
+    console.log('🎯 LeagueGameSelection mounted for the first time');
     
     // Reset context when visiting selection page
     reset();
@@ -30,16 +41,36 @@ export default function LeagueGameSelection() {
     };
     
     const loadGames = async (retryCount = 0) => {
-      if (isCancelled) return;
+      // Prevent concurrent executions
+      if (isLoadingRef.current) {
+        console.log('🚫 Already loading games, skipping duplicate request');
+        return;
+      }
+      
+      if (!isMountedRef.current) {
+        console.log('🚫 Component unmounted, cancelling request');
+        return;
+      }
+      
+      isLoadingRef.current = true;
+      
+      // Create new abort controller for this request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
       
       const maxRetries = 3;
       const retryDelay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+      const requestId = Math.random().toString(36).substr(2, 9);
       
       console.log(`🎮 Loading games from API... (attempt ${retryCount + 1}/${maxRetries + 1})`);
       console.log('📍 Current window location:', window.location.href);
       console.log('🕐 Current timestamp:', new Date().toISOString());
-      console.log('🔍 Frontend build check: Comprehensive sync fix v2');
-      console.log('🛡️ Request ID:', Math.random().toString(36).substr(2, 9));
+      console.log('🔍 Frontend build check: Deep fix v3 - Request deduplication');
+      console.log('🛡️ Request ID:', requestId);
+      console.log('🔒 Loading ref state:', isLoadingRef.current);
+      
       setLoading(true);
       
       // First verify backend sync
@@ -47,7 +78,7 @@ export default function LeagueGameSelection() {
       
       // Use direct query string with timestamp to force fresh request
       const timestamp = Date.now();
-      const apiUrl = `/api/games?division=all&t=${timestamp}&v=2`;
+      const apiUrl = `/api/games?division=all&t=${timestamp}&v=3&rid=${requestId}`;
       console.log('🔗 Making direct request to:', apiUrl);
       
       try {
@@ -56,14 +87,19 @@ export default function LeagueGameSelection() {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0',
-            'X-Requested-With': 'XMLHttpRequest'
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-Request-ID': requestId
           },
-          timeout: 10000 // 10 second timeout
+          timeout: 10000, // 10 second timeout
+          signal: abortControllerRef.current.signal
         });
         
-        if (isCancelled) return;
+        if (!isMountedRef.current || !isLoadingRef.current) {
+          console.log('🚫 Component unmounted or request cancelled');
+          return;
+        }
         
-        console.log(`📊 SUCCESS: Received ${res.data.length} games from API:`, res.data);
+        console.log(`📊 SUCCESS: Received ${res.data.length} games from API (requestId: ${requestId}):`, res.data);
         
         // Filter out completed/submitted games and games with status Scheduled in Silver/Bronze
         const availableGames = res.data.filter(game => {
@@ -86,14 +122,17 @@ export default function LeagueGameSelection() {
           return isValidGame;
         });
         
-        console.log(`✅ Filtered to ${availableGames.length} available games`);
+        console.log(`✅ Filtered to ${availableGames.length} available games (requestId: ${requestId})`);
         setGames(availableGames);
         setError(null);
         
       } catch (err) {
-        if (isCancelled) return;
+        if (!isMountedRef.current || err.name === 'CanceledError') {
+          console.log('🚫 Request cancelled or component unmounted');
+          return;
+        }
         
-        console.error(`❌ REQUEST FAILED (attempt ${retryCount + 1}):`, err);
+        console.error(`❌ REQUEST FAILED (attempt ${retryCount + 1}, requestId: ${requestId}):`, err);
         console.error('Error details:', err.response?.data || err.message);
         console.error('Error status:', err.response?.status);
         console.error('Request URL was:', apiUrl);
@@ -101,8 +140,9 @@ export default function LeagueGameSelection() {
         // Retry logic with exponential backoff
         if (retryCount < maxRetries && err.response?.status !== 400) {
           console.log(`🔄 Retrying in ${retryDelay}ms... (attempt ${retryCount + 2}/${maxRetries + 1})`);
+          isLoadingRef.current = false; // Reset loading flag for retry
           setTimeout(() => {
-            if (!isCancelled) {
+            if (isMountedRef.current) {
               loadGames(retryCount + 1);
             }
           }, retryDelay);
@@ -114,23 +154,29 @@ export default function LeagueGameSelection() {
         setGames([]);
         
       } finally {
-        if (!isCancelled && (retryCount >= maxRetries || error || games.length > 0)) {
+        if (isMountedRef.current && (retryCount >= maxRetries || error || games.length > 0)) {
           setLoading(false);
+          isLoadingRef.current = false;
         }
       }
     };
     
     // Execute immediately with a small delay to prevent race conditions
     const timeoutId = setTimeout(() => {
-      if (!isCancelled) {
+      if (isMountedRef.current) {
         loadGames();
       }
-    }, 10);
+    }, 50); // Slightly longer delay
     
     // Cleanup function
     return () => {
-      isCancelled = true;
+      console.log('🧹 Cleaning up LeagueGameSelection component');
+      isMountedRef.current = false;
+      isLoadingRef.current = false;
       clearTimeout(timeoutId);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, []); // Empty dependency array - only run on mount
 

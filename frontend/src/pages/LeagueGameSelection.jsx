@@ -16,7 +16,7 @@ export default function LeagueGameSelection() {
     reset();
     // Load all games directly
     setLoading(true);
-    axios.get('/api/games?league=all')
+    axios.get('/api/games?division=all')
       .then((res) => {
         // Filter out completed/submitted games and games with status Scheduled in Silver/Bronze
         const availableGames = res.data.filter(game => {
@@ -151,7 +151,7 @@ export default function LeagueGameSelection() {
     }
     
     setSelectedGame(game);
-    setSelectedLeague(game.league);
+    setSelectedLeague(game.division);
     
     try {
       // Load rosters for the game's teams using gameId
@@ -239,9 +239,9 @@ export default function LeagueGameSelection() {
                   <span className="font-medium">Date:</span> {formatGameDate(game.gameDate || game.date)}
                 </p>
                 
-                {(game.division || game.league) && (
+                {game.division && (
                   <p className="text-gray-600">
-                    <span className="font-medium">Division:</span> {game.division || game.league}
+                    <span className="font-medium">Division:</span> {game.division}
                   </p>
                 )}
                 

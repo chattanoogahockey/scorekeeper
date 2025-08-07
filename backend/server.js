@@ -233,28 +233,27 @@ app.post('/api/attendance', async (req, res) => {
 
 // Add the `/api/games` endpoint
 app.get('/api/games', async (req, res) => {
-  const { league } = req.query;
-  if (!league) {
-    return res.status(400).json({ error: 'Missing required query parameter: league' });
+  const { division } = req.query;
+  if (!division) {
+    return res.status(400).json({ error: 'Missing required query parameter: division' });
   }
 
   try {
     const container = getGamesContainer();
     let querySpec;
     
-    if (league === 'all') {
+    if (division === 'all') {
       // Return all games
       querySpec = {
         query: 'SELECT * FROM c',
         parameters: [],
       };
     } else {
-      // Return games for specific league/division
+      // Return games for specific division
       querySpec = {
-        query: 'SELECT * FROM c WHERE c.league = @league OR c.division = @league',
+        query: 'SELECT * FROM c WHERE LOWER(c.division) = LOWER(@division) OR LOWER(c.league) = LOWER(@division)',
         parameters: [
-          { name: '@league', value: league },
-          { name: '@league', value: league }
+          { name: '@division', value: division }
         ],
       };
     }

@@ -31,7 +31,7 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 import ttsService from './ttsService.js';
 
 // Import rink report generator
-import { generateRinkReport, getCurrentWeekId } from './rinkReportGenerator.js';
+import { generateRinkReport } from './rinkReportGenerator.js';
 
 // Conditionally import announcer service to prevent startup failures
 let createGoalAnnouncement = null;
@@ -1818,7 +1818,7 @@ app.post('/api/games/submit', async (req, res) => {
         console.log(`📰 Generating report for ${gameDetails.division} division`);
         
         // Generate report asynchronously (don't wait for completion)
-        generateRinkReport(gameDetails.division, null) // Pass null for week to generate for all submitted games
+        generateRinkReport(gameDetails.division) // Generate for all submitted games
           .then((report) => {
             console.log(`✅ Rink report generated successfully for ${gameDetails.division} division`);
           })
@@ -2690,31 +2690,22 @@ app.get('/api/penalties/game/:gameId', async (req, res) => {
 // Rink Reports API endpoint
 app.get('/api/rink-reports', async (req, res) => {
   console.log('📰 Fetching rink reports...');
-  const { division, week } = req.query;
+  const { division } = req.query;
   
   try {
     const container = getRinkReportsContainer();
     let querySpec;
     
-    if (division && week) {
-      // Get specific report by division and week
+    if (division) {
+      // Get report for specific division
       querySpec = {
-        query: 'SELECT * FROM c WHERE c.division = @division AND c.week = @week',
-        parameters: [
-          { name: '@division', value: division },
-          { name: '@week', value: week }
-        ]
-      };
-    } else if (division) {
-      // Get all reports for a division
-      querySpec = {
-        query: 'SELECT * FROM c WHERE c.division = @division ORDER BY c.week DESC',
+        query: 'SELECT * FROM c WHERE c.division = @division ORDER BY c.lastUpdated DESC',
         parameters: [{ name: '@division', value: division }]
       };
     } else {
-      // Get all reports, ordered by week (most recent first)
+      // Get all reports, ordered by last updated (most recent first)
       querySpec = {
-        query: 'SELECT * FROM c ORDER BY c.week DESC, c.division ASC'
+        query: 'SELECT * FROM c ORDER BY c.lastUpdated DESC, c.division ASC'
       };
     }
     
@@ -2734,28 +2725,26 @@ app.get('/api/rink-reports', async (req, res) => {
 // Manual rink report generation endpoint
 app.post('/api/rink-reports/generate', async (req, res) => {
   console.log('📰 Manual rink report generation triggered...');
-  const { division, week } = req.body;
+  const { division } = req.body;
   
   try {
     if (!division) {
       return res.status(400).json({
         error: 'Division is required',
-        example: { division: 'Gold', week: '2025-W32' }
+        example: { division: 'Gold' }
       });
     }
     
-    const targetWeek = week || getCurrentWeekId();
-    console.log(`📰 Generating report for ${division} division, week ${targetWeek}`);
+    console.log(`📰 Generating report for ${division} division`);
     
-    const report = await generateRinkReport(division, targetWeek);
+    const report = await generateRinkReport(division);
     
     res.status(201).json({
       success: true,
-      message: `Rink report generated for ${division} division, week ${targetWeek}`,
+      message: `Rink report generated for ${division} division`,
       report: {
         id: report.id,
         division: report.division,
-        week: report.week,
         title: report.title,
         publishedAt: report.publishedAt,
         generatedBy: report.generatedBy

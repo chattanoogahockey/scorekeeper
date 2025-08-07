@@ -93,7 +93,7 @@ jobs:
     - name: 'Deploy to Azure Web App'
       uses: azure/webapps-deploy@v3
       with: 
-        app-name: 'scorekeeper2'
+        app-name: 'scorekeeper'
         slot-name: 'production'
         publish-profile: ${{ secrets.AzureAppService_PublishProfile_aa98474905f14a53afdc3e9da94e0ae4 }}
         package: './deploy'
@@ -103,9 +103,9 @@ jobs:
         # Wait a moment for deployment to complete
         sleep 30
         # Check health endpoint
-        curl -sSf https://scorekeeper2.azurewebsites.net/api/health || echo "Health check failed"
+        curl -sSf https://scorekeeper.azurewebsites.net/api/health || echo "Health check failed"
         # Check version endpoint and verify it matches package.json
-        curl -sSf https://scorekeeper2.azurewebsites.net/api/version | tee /tmp/version.json
+        curl -sSf https://scorekeeper.azurewebsites.net/api/version | tee /tmp/version.json
         if command -v jq > /dev/null; then
           DEPLOYED_VERSION=$(jq -r .version /tmp/version.json)
           PACKAGE_VERSION=$(jq -r .version package.json)

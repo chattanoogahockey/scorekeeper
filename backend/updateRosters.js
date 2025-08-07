@@ -9,8 +9,7 @@ import {
   getSettingsContainer,
   getAnalyticsContainer,
   getPlayersContainer,
-  initializeContainers,
-  testDatabaseConnection
+  initializeContainers
 } from './cosmosClient.js';
 
 const newRosterData = [
@@ -66,7 +65,17 @@ const newRosterData = [
   { firstName: 'Kenneth', lastName: 'Johns', team: 'Skateful Dead' },
   { firstName: 'Chris', lastName: 'Sislo', team: 'Skateful Dead' },
   { firstName: 'Evan', lastName: 'Skiles', team: 'Skateful Dead' },
-  { firstName: 'Greg', lastName: 'Williams', team: 'Skateful Dead' }
+  { firstName: 'Greg', lastName: 'Williams', team: 'Skateful Dead' },
+  
+  // UTC (Placeholder team for games)
+  { firstName: 'John', lastName: 'Player1', team: 'UTC' },
+  { firstName: 'Mike', lastName: 'Player2', team: 'UTC' },
+  { firstName: 'Steve', lastName: 'Player3', team: 'UTC' },
+  { firstName: 'Dave', lastName: 'Player4', team: 'UTC' },
+  { firstName: 'Chris', lastName: 'Player5', team: 'UTC' },
+  { firstName: 'Tom', lastName: 'Player6', team: 'UTC' },
+  { firstName: 'Rob', lastName: 'Player7', team: 'UTC' },
+  { firstName: 'Dan', lastName: 'Player8', team: 'UTC' }
 ];
 
 async function updateRosters() {

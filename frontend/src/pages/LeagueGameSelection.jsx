@@ -157,48 +157,52 @@ export default function LeagueGameSelection() {
       // Load rosters for the game's teams
       console.log('Loading rosters...');
       const rostersResponse = await axios.get('/api/rosters');
-      const allRosters = rostersResponse.data;
-      console.log('All rosters loaded:', allRosters.length, 'players');
+      const teamRosters = rostersResponse.data;
+      console.log('All team rosters loaded:', teamRosters.length, 'teams');
       
       // Get team names from the game
       const awayTeamName = game.awayTeam || game.awayTeamId;
       const homeTeamName = game.homeTeam || game.homeTeamId;
       console.log('Looking for teams:', awayTeamName, 'vs', homeTeamName);
       
-      // Group rosters by team for the selected teams
+      // Find rosters for the selected teams
       const gameRosters = [];
       
       if (awayTeamName) {
-        const awayPlayers = allRosters.filter(player => 
-          player.teamName === awayTeamName
+        const awayTeamRoster = teamRosters.find(team => 
+          team.teamName === awayTeamName
         );
-        console.log('Away team players found:', awayPlayers.length, 'for', awayTeamName);
-        if (awayPlayers.length > 0) {
+        console.log('Away team roster found:', awayTeamRoster ? awayTeamRoster.players.length : 0, 'players for', awayTeamName);
+        if (awayTeamRoster && awayTeamRoster.players.length > 0) {
           gameRosters.push({
             teamName: awayTeamName,
             teamId: awayTeamName,
-            players: awayPlayers.map(player => ({
+            players: awayTeamRoster.players.map(player => ({
               name: player.name || `${player.firstName || ''} ${player.lastName || ''}`.trim(),
+              firstName: player.firstName,
+              lastName: player.lastName,
               jerseyNumber: player.jerseyNumber,
-              position: player.position || 'Player' // Use actual position from roster
+              position: player.position || 'Player'
             }))
           });
         }
       }
       
       if (homeTeamName) {
-        const homePlayers = allRosters.filter(player => 
-          player.teamName === homeTeamName
+        const homeTeamRoster = teamRosters.find(team => 
+          team.teamName === homeTeamName
         );
-        console.log('Home team players found:', homePlayers.length, 'for', homeTeamName);
-        if (homePlayers.length > 0) {
+        console.log('Home team roster found:', homeTeamRoster ? homeTeamRoster.players.length : 0, 'players for', homeTeamName);
+        if (homeTeamRoster && homeTeamRoster.players.length > 0) {
           gameRosters.push({
             teamName: homeTeamName,
             teamId: homeTeamName,
-            players: homePlayers.map(player => ({
+            players: homeTeamRoster.players.map(player => ({
               name: player.name || `${player.firstName || ''} ${player.lastName || ''}`.trim(),
+              firstName: player.firstName,
+              lastName: player.lastName,
               jerseyNumber: player.jerseyNumber,
-              position: player.position || 'Player' // Use actual position from roster
+              position: player.position || 'Player'
             }))
           });
         }

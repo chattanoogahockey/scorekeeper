@@ -66,6 +66,16 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
+// Global cache-busting middleware for all responses
+app.use((req, res, next) => {
+  // Force no cache for all API responses and static files
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.set('Last-Modified', new Date().toUTCString());
+  next();
+});
+
 // Production startup
 const startTime = Date.now();
 const isProduction = process.env.NODE_ENV === 'production';
@@ -132,40 +142,35 @@ app.get('/api/version', (req, res) => {
     let deploymentTime;
     
     if (process.env.GITHUB_ACTIONS && process.env.DEPLOYMENT_TIMESTAMP) {
-      // Use GitHub workflow deployment timestamp
+      // Use GitHub workflow deployment timestamp (already in Eastern time from workflow)
       deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
+      console.log('Using deployment timestamp from environment:', process.env.DEPLOYMENT_TIMESTAMP);
     } else {
       // Fallback to current time for local builds
       deploymentTime = new Date();
+      console.log('Using current time for local build');
     }
     
-    // Convert to EST timezone
-    const estTime = new Date(deploymentTime.toLocaleString("en-US", {timeZone: "America/New_York"}));
+    // Format the time in Eastern timezone
+    const buildTime = deploymentTime.toLocaleString("en-US", {
+      timeZone: "America/New_York",
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short'
+    });
+    
+    console.log('Final backend buildTime:', buildTime);
     
     res.json({
       version: packageJson.version,
       name: packageJson.name,
       ...gitInfo,
-      buildTime: estTime.toLocaleString("en-US", {
-        timeZone: "America/New_York",
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZoneName: 'short'
-      }),
-      timestamp: estTime.toLocaleString("en-US", {
-        timeZone: "America/New_York",
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZoneName: 'short'
-      })
+      buildTime: buildTime,
+      timestamp: deploymentTime.toISOString()
     });
   } catch (error) {
     console.error('Error getting version info:', error);

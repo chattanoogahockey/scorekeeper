@@ -155,10 +155,10 @@ export default function LeagueGameSelection() {
     
     try {
       // Load rosters for the game's teams
-      console.log('Loading rosters...');
-      const rostersResponse = await axios.get('/api/rosters');
+      console.log('Loading rosters for division:', game.division);
+      const rostersResponse = await axios.get(`/api/rosters?division=${game.division}`);
       const teamRosters = rostersResponse.data;
-      console.log('All team rosters loaded:', teamRosters.length, 'teams');
+      console.log('All team rosters loaded:', teamRosters.length, 'teams for', game.division, 'division');
       
       // Get team names from the game
       const awayTeamName = game.awayTeam || game.awayTeamId;

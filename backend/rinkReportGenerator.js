@@ -1,25 +1,23 @@
 import { getGamesContainer, getGoalsContainer, getPenaltiesContainer, getRinkReportsContainer } from './cosmosClient.js';
 
 /**
- * Generate a comprehensive rink report for a specific division and week
+ * Generate a comprehensive rink report for a specific division (all submitted games)
  */
-export async function generateRinkReport(division, weekId = null) {
-  const reportId = weekId ? `${division}-${weekId}` : `${division}-all-submitted`;
-  console.log(`📰 Generating rink report for ${division} division${weekId ? `, week ${weekId}` : ' (all submitted games)'}`);
+export async function generateRinkReport(division) {
+  const reportId = `${division}-all-submitted`;
+  console.log(`📰 Generating rink report for ${division} division (all submitted games)`);
   
   try {
-    const weekData = await aggregateWeekData(division, weekId);
-    const reportContent = await generateReportContent(division, weekId, weekData);
+    const gameData = await aggregateGameData(division);
+    const reportContent = await generateReportContent(division, gameData);
     
     // Store the report in Cosmos DB
     const report = {
       id: reportId,
       division,
-      week: weekId || 'all-submitted',
-      weekLabel: weekId ? getWeekLabel(weekId) : 'All Submitted Games',
       publishedAt: new Date().toISOString(),
       author: 'AI Report Generator',
-      title: `${division} Division${weekId ? ' Weekly' : ''} Roundup`,
+      title: `${division} Division Roundup`,
       html: reportContent.html,
       highlights: reportContent.highlights,
       standoutPlayers: reportContent.standoutPlayers,
@@ -32,63 +30,38 @@ export async function generateRinkReport(division, weekId = null) {
     const container = getRinkReportsContainer();
     await container.items.upsert(report);
     
-    console.log(`✅ Rink report generated and stored for ${division}${weekId ? ` week ${weekId}` : ' (all submitted games)'}`);
+    console.log(`✅ Rink report generated and stored for ${division} division`);
     return report;
   } catch (error) {
-    console.error(`❌ Error generating rink report for ${division}${weekId ? ` week ${weekId}` : ' (all submitted games)'}:`, error);
+    console.error(`❌ Error generating rink report for ${division} division:`, error);
     throw error;
   }
 }
 
 /**
- * Aggregate all game data for a specific division and week
+ * Aggregate all game data for a specific division (all submitted games)
  */
-async function aggregateWeekData(division, weekId) {
+async function aggregateGameData(division) {
   const gamesContainer = getGamesContainer();
   const goalsContainer = getGoalsContainer();
   const penaltiesContainer = getPenaltiesContainer();
   
-  let gamesQuery;
-  
-  if (weekId) {
-    // Get week date range
-    const { startDate, endDate } = getWeekDateRange(weekId);
-    
-    // Get all submitted games for this division and week
-    gamesQuery = {
-      query: `
-        SELECT * FROM c 
-        WHERE c.division = @division 
-        AND c.eventType = 'game-submission'
-        AND c.submittedAt >= @startDate 
-        AND c.submittedAt <= @endDate
-        ORDER BY c.submittedAt DESC
-      `,
-      parameters: [
-        { name: '@division', value: division },
-        { name: '@startDate', value: startDate },
-        { name: '@endDate', value: endDate }
-      ]
-    };
-  } else {
-    // Get all submitted games for this division (no week filter)
-    gamesQuery = {
-      query: `
-        SELECT * FROM c 
-        WHERE c.division = @division 
-        AND c.eventType = 'game-submission'
-        ORDER BY c.submittedAt DESC
-      `,
-      parameters: [
-        { name: '@division', value: division }
-      ]
-    };
-  }
+  // Get all games for this division (for now, including scheduled ones since no games completed yet)
+  const gamesQuery = {
+    query: `
+      SELECT * FROM c 
+      WHERE c.division = @division 
+      ORDER BY c.gameDate DESC
+    `,
+    parameters: [
+      { name: '@division', value: division }
+    ]
+  };
   
   const { resources: games } = await gamesContainer.items.query(gamesQuery).fetchAll();
   
   // Get all goals for these games
-  const gameIds = games.map(g => g.gameId);
+  const gameIds = games.map(g => g.id || g.gameId);
   let allGoals = [];
   let allPenalties = [];
   
@@ -110,38 +83,39 @@ async function aggregateWeekData(division, weekId) {
     
     const { resources: penalties } = await penaltiesContainer.items.query(penaltiesQuery).fetchAll();
     allPenalties = penalties;
+  } else {
+    console.log('No games found for goals/penalties query');
   }
   
   return {
     division,
-    weekId,
     games,
     goals: allGoals,
     penalties: allPenalties,
-    weekStats: calculateWeekStats(games, allGoals, allPenalties)
+    gameStats: calculateGameStats(games, allGoals, allPenalties)
   };
 }
 
 /**
  * Generate HTML content and structured data for the report
  */
-async function generateReportContent(division, weekId, weekData) {
-  const { games, goals, penalties, weekStats } = weekData;
+async function generateReportContent(division, gameData) {
+  const { games, goals, penalties, gameStats } = gameData;
   
   // Generate highlights
-  const highlights = generateHighlights(games, goals, penalties, weekStats);
+  const highlights = generateHighlights(games, goals, penalties, gameStats);
   
   // Generate standout players
-  const standoutPlayers = generateStandoutPlayers(goals, penalties, weekStats);
+  const standoutPlayers = generateStandoutPlayers(goals, penalties, gameStats);
   
   // Generate league updates
-  const leagueUpdates = generateLeagueUpdates(division, weekStats);
+  const leagueUpdates = generateLeagueUpdates(division, gameStats);
   
   // Generate upcoming predictions (placeholder for now)
-  const upcomingPredictions = generateUpcomingPredictions(division, weekStats);
+  const upcomingPredictions = generateUpcomingPredictions(division, gameStats);
   
   // Generate main article HTML
-  const html = generateArticleHTML(division, weekId, weekStats, highlights, standoutPlayers);
+  const html = generateArticleHTML(division, gameStats, highlights, standoutPlayers);
   
   return {
     html,
@@ -153,9 +127,9 @@ async function generateReportContent(division, weekId, weekData) {
 }
 
 /**
- * Calculate comprehensive statistics for the week
+ * Calculate comprehensive statistics for all games
  */
-function calculateWeekStats(games, goals, penalties) {
+function calculateGameStats(games, goals, penalties) {
   const stats = {
     totalGames: games.length,
     totalGoals: goals.length,
@@ -269,26 +243,26 @@ function calculateWeekStats(games, goals, penalties) {
 }
 
 /**
- * Generate game highlights based on the week's data
+ * Generate game highlights based on the data
  */
-function generateHighlights(games, goals, penalties, weekStats) {
+function generateHighlights(games, goals, penalties, gameStats) {
   const highlights = [];
   
   // High-scoring games
-  const highScoringGames = weekStats.gameResults.filter(g => g.totalGoals >= 8);
+  const highScoringGames = gameStats.gameResults.filter(g => g.totalGoals >= 8);
   highScoringGames.forEach(game => {
     const teamNames = game.teams.join(' vs ');
     highlights.push(`High-scoring thriller: ${teamNames} combines for ${game.totalGoals} goals`);
   });
   
   // Hat tricks
-  const hatTricks = Object.values(weekStats.players).filter(p => p.goals >= 3);
+  const hatTricks = Object.values(gameStats.players).filter(p => p.goals >= 3);
   hatTricks.forEach(player => {
     highlights.push(`${player.name} records hat trick with ${player.goals} goals`);
   });
   
   // Close games (1-goal difference)
-  const closeGames = weekStats.gameResults.filter(game => {
+  const closeGames = gameStats.gameResults.filter(game => {
     const scores = Object.values(game.scores);
     if (scores.length === 2) {
       return Math.abs(scores[0] - scores[1]) === 1;
@@ -300,7 +274,7 @@ function generateHighlights(games, goals, penalties, weekStats) {
   });
   
   // Penalty-heavy games
-  const penaltyHeavyGames = weekStats.gameResults.filter(g => g.totalPenalties >= 8);
+  const penaltyHeavyGames = gameStats.gameResults.filter(g => g.totalPenalties >= 8);
   penaltyHeavyGames.forEach(game => {
     highlights.push(`Physical matchup: ${game.teams.join(' vs ')} accumulates ${game.totalPenalties} penalties`);
   });
@@ -394,142 +368,51 @@ function generateUpcomingPredictions(division, weekStats) {
 /**
  * Generate the main article HTML content
  */
-function generateArticleHTML(division, weekId, weekStats, highlights, standoutPlayers) {
-  const weekLabel = getWeekLabel(weekId);
-  const topScorer = weekStats.topScorers[0];
-  const topTeam = Object.values(weekStats.teams)
+function generateArticleHTML(division, gameStats, highlights, standoutPlayers) {
+  const topScorer = gameStats.topScorers[0];
+  const topTeam = Object.values(gameStats.teams)
     .filter(t => t.games > 0)
     .sort((a, b) => (b.goals / b.games) - (a.goals / a.games))[0];
   
   return `
-    <p>The ${division} Division showcased exceptional hockey during ${weekLabel} with ${weekStats.totalGames} thrilling matchups. Players combined for ${weekStats.totalGoals} goals, demonstrating the high level of skill and competition in our league.</p>
+    <p>The ${division} Division has showcased exceptional hockey with ${gameStats.totalGames} thrilling matchups. Players combined for ${gameStats.totalGoals} goals, demonstrating the high level of skill and competition in our league.</p>
     
-    <h3>Week Highlights</h3>
-    <p>This week's action was highlighted by outstanding individual performances and team efforts. The competition remains fierce as teams battle for playoff positioning with every game taking on added significance.</p>
+    <h3>Season Highlights</h3>
+    <p>The action has been highlighted by outstanding individual performances and team efforts. The competition remains fierce as teams battle for playoff positioning with every game taking on added significance.</p>
     
     ${topScorer ? `
     <h3>Scoring Leader</h3>
-    <p>${topScorer.name} led all ${division} division players with ${topScorer.points} points (${topScorer.goals}G, ${topScorer.assists}A), establishing themselves as a key offensive threat. Their consistent performance has been instrumental in their team's success this week.</p>
+    <p>${topScorer.name} leads all ${division} division players with ${topScorer.points} points (${topScorer.goals}G, ${topScorer.assists}A), establishing themselves as a key offensive threat. Their consistent performance has been instrumental in their team's success.</p>
     ` : ''}
+    
     
     ${topTeam ? `
     <h3>Team Performance</h3>
-    <p>${topTeam.name} showcased strong offensive capabilities, averaging ${(topTeam.goals / topTeam.games).toFixed(1)} goals per game. Their balanced attack and solid team play have positioned them well in the division standings.</p>
+    <p>${topTeam.name} has showcased strong offensive capabilities, averaging ${(topTeam.goals / topTeam.games).toFixed(1)} goals per game. Their balanced attack and solid team play have positioned them well in the division standings.</p>
     ` : ''}
     
     <h3>Physical Play</h3>
-    <p>The intensity was evident with ${weekStats.totalPenalties} penalties totaling ${weekStats.totalPIM} minutes. While teams competed hard, the focus remained on skillful, competitive hockey.</p>
+    <p>The intensity has been evident with ${gameStats.totalPenalties} penalties totaling ${gameStats.totalPIM} minutes. While teams compete hard, the focus remains on skillful, competitive hockey.</p>
     
     <h3>Looking Forward</h3>
     <p>As the season progresses, every game becomes more crucial. Teams are fine-tuning their systems and building chemistry for what promises to be an exciting playoff race. The depth of talent in the ${division} division continues to make for unpredictable and entertaining hockey.</p>
     
-    <p>Next week's matchups will provide more opportunities for players to showcase their skills and for teams to build momentum heading into the final stretch of the regular season.</p>
+    <p>Upcoming matchups will provide more opportunities for players to showcase their skills and for teams to build momentum heading into the final stretch of the regular season.</p>
   `;
 }
 
 /**
- * Get week date range for a given week ID
+ * Trigger report generation for all divisions (all submitted games)
  */
-function getWeekDateRange(weekId) {
-  const now = new Date();
-  let startDate, endDate;
-  
-  if (weekId === 'current') {
-    // Current week - Monday to Sunday
-    const dayOfWeek = now.getDay();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - dayOfWeek + 1);
-    monday.setHours(0, 0, 0, 0);
-    
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-    
-    startDate = monday.toISOString();
-    endDate = sunday.toISOString();
-  } else if (weekId.startsWith('week-')) {
-    // Previous weeks
-    const weeksBack = parseInt(weekId.split('-')[1]);
-    const targetDate = new Date(now);
-    targetDate.setDate(now.getDate() - (weeksBack * 7));
-    
-    const dayOfWeek = targetDate.getDay();
-    const monday = new Date(targetDate);
-    monday.setDate(targetDate.getDate() - dayOfWeek + 1);
-    monday.setHours(0, 0, 0, 0);
-    
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-    
-    startDate = monday.toISOString();
-    endDate = sunday.toISOString();
-  } else {
-    // ISO week format (e.g., "2025-W32")
-    const [year, week] = weekId.split('-W');
-    const weekNum = parseInt(week);
-    
-    // Calculate the start of the year
-    const yearStart = new Date(parseInt(year), 0, 1);
-    const firstMonday = new Date(yearStart);
-    const daysToMonday = (8 - yearStart.getDay()) % 7;
-    firstMonday.setDate(yearStart.getDate() + daysToMonday);
-    
-    // Calculate the target week
-    const targetMonday = new Date(firstMonday);
-    targetMonday.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
-    
-    const targetSunday = new Date(targetMonday);
-    targetSunday.setDate(targetMonday.getDate() + 6);
-    targetSunday.setHours(23, 59, 59, 999);
-    
-    startDate = targetMonday.toISOString();
-    endDate = targetSunday.toISOString();
-  }
-  
-  return { startDate, endDate };
-}
-
-/**
- * Get a human-readable week label
- */
-function getWeekLabel(weekId) {
-  if (weekId === 'current') return 'This Week';
-  if (weekId === 'week-1') return 'Last Week';
-  if (weekId === 'week-2') return '2 Weeks Ago';
-  if (weekId === 'week-3') return '3 Weeks Ago';
-  if (weekId.includes('-W')) return `Week ${weekId.split('-W')[1]}, ${weekId.split('-W')[0]}`;
-  return weekId;
-}
-
-/**
- * Get the current ISO week string (e.g., "2025-W32")
- */
-export function getCurrentWeekId() {
-  const now = new Date();
-  const year = now.getFullYear();
-  
-  // Calculate ISO week number
-  const startOfYear = new Date(year, 0, 1);
-  const dayOfYear = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000)) + 1;
-  const weekNumber = Math.ceil(dayOfYear / 7);
-  
-  return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
-}
-
-/**
- * Trigger report generation for all divisions for the current week
- */
-export async function generateWeeklyReportsForAllDivisions() {
+export async function generateReportsForAllDivisions() {
   const divisions = ['Gold', 'Silver', 'Bronze'];
-  const currentWeek = getCurrentWeekId();
   
-  console.log(`📰 Generating weekly reports for all divisions - week ${currentWeek}`);
+  console.log(`📰 Generating reports for all divisions (all submitted games)`);
   
   const results = [];
   for (const division of divisions) {
     try {
-      const report = await generateRinkReport(division, currentWeek);
+      const report = await generateRinkReport(division);
       results.push({ division, success: true, report });
     } catch (error) {
       console.error(`Failed to generate report for ${division}:`, error);

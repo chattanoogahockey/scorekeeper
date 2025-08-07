@@ -14,11 +14,28 @@ export default function LeagueGameSelection() {
   useEffect(() => {
     // Reset context when visiting selection page
     reset();
-    // Load all games directly
-    console.log('🎮 Loading games from API...');
-    setLoading(true);
-    axios.get('/api/games?division=all')
-      .then((res) => {
+    
+    // Add a small delay to ensure component is fully mounted
+    const loadGames = async () => {
+      console.log('🎮 Loading games from API...');
+      console.log('📍 Current window location:', window.location.href);
+      console.log('📍 Current axios defaults:', axios.defaults);
+      setLoading(true);
+      
+      // Use explicit URL construction to avoid any parameter issues
+      const apiUrl = '/api/games';
+      const params = { division: 'all' };
+      console.log('🔗 Making request to:', apiUrl, 'with params:', params);
+      
+      try {
+        const res = await axios.get(apiUrl, { 
+          params,
+          headers: {
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          }
+        });
+        
         console.log(`📊 Received ${res.data.length} games from API:`, res.data);
         
         // Filter out completed/submitted games and games with status Scheduled in Silver/Bronze
@@ -45,16 +62,48 @@ export default function LeagueGameSelection() {
         console.log(`✅ Filtered to ${availableGames.length} available games`);
         setGames(availableGames);
         setError(null);
-      })
-      .catch((err) => {
+        
+      } catch (err) {
         console.error('❌ Failed to load games:', err);
         console.error('Error details:', err.response?.data || err.message);
-        setError('Failed to load games from server');
-        setGames([]);
-      })
-      .finally(() => {
+        console.error('Request config:', err.config);
+        
+        // Retry with a different approach
+        console.log('🔄 Retrying with explicit query string...');
+        try {
+          const retryRes = await axios.get('/api/games?division=all', {
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
+          
+          console.log(`📊 Retry: Received ${retryRes.data.length} games from API`);
+          
+          const availableGames = retryRes.data.filter(game => {
+            const isSubmittedOrCompleted = game.status === 'completed' || game.status === 'submitted';
+            const missingTeams = !game.homeTeam || !game.awayTeam || 
+                                game.homeTeam.trim() === '' || game.awayTeam.trim() === '' ||
+                                game.homeTeam === 'vs' || game.awayTeam === 'vs';
+            const isValidGame = game.division === 'Gold' && !missingTeams && !isSubmittedOrCompleted;
+            return isValidGame;
+          });
+          
+          setGames(availableGames);
+          setError(null);
+          
+        } catch (retryErr) {
+          console.error('❌ Retry also failed:', retryErr);
+          setError('Failed to load games from server. Please refresh the page.');
+          setGames([]);
+        }
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+    
+    // Small delay to ensure DOM is ready
+    setTimeout(loadGames, 100);
   }, []);
 
   // Real-time clock update

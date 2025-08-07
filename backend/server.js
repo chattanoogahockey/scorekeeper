@@ -82,14 +82,31 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 console.log(`🚀 Starting Hockey Scorekeeper API v${pkg.version} (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'})`);
 console.log(`⏰ Server start time: ${new Date().toISOString()}`);
+console.log(`🌍 Environment: NODE_ENV=${process.env.NODE_ENV}`);
+console.log(`📦 Port: ${process.env.PORT || 8080}`);
+console.log(`🔧 Node version: ${process.version}`);
 
-// Initialize database containers
+// Add startup safety check
+if (!process.env.COSMOS_DB_CONNECTION_STRING && isProduction) {
+  console.error('❌ COSMOS_DB_CONNECTION_STRING not found in production!');
+  process.exit(1);
+} else {
+  console.log('✅ Environment variables loaded');
+}
+
+// Initialize database containers with better error handling
 try {
+  console.log('🔄 Initializing database containers...');
   await initializeContainers();
   console.log('🗄️ Database ready');
 } catch (error) {
   console.error('💥 Database initialization failed:', error.message);
+  console.error('💥 Full error:', error);
+  
+  // In production, don't exit immediately - try to continue without database
   if (isProduction) {
+    console.log('⚠️ Continuing in degraded mode - some features may not work');
+  } else {
     process.exit(1);
   }
 }
@@ -3287,9 +3304,12 @@ app.get('*', (req, res) => {
 });
 
 const server = app.listen(process.env.PORT || 8080, () => {
-  console.log(`🚀 Hockey Scorekeeper API running on port ${process.env.PORT || 8080}`);
+  const port = process.env.PORT || 8080;
+  console.log(`🚀 Hockey Scorekeeper API running on port ${port}`);
+  console.log(`📡 Server listening on http://localhost:${port}`);
   console.log('🏥 Health check available at /health');
   console.log('🎯 API endpoints available at /api/*');
+  console.log('⏱️  Server started in', Math.floor((Date.now() - startTime) / 1000), 'seconds');
   console.log('✅ Deployment completed successfully - Studio voice authentication enabled');
   
   // Custom banner for The Scorekeeper
@@ -3301,7 +3321,7 @@ const server = app.listen(process.env.PORT || 8080, () => {
   console.log('   ██    ██   ██ ███████     ███████  ██████  ██████  ██   ██ ███████ ██   ██ ███████ ███████ ██      ███████ ██   ██ ');
   console.log('\n🏒 Hockey Announcer & Scorekeeper System Ready! 🏒');
   console.log('🎙️  AI Commentary & Studio Voice TTS Active');
-  console.log('⚡ Let\'s drop the puck and track some goals! ⚡\n');
+  console.log('🥅 Let\'s drop the puck and track some goals! 🥅\n');
 });
 
 // Handle server errors

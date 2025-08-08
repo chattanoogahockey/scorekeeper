@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { GameContext } from '../contexts/GameContext.jsx';
 import MediaControlPanel from '../components/MediaControlPanel.jsx';
 import OTShootoutButton from '../components/OTShootoutButton.jsx';
@@ -9,8 +9,18 @@ import axios from 'axios';
  * Enhanced In-Game Menu with integrated dashboard functionality
  */
 export default function InGameMenu() {
-  const { selectedGame } = useContext(GameContext);
+  const { selectedGame, setSelectedGame } = useContext(GameContext);
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Handle navigation state for roster bypass
+  useEffect(() => {
+    if (!selectedGame && location.state?.game) {
+      // If we have game data in navigation state but not in context, update context
+      console.log('🎮 Setting game from navigation state:', location.state.game);
+      setSelectedGame(location.state.game);
+    }
+  }, [selectedGame, location.state, setSelectedGame]);
   
   // State for events feed with enhanced descriptions
   const [events, setEvents] = useState([]);
@@ -24,7 +34,8 @@ export default function InGameMenu() {
 
   // Function to refresh data (can be called from returning navigation)
   const refreshGameData = async () => {
-    if (!selectedGame) return;
+    const gameToUse = selectedGame || location.state?.game;
+    if (!gameToUse) return;
     
     try {
       // Fetch penalties, goals, and shots on goal
@@ -35,12 +46,12 @@ export default function InGameMenu() {
         ? '/api/goals' 
         : `${import.meta.env.VITE_API_BASE_URL}/api/goals`;
       const shotsUrl = import.meta.env.DEV 
-        ? `/api/shots-on-goal/game/${selectedGame.id || selectedGame.gameId}` 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal/game/${selectedGame.id || selectedGame.gameId}`;
+        ? `/api/shots-on-goal/game/${gameToUse.id || gameToUse.gameId}` 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal/game/${gameToUse.id || gameToUse.gameId}`;
         
       const [penaltiesRes, goalsRes, shotsRes] = await Promise.all([
-        axios.get(penaltiesUrl, { params: { gameId: selectedGame.id || selectedGame.gameId } }),
-        axios.get(goalsUrl, { params: { gameId: selectedGame.id || selectedGame.gameId } }),
+        axios.get(penaltiesUrl, { params: { gameId: gameToUse.id || gameToUse.gameId } }),
+        axios.get(goalsUrl, { params: { gameId: gameToUse.id || gameToUse.gameId } }),
         axios.get(shotsUrl)
       ]);
       
@@ -56,8 +67,8 @@ export default function InGameMenu() {
       setEventsError(null);
       
       // Calculate current score
-      const awayScore = goals.filter(g => g.scoringTeam === (selectedGame.awayTeam || selectedGame.awayTeamId)).length;
-      const homeScore = goals.filter(g => g.scoringTeam === (selectedGame.homeTeam || selectedGame.homeTeamId)).length;
+      const awayScore = goals.filter(g => g.scoringTeam === (gameToUse.awayTeam || gameToUse.awayTeamId)).length;
+      const homeScore = goals.filter(g => g.scoringTeam === (gameToUse.homeTeam || gameToUse.homeTeamId)).length;
       setCurrentScore({ away: awayScore, home: homeScore });
       
       // Set shots on goal
@@ -80,8 +91,11 @@ export default function InGameMenu() {
     // Data will be refreshed when user returns from goal/penalty entry forms
   }, [selectedGame]);
 
-  if (!selectedGame) {
-    // If no game selected, redirect back to home
+  // Use game from context or navigation state
+  const currentGame = selectedGame || location.state?.game;
+
+  if (!currentGame) {
+    // If no game selected and no navigation state, redirect back to home
     navigate('/');
     return null;
   }
@@ -96,7 +110,7 @@ export default function InGameMenu() {
 
   const handleShotsOnGoal = async (team) => {
     console.log(`🎯 handleShotsOnGoal called for team: ${team}`);
-    console.log(`🎯 Selected game:`, selectedGame);
+    console.log(`🎯 Current game:`, currentGame);
     
     try {
       // Send to backend first
@@ -106,12 +120,12 @@ export default function InGameMenu() {
       
       console.log(`🎯 Making API call to: ${apiUrl}`);
       console.log(`🎯 Request payload:`, {
-        gameId: selectedGame.id || selectedGame.gameId,
+        gameId: currentGame.id || currentGame.gameId,
         team: team
       });
       
       const response = await axios.post(apiUrl, {
-        gameId: selectedGame.id || selectedGame.gameId,
+        gameId: currentGame.id || currentGame.gameId,
         team: team
       });
       
@@ -147,7 +161,7 @@ export default function InGameMenu() {
         : `${import.meta.env.VITE_API_BASE_URL}/api/undo-last-action`;
       
       await axios.post(apiUrl, {
-        gameId: selectedGame.id || selectedGame.gameId
+        gameId: currentGame.id || currentGame.gameId
       });
       
       // Refresh game data after undo
@@ -171,10 +185,10 @@ export default function InGameMenu() {
         : `${import.meta.env.VITE_API_BASE_URL}/api/games/submit`;
       
       const response = await axios.post(apiUrl, {
-        gameId: selectedGame.id || selectedGame.gameId,
+        gameId: currentGame.id || currentGame.gameId,
         finalScore: {
-          [selectedGame.awayTeam || selectedGame.awayTeamId]: currentScore.away,
-          [selectedGame.homeTeam || selectedGame.homeTeamId]: currentScore.home
+          [currentGame.awayTeam || currentGame.awayTeamId]: currentScore.away,
+          [currentGame.homeTeam || currentGame.homeTeamId]: currentScore.home
         },
         submittedBy: 'Scorekeeper'
       });
@@ -205,7 +219,7 @@ export default function InGameMenu() {
     }
     
     try {
-      const gameId = selectedGame.id || selectedGame.gameId;
+      const gameId = currentGame.id || currentGame.gameId;
       
       // Delete all goals for this game
       const goalsResponse = await axios.get('/api/goals', { params: { gameId } });
@@ -236,7 +250,7 @@ export default function InGameMenu() {
             In-Game Dashboard
           </h1>
           <p className="text-md text-gray-600 font-medium">
-            {selectedGame.awayTeam || selectedGame.awayTeamId} vs {selectedGame.homeTeam || selectedGame.homeTeamId}
+            {currentGame.awayTeam || currentGame.awayTeamId} vs {currentGame.homeTeam || currentGame.homeTeamId}
           </p>
           
           {/* Current Score Display with Shots on Goal */}
@@ -244,7 +258,7 @@ export default function InGameMenu() {
             <div className="text-xs text-gray-500 mb-1">CURRENT SCORE</div>
             <div className="flex justify-between items-center text-lg font-bold">
               <div className="text-center">
-                <div className="text-xs text-gray-600">{selectedGame.awayTeam || selectedGame.awayTeamId}</div>
+                <div className="text-xs text-gray-600">{currentGame.awayTeam || currentGame.awayTeamId}</div>
                 <div className="text-2xl">{currentScore.away}</div>
                 <button
                   onClick={() => handleShotsOnGoal('away')}
@@ -255,7 +269,7 @@ export default function InGameMenu() {
               </div>
               <div className="text-gray-400">-</div>
               <div className="text-center">
-                <div className="text-xs text-gray-600">{selectedGame.homeTeam || selectedGame.homeTeamId}</div>
+                <div className="text-xs text-gray-600">{currentGame.homeTeam || currentGame.homeTeamId}</div>
                 <div className="text-2xl">{currentScore.home}</div>
                 <button
                   onClick={() => handleShotsOnGoal('home')}

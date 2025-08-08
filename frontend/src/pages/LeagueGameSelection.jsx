@@ -249,11 +249,15 @@ export default function LeagueGameSelection() {
             setRosters(processedRosters);
             setSelectedGame(game);
             
-            // Use React's flushSync to ensure context is updated before navigation
-            console.log('🎯 Navigating to in-game menu...');
-            // Navigate in the next tick to ensure state is committed
-            await new Promise(resolve => setTimeout(resolve, 0));
-            navigate('/in-game');
+            // Navigate with state to ensure the game data is available immediately
+            console.log('🎯 Navigating to in-game menu with state...');
+            navigate('/in-game', { 
+              state: { 
+                game: game,
+                rosters: processedRosters,
+                bypassedRoster: true 
+              } 
+            });
             return;
           } catch (error) {
             console.error('Error loading rosters for existing game:', error);

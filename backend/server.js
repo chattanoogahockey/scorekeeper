@@ -3012,7 +3012,7 @@ app.post('/api/shots-on-goal', async (req, res) => {
       shotRecord[team] = (shotRecord[team] || 0) + 1;
       shotRecord.lastUpdated = new Date().toISOString();
       
-      await container.item(shotRecord.id).replace(shotRecord);
+      await container.item(shotRecord.id, shotRecord.gameId).replace(shotRecord);
       console.log(`✅ Updated shot count for ${team} in game ${gameId}: ${shotRecord[team]}`);
     } else {
       // Create new record
@@ -3081,8 +3081,10 @@ app.get('/api/shots-on-goal/game/:gameId', async (req, res) => {
     if (shots.length > 0) {
       const shotRecord = shots[0];
       shotCounts = {
+        id: shotRecord.id,
         home: shotRecord.home || 0,
-        away: shotRecord.away || 0
+        away: shotRecord.away || 0,
+        gameId: shotRecord.gameId
       };
     }
     

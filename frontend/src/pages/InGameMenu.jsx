@@ -163,10 +163,16 @@ export default function InGameMenu() {
       
       return eventsWithDescriptions;
     };
+    
+    // Initial fetch
+    fetchEvents();
+    fetchScore();
+    
+    // Less aggressive polling - every 2 minutes for backup
     const interval = setInterval(() => {
       fetchEvents();
       fetchScore();
-    }, 10000);
+    }, 120000);
     return () => clearInterval(interval);
   }, [selectedGame]);
 

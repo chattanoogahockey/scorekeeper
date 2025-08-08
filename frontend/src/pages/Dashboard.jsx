@@ -24,9 +24,10 @@ export default function Dashboard() {
   const [events, setEvents] = useState([]);
   const [eventsError, setEventsError] = useState(null);
 
-  // Poll events every 10 seconds
+  // Fetch events when game is selected and after user actions
   useEffect(() => {
     if (!selectedGame) return;
+    
     const fetchEvents = async () => {
       try {
         const res = await axios.get('/api/events', { params: { gameId: selectedGame.id || selectedGame.gameId } });
@@ -36,8 +37,11 @@ export default function Dashboard() {
         setEventsError('Error loading events');
       }
     };
+    
     fetchEvents();
-    const interval = setInterval(fetchEvents, 10000);
+    
+    // Light polling every 60 seconds for backup (much less aggressive)
+    const interval = setInterval(fetchEvents, 60000);
     return () => clearInterval(interval);
   }, [selectedGame]);
 
@@ -71,6 +75,17 @@ export default function Dashboard() {
   const getPlayersForTeam = (teamName) => {
     const roster = rosters.find((r) => r.teamName === teamName);
     return roster ? roster.players : [];
+  };
+
+  // Function to refresh events after user actions
+  const refreshEvents = async () => {
+    if (!selectedGame) return;
+    try {
+      const res = await axios.get('/api/events', { params: { gameId: selectedGame.id || selectedGame.gameId } });
+      setEvents(res.data);
+    } catch (err) {
+      console.error('Failed to refresh events', err);
+    }
   };
 
   const handleGoalSubmit = async (e) => {
@@ -107,6 +122,8 @@ export default function Dashboard() {
         shotType: '',
         goalType: '',
       });
+      // Immediately refresh events after successful submission
+      await refreshEvents();
     } catch (err) {
       console.error('Failed to submit goal', err);
       setGoalError('Failed to submit goal. Please try again.');
@@ -144,6 +161,8 @@ export default function Dashboard() {
         length: '',
         time: '',
       });
+      // Immediately refresh events after successful submission
+      await refreshEvents();
     } catch (err) {
       console.error('Failed to submit penalty', err);
       setPenaltyError('Failed to submit penalty. Please try again.');

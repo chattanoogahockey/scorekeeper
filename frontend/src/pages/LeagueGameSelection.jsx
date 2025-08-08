@@ -153,12 +153,36 @@ export default function LeagueGameSelection() {
     console.log('🎯 Selected game:', game);
     console.log('🕐 Build timestamp:', new Date().toISOString());
     
-    // Check if this game has existing data (goals or penalties)
+    // Check if this game has existing rosters (indicating it's been started before)
     try {
       const gameId = game.id || game.gameId;
-      console.log('📋 Checking existing data for gameId:', gameId);
+      console.log('📋 Checking existing roster data for gameId:', gameId);
       
-      // Check for existing goals
+      // First check if rosters exist for this game
+      console.log('👥 Checking for existing rosters...');
+      const rostersResponse = await axios.get('/api/rosters', {
+        params: { gameId },
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      const existingRosters = rostersResponse.data || [];
+      console.log(`Found ${existingRosters.length} existing rosters`);
+      
+      const hasRosters = existingRosters.length > 0;
+      
+      if (!hasRosters) {
+        // This is a brand new game - go through normal roster flow
+        console.log('🆕 New game detected - proceeding to roster attendance');
+        setSelectedGame(game);
+        setSelectedLeague(game.division);
+        navigate('/roster');
+        return;
+      }
+      
+      // Game has rosters, so it's been started - check for other game data
       console.log('🥅 Checking for existing goals...');
       const goalsResponse = await axios.get('/api/goals', { 
         params: { gameId },
@@ -200,18 +224,18 @@ export default function LeagueGameSelection() {
       const totalShots = (shots.home || 0) + (shots.away || 0);
       console.log(`Found ${totalShots} existing shots on goal (home: ${shots.home}, away: ${shots.away})`);
       
-      const hasExistingData = goals.length > 0 || penalties.length > 0 || totalShots > 0;
+      // Check if any data is already submitted (finalized)
+      const hasSubmittedData = goals.some(g => g.gameStatus === 'submitted') || 
+                             penalties.some(p => p.gameStatus === 'submitted');
       
-      if (hasExistingData) {
-        // Check if any data is already submitted (finalized)
-        const hasSubmittedData = goals.some(g => g.gameStatus === 'submitted') || 
-                               penalties.some(p => p.gameStatus === 'submitted');
-        
-        if (hasSubmittedData) {
-          alert('This game has already been submitted and finalized. You cannot continue scoring.');
-          return;
-        }
-        
+      if (hasSubmittedData) {
+        alert('This game has already been submitted and finalized. You cannot continue scoring.');
+        return;
+      }
+      
+      const hasGameData = goals.length > 0 || penalties.length > 0 || totalShots > 0;
+      
+      if (hasGameData) {
         // Ask user if they want to continue or start over
         const continueGame = window.confirm(
           `This game has existing data (${goals.length} goals, ${penalties.length} penalties, ${totalShots} shots).\n\n` +
@@ -220,53 +244,7 @@ export default function LeagueGameSelection() {
           '❌ NO - Start over (this will clear existing data)'
         );
         
-        if (continueGame) {
-          // User wants to continue - skip roster page and go directly to game
-          console.log('🎯 User chose to continue existing game - skipping roster page');
-          
-          // Load rosters without navigation
-          try {
-            const rostersResponse = await axios.get('/api/rosters', {
-              params: { gameId: game.id || game.gameId }
-            });
-            const gameRosters = rostersResponse.data;
-            
-            const processedRosters = gameRosters.map(roster => ({
-              teamName: roster.teamName,
-              teamId: roster.teamName,
-              players: roster.players.map(player => ({
-                name: player.name,
-                firstName: player.firstName || player.name.split(' ')[0],
-                lastName: player.lastName || player.name.split(' ').slice(1).join(' '),
-                jerseyNumber: player.jerseyNumber,
-                position: player.position || 'Player'
-              }))
-            }));
-            
-            // Set everything in context in proper order
-            console.log('🎯 Setting game context before navigation...');
-            setSelectedLeague(game.division);
-            setRosters(processedRosters);
-            setSelectedGame(game);
-            
-            // Navigate with state to ensure the game data is available immediately
-            console.log('🎯 Navigating to in-game menu with state...');
-            console.log('🎯 Navigation state game:', game);
-            console.log('🎯 Navigation state rosters:', processedRosters);
-            navigate('/in-game', { 
-              state: { 
-                game: game,
-                rosters: processedRosters,
-                bypassedRoster: true 
-              } 
-            });
-            return;
-          } catch (error) {
-            console.error('Error loading rosters for existing game:', error);
-            alert('Failed to load team rosters. Please try again.');
-            return;
-          }
-        } else {
+        if (!continueGame) {
           // User wants to start over - clear existing data
           const confirmStartOver = window.confirm(
             'Are you sure you want to start over? This will permanently delete all existing goals and penalties for this game.'
@@ -280,51 +258,38 @@ export default function LeagueGameSelection() {
           try {
             console.log('Clearing existing game data...');
             
-            // Delete all goals for this game
+            // Delete all goals
             for (const goal of goals) {
               await axios.delete(`/api/goals/${goal.id}`, { params: { gameId } });
             }
             
-            // Delete all penalties for this game  
+            // Delete all penalties  
             for (const penalty of penalties) {
               await axios.delete(`/api/penalties/${penalty.id}`, { params: { gameId } });
             }
             
-            // Delete all shots on goal for this game
-            for (const shot of shots) {
-              await axios.delete(`/api/shots-on-goal/${shot.id}`, { params: { gameId } });
+            // Reset shots on goal
+            if (totalShots > 0) {
+              // Get current shots and delete them
+              const currentShots = await axios.get(shotsUrl);
+              if (currentShots.data && (currentShots.data.home > 0 || currentShots.data.away > 0)) {
+                await axios.delete(shotsUrl);
+              }
             }
             
-            alert('Game data cleared successfully. Starting fresh.');
+            console.log('✅ Game data cleared successfully');
           } catch (error) {
-            console.error('Error clearing game data:', error);
-            alert('Error clearing game data. Please try again or contact an administrator.');
+            console.error('❌ Error clearing game data:', error);
+            alert('Failed to clear game data. Please try again.');
             return;
           }
         }
       }
-    } catch (error) {
-      console.error('❌ Error checking existing game data:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      // Continue anyway if we can't check
-    }
-    
-    console.log('🎮 Setting selected game and league...');
-    setSelectedGame(game);
-    setSelectedLeague(game.division);
-    
-    try {
-      // Load rosters for the game's teams using gameId
-      console.log('👥 Loading rosters for game:', game.id || game.gameId);
-      const rostersResponse = await axios.get('/api/rosters', {
-        params: { gameId: game.id || game.gameId }
-      });
-      const gameRosters = rostersResponse.data;
-      console.log('✅ Game rosters loaded:', gameRosters.length, 'teams');
-      console.log('📋 Roster data:', gameRosters);
       
-      // Process the rosters (they're already filtered to just the two teams for this game)
-      const processedRosters = gameRosters.map(roster => ({
+      // Either continuing or cleared data - skip roster and go to in-game menu
+      console.log('🎯 Game in progress - skipping roster page and going to in-game menu');
+      
+      const processedRosters = existingRosters.map(roster => ({
         teamName: roster.teamName,
         teamId: roster.teamName,
         players: roster.players.map(player => ({
@@ -336,23 +301,27 @@ export default function LeagueGameSelection() {
         }))
       }));
       
-      console.log('Processed rosters:', processedRosters.map(r => `${r.teamName}: ${r.players.length} players`));
-      
-      if (processedRosters.length === 0) {
-        console.warn('⚠️ No rosters found for this game');
-        alert('No team rosters found for this game. Please contact an administrator.');
-        return;
-      }
-      
-      console.log('🎯 About to navigate to roster-attendance...');
-      // Store the rosters and navigate to attendance
+      // Set everything in context in proper order
+      console.log('🎯 Setting game context before navigation...');
+      setSelectedLeague(game.division);
       setRosters(processedRosters);
-      navigate('/roster');
-      console.log('✅ Navigation completed!');
+      setSelectedGame(game);
+      
+      // Navigate with state to ensure the game data is available immediately
+      console.log('🎯 Navigating to in-game menu with state...');
+      console.log('🎯 Navigation state game:', game);
+      console.log('🎯 Navigation state rosters:', processedRosters);
+      navigate('/in-game', { 
+        state: { 
+          game: game,
+          rosters: processedRosters,
+          bypassedRoster: true 
+        } 
+      });
+      
     } catch (error) {
-      console.error('❌ Error loading rosters:', error);
-      console.error('Error details:', error.response?.data || error.message);
-      alert('Failed to load team rosters. Please try again or contact support.');
+      console.error('Error checking game data:', error);
+      alert('Failed to load game data. Please try again.');
     }
   };
 

@@ -9,6 +9,7 @@ export default function DJPanel() {
   const [isPlaying, setIsPlaying] = useState(false);
   const currentAudioRef = useRef(null);
   const [currentOrganIndex, setCurrentOrganIndex] = useState(0);
+  const [currentFanfareIndex, setCurrentFanfareIndex] = useState(0);
   const [volume, setVolume] = useState(1.0); // Default to 100% volume
   const [isFading, setIsFading] = useState(false);
   
@@ -57,7 +58,18 @@ export default function DJPanel() {
     'organ_happy_know_it.mp3',
     'organ_charge.mp3',
     'organ_bull_fight_rally.mp3',
-    'organ_build_up.mp3'
+    'organ_build_up.mp3',
+    'circus_organ_grinder.mp3',
+    'organ_10.mp3',
+    'organ_7.mp3'
+  ];
+
+  // Array of fanfare sound files
+  const fanfareSounds = [
+    'fanfare_organ.mp3',
+    'fanfare_bugle.mp3',
+    'fanfare_trumpet.mp3',
+    'fanfare_piano.mp3'
   ];
 
   // Prevent audio from stopping during re-renders
@@ -183,11 +195,74 @@ export default function DJPanel() {
     setCurrentOrganIndex((prevIndex) => (prevIndex + 1) % organSounds.length);
   };
 
+  const playFanfareSound = () => {
+    // If audio is already playing, ignore the new request
+    if (isPlaying) {
+      console.log('Audio already playing, ignoring request');
+      return;
+    }
+
+    // Get the current fanfare sound file
+    const currentFanfareFile = fanfareSounds[currentFanfareIndex];
+    
+    // Stop any currently playing audio
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+    }
+
+    const audio = new Audio(`/sounds/${currentFanfareFile}`);
+    currentAudioRef.current = audio;
+    setAudioElement(audio); // Store audio element in state to prevent garbage collection
+    
+    // Set volume based on the fader
+    audio.volume = volume;
+    
+    setIsPlaying(true);
+    
+    // Update progress bar when audio loads
+    audio.addEventListener('loadedmetadata', () => {
+      setAudioProgress({ 
+        current: 0, 
+        duration: audio.duration, 
+        isPlaying: true,
+        fileName: 'fanfare' 
+      });
+    });
+    
+    // Update progress during playback
+    audio.addEventListener('timeupdate', () => {
+      setAudioProgress(prev => ({
+        ...prev,
+        current: audio.currentTime
+      }));
+    });
+    
+    // Reset playing state when audio ends or has an error
+    const resetPlaying = () => {
+      setIsPlaying(false);
+      currentAudioRef.current = null;
+      setAudioElement(null);
+      setAudioProgress({ current: 0, duration: 0, isPlaying: false, fileName: '' });
+    };
+    
+    audio.addEventListener('ended', resetPlaying);
+    audio.addEventListener('error', resetPlaying);
+    
+    audio.play().catch((error) => {
+      console.error('Error playing fanfare audio:', error);
+      resetPlaying();
+    });
+
+    // Move to next fanfare sound, loop back to 0 after the last one
+    setCurrentFanfareIndex((prevIndex) => (prevIndex + 1) % fanfareSounds.length);
+  };
+
   return (
     <div className="border rounded shadow p-3">
       <h4 className="text-lg font-semibold mb-2">DJ</h4>
       
-      {/* 2x3 Grid Layout */}
+      {/* 2x4 Grid Layout */}
       <div className="grid grid-cols-2 gap-1 mb-3">
         <button
           onClick={() => playSound('goal_horn', 'mp3')}
@@ -245,6 +320,17 @@ export default function DJPanel() {
           Organs
         </button>
         <button
+          onClick={playFanfareSound}
+          disabled={isPlaying}
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+            isPlaying 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+          }`}
+        >
+          Fanfare
+        </button>
+        <button
           onClick={fadeOut}
           disabled={!isPlaying || isFading}
           className={`px-2 py-1 rounded transition-colors text-xs ${
@@ -255,6 +341,7 @@ export default function DJPanel() {
         >
           {isFading ? 'Fading...' : 'Fade Out'}
         </button>
+        <div></div> {/* Empty space to maintain grid layout */}
       </div>
       
       {/* Audio Progress Bar - Compact */}

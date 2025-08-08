@@ -206,7 +206,9 @@ class TTSService {
       } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
         console.log('✅ GOOGLE_APPLICATION_CREDENTIALS_JSON found (Azure environment)');
       } else {
-        console.log('⚠️  No Google credentials found, TTS may not work properly');
+        console.log('⚠️  No Google credentials found, TTS will be disabled');
+        this.client = null;
+        return; // Exit gracefully without crashing
       }
       
       // Initialize with explicit project configuration for Studio voices
@@ -222,6 +224,8 @@ class TTSService {
           console.log(`🎯 Using project: ${credentials.project_id} for Studio voices`);
         } catch (parseError) {
           console.error('❌ Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:', parseError.message);
+          this.client = null;
+          return;
         }
       }
       
@@ -241,6 +245,7 @@ class TTSService {
         }
       } catch (voiceListError) {
         console.warn('⚠️  Could not list voices (continuing anyway):', voiceListError.message);
+        // Don't crash on voice listing failure
       }
       
       // Initialize audio cache directory
@@ -249,8 +254,9 @@ class TTSService {
       
     } catch (error) {
       console.error('❌ TTS Service initialization failed:', error.message);
+      console.log('🔄 Continuing without TTS functionality...');
       this.client = null;
-      throw error;
+      // Don't throw error - let server continue without TTS
     }
   }
 

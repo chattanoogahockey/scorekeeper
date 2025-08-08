@@ -223,8 +223,6 @@ export default function LeagueGameSelection() {
         if (continueGame) {
           // User wants to continue - skip roster page and go directly to game
           console.log('🎯 User chose to continue existing game - skipping roster page');
-          setSelectedGame(game);
-          setSelectedLeague(game.division);
           
           // Load rosters without navigation
           try {
@@ -245,8 +243,16 @@ export default function LeagueGameSelection() {
               }))
             }));
             
+            // Set everything in context in proper order
+            console.log('🎯 Setting game context before navigation...');
+            setSelectedLeague(game.division);
             setRosters(processedRosters);
-            // Go directly to in-game menu
+            setSelectedGame(game);
+            
+            // Use React's flushSync to ensure context is updated before navigation
+            console.log('🎯 Navigating to in-game menu...');
+            // Navigate in the next tick to ensure state is committed
+            await new Promise(resolve => setTimeout(resolve, 0));
             navigate('/in-game');
             return;
           } catch (error) {

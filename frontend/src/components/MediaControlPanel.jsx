@@ -81,7 +81,7 @@ export default function MediaControlPanel({ gameId }) {
     const audio = currentAudioRef.current;
     const originalVolume = audio.volume;
     const fadeSteps = 50;
-    const fadeDuration = 6000;
+    const fadeDuration = 4800; // 20% faster than 6000ms
     const stepTime = fadeDuration / fadeSteps;
     const volumeStep = originalVolume / fadeSteps;
 

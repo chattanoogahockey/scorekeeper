@@ -3012,6 +3012,28 @@ app.post('/api/shots-on-goal', async (req, res) => {
       shotRecord[team] = (shotRecord[team] || 0) + 1;
       shotRecord.lastUpdated = new Date().toISOString();
       
+      // Ensure team data is populated for existing records that might not have it
+      if (!shotRecord.homeTeam || !shotRecord.awayTeam || !shotRecord.homeTeamId || !shotRecord.awayTeamId) {
+        try {
+          const gamesContainer = getGamesContainer();
+          const gameQuery = {
+            query: 'SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId',
+            parameters: [{ name: '@gameId', value: gameId }]
+          };
+          const { resources: games } = await gamesContainer.items.query(gameQuery).fetchAll();
+          if (games.length > 0) {
+            const game = games[0];
+            shotRecord.homeTeam = shotRecord.homeTeam || game.homeTeam || '';
+            shotRecord.awayTeam = shotRecord.awayTeam || game.awayTeam || '';
+            shotRecord.homeTeamId = shotRecord.homeTeamId || game.homeTeamId || game.homeTeam || '';
+            shotRecord.awayTeamId = shotRecord.awayTeamId || game.awayTeamId || game.awayTeam || '';
+            console.log(`📊 Backfilled team data for existing shot record: ${shotRecord.homeTeam} vs ${shotRecord.awayTeam}`);
+          }
+        } catch (gameError) {
+          console.log('Could not backfill team data:', gameError.message);
+        }
+      }
+      
       await container.item(shotRecord.id, shotRecord.gameId).replace(shotRecord);
       console.log(`✅ Updated shot count for ${team} in game ${gameId}: ${shotRecord[team]}`);
     } else {
@@ -3022,13 +3044,15 @@ app.post('/api/shots-on-goal', async (req, res) => {
         type: 'shots-on-goal-summary',
         home: team === 'home' ? 1 : 0,
         away: team === 'away' ? 1 : 0,
-        homeTeam: '',  // Will be populated from game data
-        awayTeam: '',  // Will be populated from game data
+        homeTeam: '',      // Team display name
+        awayTeam: '',      // Team display name  
+        homeTeamId: '',    // Team ID for database relationships
+        awayTeamId: '',    // Team ID for database relationships
         createdAt: new Date().toISOString(),
         lastUpdated: new Date().toISOString()
       };
       
-      // Try to get team names from game data
+      // Try to get team names and IDs from game data
       try {
         const gamesContainer = getGamesContainer();
         const gameQuery = {
@@ -3038,8 +3062,12 @@ app.post('/api/shots-on-goal', async (req, res) => {
         const { resources: games } = await gamesContainer.items.query(gameQuery).fetchAll();
         if (games.length > 0) {
           const game = games[0];
-          shotRecord.homeTeam = game.homeTeam || game.homeTeamId || '';
-          shotRecord.awayTeam = game.awayTeam || game.awayTeamId || '';
+          // Store both display names and IDs for complete data structure
+          shotRecord.homeTeam = game.homeTeam || '';
+          shotRecord.awayTeam = game.awayTeam || '';
+          shotRecord.homeTeamId = game.homeTeamId || game.homeTeam || '';
+          shotRecord.awayTeamId = game.awayTeamId || game.awayTeam || '';
+          console.log(`📊 Enriched shot record with team data: ${shotRecord.homeTeam} vs ${shotRecord.awayTeam}`);
         }
       } catch (gameError) {
         console.log('Could not fetch game details for team names:', gameError.message);
@@ -3053,6 +3081,10 @@ app.post('/api/shots-on-goal', async (req, res) => {
       gameId: shotRecord.gameId,
       home: shotRecord.home,
       away: shotRecord.away,
+      homeTeam: shotRecord.homeTeam,
+      awayTeam: shotRecord.awayTeam,
+      homeTeamId: shotRecord.homeTeamId,
+      awayTeamId: shotRecord.awayTeamId,
       lastUpdated: shotRecord.lastUpdated
     });
   } catch (error) {

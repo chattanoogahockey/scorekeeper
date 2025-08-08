@@ -12,15 +12,25 @@ export default function InGameMenu() {
   const { selectedGame, setSelectedGame } = useContext(GameContext);
   const navigate = useNavigate();
   const location = useLocation();
+  const [isInitialized, setIsInitialized] = useState(false);
   
   // Handle navigation state for roster bypass
   useEffect(() => {
+    console.log('🔍 InGameMenu useEffect - selectedGame:', selectedGame);
+    console.log('🔍 InGameMenu useEffect - location.state:', location.state);
+    
     if (!selectedGame && location.state?.game) {
       // If we have game data in navigation state but not in context, update context
       console.log('🎮 Setting game from navigation state:', location.state.game);
       setSelectedGame(location.state.game);
     }
-  }, [selectedGame, location.state, setSelectedGame]);
+    
+    // Mark as initialized after context sync attempt
+    if (!isInitialized) {
+      console.log('🔧 Marking InGameMenu as initialized');
+      setIsInitialized(true);
+    }
+  }, [selectedGame, location.state, setSelectedGame, isInitialized]);
   
   // State for events feed with enhanced descriptions
   const [events, setEvents] = useState([]);
@@ -94,10 +104,20 @@ export default function InGameMenu() {
   // Use game from context or navigation state
   const currentGame = selectedGame || location.state?.game;
 
-  if (!currentGame) {
-    // If no game selected and no navigation state, redirect back to home
+  // Only redirect after initialization and if still no game data
+  if (isInitialized && !currentGame) {
+    console.log('🚨 No game data found after initialization, redirecting to home');
     navigate('/');
     return null;
+  }
+
+  // Show loading while initializing
+  if (!isInitialized || !currentGame) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-lg">Loading game...</div>
+      </div>
+    );
   }
 
   const handleGoalClick = () => {

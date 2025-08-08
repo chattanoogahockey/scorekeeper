@@ -251,6 +251,8 @@ export default function LeagueGameSelection() {
             
             // Navigate with state to ensure the game data is available immediately
             console.log('🎯 Navigating to in-game menu with state...');
+            console.log('🎯 Navigation state game:', game);
+            console.log('🎯 Navigation state rosters:', processedRosters);
             navigate('/in-game', { 
               state: { 
                 game: game,

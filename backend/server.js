@@ -86,12 +86,16 @@ console.log(`🌍 Environment: NODE_ENV=${process.env.NODE_ENV}`);
 console.log(`📦 Port: ${process.env.PORT || 8080}`);
 console.log(`🔧 Node version: ${process.version}`);
 
-// Add startup safety check
-if (!process.env.COSMOS_DB_CONNECTION_STRING && isProduction) {
-  console.error('❌ COSMOS_DB_CONNECTION_STRING not found in production!');
-  process.exit(1);
+// Add startup safety check (aligned with cosmosClient.js expectations)
+const hasConnString = !!process.env.COSMOS_DB_CONNECTION_STRING;
+const hasSeparateCreds = !!(process.env.COSMOS_DB_URI || process.env.COSMOS_DB_ENDPOINT || process.env.COSMOS_ENDPOINT)
+  && !!(process.env.COSMOS_DB_KEY || process.env.COSMOS_KEY)
+  && !!(process.env.COSMOS_DB_NAME || process.env.COSMOS_DB_DATABASE_ID);
+
+if (isProduction && !(hasConnString || hasSeparateCreds)) {
+  console.error('❌ Missing Cosmos DB configuration (URI/Key/Name). Continuing startup; DB-dependent features may be unavailable.');
 } else {
-  console.log('✅ Environment variables loaded');
+  console.log('✅ Cosmos DB configuration detected');
 }
 
 // Initialize database containers with better error handling
@@ -119,6 +123,11 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     port: process.env.PORT || 8080
   });
+});
+
+// Optional root path to help Azure warmup and show logs
+app.get('/', (req, res) => {
+  res.redirect('/health');
 });
 
 // VERSION ENDPOINT for deployment verification
@@ -3319,6 +3328,11 @@ const server = app.listen(process.env.PORT || 8080, () => {
   console.log('\n🏒 Hockey Announcer & Scorekeeper System Ready! 🏒');
   console.log('🎙️  AI Commentary & Studio Voice TTS Active');
   console.log('🥅 Let\'s drop the puck and track some goals! 🥅\n');
+
+  // Echo banner again after a short delay for Log Stream visibility
+  setTimeout(() => {
+    console.log('\n[Echo] THE SCOREKEEPER banner check: server is up at', new Date().toISOString());
+  }, 5000);
 });
 
 // Handle server errors

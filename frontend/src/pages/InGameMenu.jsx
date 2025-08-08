@@ -311,7 +311,6 @@ export default function InGameMenu() {
           
           {/* Current Score Display with Shots on Goal */}
           <div className="bg-gray-100 rounded-lg p-3 my-3">
-            <div className="text-xs text-gray-500 mb-1">CURRENT SCORE</div>
             <div className="flex justify-between items-center text-lg font-bold">
               <div className="text-center">
                 <div className="text-xs text-gray-600">{currentGame.awayTeam || currentGame.awayTeamId}</div>
@@ -340,7 +339,7 @@ export default function InGameMenu() {
 
         {/* Scorekeeper Panel */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-3">Scorekeeper</h2>
+          <h2 className="text-lg font-bold mb-3">Scorekeeper</h2>
 
           {/* 8 buttons in 2x4 grid layout */}
           <div className="grid grid-cols-2 gap-2">
@@ -372,7 +371,7 @@ export default function InGameMenu() {
             {/* Row 3: Undo and Admin (swapped) */}
             <button
               onClick={handleUndo}
-              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
               Undo
             </button>

@@ -211,24 +211,25 @@ const cosmosUri = COSMOS_DB_URI || COSMOS_DB_ENDPOINT || COSMOS_ENDPOINT;
 const cosmosKey = COSMOS_DB_KEY || COSMOS_KEY;
 const cosmosDatabase = COSMOS_DB_NAME || COSMOS_DB_DATABASE_ID;
 
-if (!cosmosUri || !cosmosKey || !cosmosDatabase) {
-  throw new Error(
-    'Missing Cosmos DB configuration. Please ensure COSMOS_DB_URI, COSMOS_DB_KEY, and COSMOS_DB_NAME are set.'
-  );
+const cosmosConfigured = Boolean(cosmosUri && cosmosKey && cosmosDatabase);
+let client = null;
+let database = null;
+
+if (cosmosConfigured) {
+  // Initialize Cosmos DB client only when properly configured
+  client = new CosmosClient({ endpoint: cosmosUri, key: cosmosKey });
+  database = client.database(cosmosDatabase);
+} else {
+  console.warn('⚠️ Cosmos DB not configured. Running in degraded mode.');
 }
-
-// Initialize Cosmos DB client
-const client = new CosmosClient({
-  endpoint: cosmosUri,
-  key: cosmosKey,
-});
-
-const database = client.database(cosmosDatabase);
 
 /**
  * Get database instance
  */
 export function getDatabase() {
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database;
 }
 
@@ -242,51 +243,61 @@ export function getDatabase() {
 
 // Settings container - Global application settings
 export function getSettingsContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS.settings.name);
 }
 
 // Analytics container - Pre-aggregated statistics  
 export function getAnalyticsContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS.analytics.name);
 }
 
 // Rink reports container - Weekly division summaries
 export function getRinkReportsContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS.rink_reports.name);
 }
 
 // Games container - Game records and submissions
 export function getGamesContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS.games.name);
 }
 
 // Players container - Player statistics and profiles
 export function getPlayersContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS.players.name);
 }
 
 // Goals container - Goal events and scoring data
 export function getGoalsContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS.goals.name);
 }
 
 // Penalties container - Penalty events and infractions
 export function getPenaltiesContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS.penalties.name);
 }
 
 // Rosters container - Team rosters and player assignments
 export function getRostersContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS.rosters.name);
 }
 
 // Attendance container - Game attendance tracking
 export function getAttendanceContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS.attendance.name);
 }
 
 // OT/Shootout container - Overtime and shootout results
 export function getOTShootoutContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS.otshootout.name);
 }
 
@@ -306,19 +317,21 @@ export function getPlayerStatsContainer() {
  * Called during application startup
  */
 export async function initializeContainers() {
+  if (!cosmosConfigured || !database) {
+    console.warn('⚠️ Skipping Cosmos DB initialization (not configured)');
+    return false;
+  }
+
   console.log('🔧 Initializing Cosmos DB containers...');
-  
   try {
     const containerPromises = Object.values(CONTAINER_DEFINITIONS).map(async (definition) => {
       const { name, partitionKey, indexingPolicy } = definition;
-      
       try {
         const { container } = await database.containers.createIfNotExists({
           id: name,
           partitionKey,
           indexingPolicy
         });
-        
         console.log(`✅ Container '${name}' ready`);
         return container;
       } catch (error) {
@@ -326,10 +339,8 @@ export async function initializeContainers() {
         throw error;
       }
     });
-    
     await Promise.all(containerPromises);
     console.log('🎉 All Cosmos DB containers initialized successfully');
-    
     return true;
   } catch (error) {
     console.error('💥 Failed to initialize Cosmos DB containers:', error);

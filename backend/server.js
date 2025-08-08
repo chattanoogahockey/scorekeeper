@@ -98,22 +98,20 @@ if (isProduction && !(hasConnString || hasSeparateCreds)) {
   console.log('✅ Cosmos DB configuration detected');
 }
 
-// Initialize database containers with better error handling
-try {
-  console.log('🔄 Initializing database containers...');
-  await initializeContainers();
-  console.log('🗄️ Database ready');
-} catch (error) {
-  console.error('💥 Database initialization failed:', error.message);
-  console.error('💥 Full error:', error);
-  
-  // In production, don't exit immediately - try to continue without database
-  if (isProduction) {
+// Initialize database containers asynchronously so startup isn't blocked
+(async () => {
+  try {
+    console.log('🔄 Initializing database containers (async)...');
+    await initializeContainers();
+    console.log('🗄️ Database ready');
+  } catch (error) {
+    console.error('💥 Database initialization failed:', error.message);
+    if (!isProduction) {
+      console.error('💥 Full error:', error);
+    }
     console.log('⚠️ Continuing in degraded mode - some features may not work');
-  } else {
-    process.exit(1);
   }
-}
+})();
 
 // HEALTH CHECK ENDPOINT for Azure (only at /health, not root)
 app.get('/health', (req, res) => {
@@ -125,10 +123,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Optional root path to help Azure warmup and show logs
-app.get('/', (req, res) => {
-  res.redirect('/health');
-});
+// Root should serve the SPA; remove redirects that hijack the frontend
 
 // VERSION ENDPOINT for deployment verification
 app.get('/api/version', (req, res) => {
@@ -331,7 +326,13 @@ app.get('/api/games', async (req, res) => {
   });
 
   try {
-    const container = getGamesContainer();
+    let container;
+    try {
+      container = getGamesContainer();
+    } catch (e) {
+      console.warn('⚠️ Games container unavailable:', e.message);
+      return res.status(503).json({ error: 'Database not configured', games: [] });
+    }
     console.log('📦 Got games container');
     
     let querySpec;
@@ -3333,6 +3334,11 @@ const server = app.listen(process.env.PORT || 8080, () => {
   setTimeout(() => {
     console.log('\n[Echo] THE SCOREKEEPER banner check: server is up at', new Date().toISOString());
   }, 5000);
+
+  // Lightweight heartbeat so Log Stream shows periodic activity
+  setInterval(() => {
+    console.log('💓 Heartbeat', new Date().toISOString());
+  }, 30000);
 });
 
 // Handle server errors

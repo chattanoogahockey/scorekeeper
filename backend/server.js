@@ -2100,6 +2100,34 @@ app.post('/api/games/submit', async (req, res) => {
       }
     };
     
+    // Update the original game record to mark it as submitted
+    try {
+      const originalGameQuery = {
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
+      };
+      const { resources: originalGames } = await gamesContainer.items.query(originalGameQuery).fetchAll();
+      
+      if (originalGames.length > 0) {
+        const originalGame = originalGames[0];
+        const updatedGame = {
+          ...originalGame,
+          status: 'completed', // Change from 'scheduled' to 'completed'
+          submittedAt: new Date().toISOString(),
+          submittedBy: submittedBy || 'Unknown',
+          finalScore: finalScore || {},
+          totalGoals: goals.length,
+          totalPenalties: penalties.length
+        };
+        
+        await gamesContainer.item(originalGame.id, originalGame.gameId || originalGame.id).replace(updatedGame);
+        console.log('✅ Original game record updated to completed status');
+      }
+    } catch (updateError) {
+      console.warn('⚠️ Could not update original game record:', updateError.message);
+      // Continue with submission creation even if original update fails
+    }
+    
     const { resource } = await gamesContainer.items.create(gameSubmissionRecord);
     console.log('✅ Game submitted successfully');
     
@@ -3017,7 +3045,7 @@ app.get('/api/rink-reports', async (req, res) => {
     } else {
       // Get all reports, ordered by last updated (most recent first)
       querySpec = {
-        query: 'SELECT * FROM c ORDER BY c.lastUpdated DESC, c.division ASC'
+        query: 'SELECT * FROM c ORDER BY c.lastUpdated DESC'
       };
     }
     
@@ -3094,6 +3122,43 @@ app.get('/api/admin/voices', (req, res) => {
   }
 });
 
+// Admin endpoint to clean up duplicate games
+app.post('/api/admin/cleanup-games', async (req, res) => {
+  try {
+    console.log('🧹 Admin requested game cleanup...');
+    
+    const { cleanupDuplicateGames } = await import('./cleanupDuplicateGames.js');
+    
+    // Run cleanup and capture results
+    const originalLog = console.log;
+    const logs = [];
+    console.log = (...args) => {
+      logs.push(args.join(' '));
+      originalLog(...args);
+    };
+    
+    try {
+      await cleanupDuplicateGames();
+      
+      res.json({
+        success: true,
+        message: 'Game cleanup completed successfully',
+        logs: logs
+      });
+    } finally {
+      console.log = originalLog;
+    }
+    
+  } catch (error) {
+    console.error('❌ Game cleanup failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Game cleanup failed',
+      message: error.message
+    });
+  }
+});
+
 app.post('/api/admin/voices/select', (req, res) => {
   try {
     const { voiceId } = req.body;
@@ -3162,6 +3227,9 @@ app.post('/api/tts/dual-line', async (req, res) => {
     const selectedVoice = speaker === 'male' ? maleVoice : femaleVoice;
     
     console.log(`🎙️ Using ${speaker} studio voice: ${selectedVoice}`);
+    console.log(`🔍 Voice config loaded: male=${maleVoice}, female=${femaleVoice}`);
+    console.log(`🔧 TTS client status: ${ttsService.client ? 'Connected' : 'Not connected'}`);
+    console.log(`🌍 Google credentials: ${process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'File path set' : 'Using JSON env var'}`);
     
     // Temporarily set the voice in TTS service for this request
     const originalVoice = ttsService.selectedVoice;
@@ -3173,11 +3241,14 @@ app.post('/api/tts/dual-line', async (req, res) => {
       
       if (audioResult.success) {
         console.log(`✅ Generated dual announcer TTS for ${speaker} using ${selectedVoice}`);
+        console.log(`📊 Audio stats: ${audioResult.size} bytes, settings: ${JSON.stringify(audioResult.settings)}`);
         res.json({
           success: true,
           audioPath: audioResult.audioPath,
           speaker: speaker,
-          voice: selectedVoice
+          voice: selectedVoice,
+          size: audioResult.size,
+          settings: audioResult.settings
         });
       } else {
         console.error('❌ Failed to generate dual announcer TTS:', audioResult.error);

@@ -203,11 +203,45 @@ class TTSService {
       
       if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
         console.log(`✅ GOOGLE_APPLICATION_CREDENTIALS found: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
+      } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+        console.log('✅ GOOGLE_APPLICATION_CREDENTIALS_JSON found (Azure environment)');
       } else {
-        console.log('⚠️  GOOGLE_APPLICATION_CREDENTIALS not set, using default credential chain');
+        console.log('⚠️  No Google credentials found, TTS may not work properly');
       }
       
-      this.client = new textToSpeech.TextToSpeechClient();
+      // Initialize with explicit project configuration for Studio voices
+      const clientConfig = {};
+      
+      // If using JSON credentials from environment, parse and set project
+      if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+        try {
+          const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+          clientConfig.projectId = credentials.project_id;
+          clientConfig.keyFilename = undefined; // Don't use file path
+          clientConfig.credentials = credentials;
+          console.log(`🎯 Using project: ${credentials.project_id} for Studio voices`);
+        } catch (parseError) {
+          console.error('❌ Failed to parse GOOGLE_APPLICATION_CREDENTIALS_JSON:', parseError.message);
+        }
+      }
+      
+      this.client = new textToSpeech.TextToSpeechClient(clientConfig);
+      
+      // Test Studio voice availability
+      try {
+        const [response] = await this.client.listVoices({
+          languageCode: 'en-US'
+        });
+        
+        const studioVoices = response.voices.filter(voice => voice.name.includes('Studio'));
+        console.log(`🎤 Found ${studioVoices.length} Studio voices available:`, studioVoices.map(v => v.name));
+        
+        if (studioVoices.length === 0) {
+          console.warn('⚠️  No Studio voices found - may fall back to Neural2 voices');
+        }
+      } catch (voiceListError) {
+        console.warn('⚠️  Could not list voices (continuing anyway):', voiceListError.message);
+      }
       
       // Initialize audio cache directory
       await fs.mkdir(this.audioDir, { recursive: true });

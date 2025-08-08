@@ -25,6 +25,7 @@ const containerNames = {
   rosters: process.env.COSMOS_DB_ROSTERS_CONTAINER || 'rosters',
   attendance: process.env.COSMOS_DB_ATTENDANCE_CONTAINER || 'attendance',
   otshootout: process.env.COSMOS_DB_OTSHOOTOUT_CONTAINER || 'otshootout',
+  shotsongoal: process.env.COSMOS_DB_SHOTSONGOAL_CONTAINER || 'shotsongoal',
 };
 
 /**
@@ -41,6 +42,7 @@ const containerNames = {
  * 8. rosters - Team rosters and player assignments
  * 9. attendance - Game attendance tracking
  * 10. otshootout - Overtime and shootout results
+ * 11. shotsongoal - Shots on goal tracking and analytics
  */
 
 const CONTAINER_DEFINITIONS = {
@@ -192,6 +194,21 @@ const CONTAINER_DEFINITIONS = {
         { path: '/recordedAt/?' }
       ]
     }
+  },
+  
+  // Shots on goal tracking
+  shotsongoal: {
+    name: containerNames.shotsongoal,
+    partitionKey: '/gameId',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/gameId/?' },
+        { path: '/team/?' },
+        { path: '/timeRecorded/?' }
+      ]
+    }
   }
 };
 
@@ -299,6 +316,12 @@ export function getAttendanceContainer() {
 export function getOTShootoutContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS.otshootout.name);
+}
+
+// Shots on Goal container - Shots on goal tracking and analytics
+export function getShotsOnGoalContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  return database.container(CONTAINER_DEFINITIONS.shotsongoal.name);
 }
 
 // Legacy aliases for backward compatibility (deprecated)

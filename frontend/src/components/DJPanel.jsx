@@ -187,30 +187,8 @@ export default function DJPanel() {
     <div className="border rounded shadow p-3">
       <h4 className="text-lg font-semibold mb-2">DJ</h4>
       
-      {/* Fade Out Control */}
-      <div className="mb-3 p-2 bg-gray-50 rounded border">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-medium text-gray-700">🎛️ Audio</label>
-          <button
-            onClick={fadeOut}
-            disabled={!isPlaying || isFading}
-            className={`px-2 py-1 rounded transition-colors text-xs ${
-              isPlaying && !isFading
-                ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isFading ? 'Fading...' : 'Fade Out'}
-          </button>
-        </div>
-        {isPlaying && (
-          <div className="mt-1 text-xs text-gray-600">
-            Playing: {audioProgress.fileName}
-          </div>
-        )}
-      </div>
-      
-      <div className="grid grid-cols-2 gap-1">
+      {/* 2x3 Grid Layout */}
+      <div className="grid grid-cols-2 gap-1 mb-3">
         <button
           onClick={() => playSound('goal_horn', 'mp3')}
           disabled={isPlaying}
@@ -258,13 +236,24 @@ export default function DJPanel() {
         <button
           onClick={playOrganSound}
           disabled={isPlaying}
-          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs col-span-2 ${
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
           }`}
         >
           Organs
+        </button>
+        <button
+          onClick={fadeOut}
+          disabled={!isPlaying || isFading}
+          className={`px-2 py-1 rounded transition-colors text-xs ${
+            isPlaying && !isFading
+              ? 'bg-orange-500 hover:bg-orange-600 text-white'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+        >
+          {isFading ? 'Fading...' : 'Fade Out'}
         </button>
       </div>
       

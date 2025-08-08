@@ -21,6 +21,7 @@ import {
   getSettingsContainer,
   getAnalyticsContainer,
   getPlayersContainer,
+  getShotsOnGoalContainer,
   initializeContainers
 } from './cosmosClient.js';
 
@@ -2994,8 +2995,7 @@ app.post('/api/shots-on-goal', async (req, res) => {
   const { gameId, team } = req.body;
   
   try {
-    // Create shots on goal container reference
-    const container = await getGoalsContainer(); // We'll store in goals container for now
+    const container = getShotsOnGoalContainer();
     
     const shotOnGoal = {
       id: `shot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -3019,13 +3019,12 @@ app.get('/api/shots-on-goal/game/:gameId', async (req, res) => {
   const { gameId } = req.params;
   
   try {
-    const container = await getGoalsContainer();
+    const container = getShotsOnGoalContainer();
     
     const query = {
-      query: 'SELECT * FROM c WHERE c.gameId = @gameId AND c.type = @type ORDER BY c.timeRecorded ASC',
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.timeRecorded ASC',
       parameters: [
-        { name: '@gameId', value: gameId },
-        { name: '@type', value: 'shot-on-goal' }
+        { name: '@gameId', value: gameId }
       ]
     };
     
@@ -3053,14 +3052,12 @@ app.post('/api/undo-last-action', async (req, res) => {
   try {
     const goalsContainer = getGoalsContainer();
     const penaltiesContainer = getPenaltiesContainer();
+    const shotsContainer = getShotsOnGoalContainer();
     
-    // Find the most recent goal or penalty for this game
+    // Find the most recent goal, penalty, or shot for this game
     const goalsQuery = {
-      query: 'SELECT * FROM c WHERE c.gameId = @gameId AND (c.type IS NOT DEFINED OR c.type != @shotType) ORDER BY c.timeRecorded DESC',
-      parameters: [
-        { name: '@gameId', value: gameId },
-        { name: '@shotType', value: 'shot-on-goal' }
-      ]
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.timeRecorded DESC',
+      parameters: [{ name: '@gameId', value: gameId }]
     };
     
     const penaltiesQuery = {
@@ -3068,42 +3065,45 @@ app.post('/api/undo-last-action', async (req, res) => {
       parameters: [{ name: '@gameId', value: gameId }]
     };
     
-    const [goalsResult, penaltiesResult] = await Promise.all([
+    const shotsQuery = {
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.timeRecorded DESC',
+      parameters: [{ name: '@gameId', value: gameId }]
+    };
+    
+    const [goalsResult, penaltiesResult, shotsResult] = await Promise.all([
       goalsContainer.items.query(goalsQuery).fetchAll(),
-      penaltiesContainer.items.query(penaltiesQuery).fetchAll()
+      penaltiesContainer.items.query(penaltiesQuery).fetchAll(),
+      shotsContainer.items.query(shotsQuery).fetchAll()
     ]);
     
     const lastGoal = goalsResult.resources[0];
     const lastPenalty = penaltiesResult.resources[0];
+    const lastShot = shotsResult.resources[0];
     
     let itemToDelete = null;
     let containerToUse = null;
     let actionType = null;
     
     // Determine which action was most recent
-    if (lastGoal && lastPenalty) {
-      if (new Date(lastGoal.timeRecorded) > new Date(lastPenalty.timeRecorded)) {
-        itemToDelete = lastGoal;
-        containerToUse = goalsContainer;
-        actionType = 'goal';
-      } else {
-        itemToDelete = lastPenalty;
-        containerToUse = penaltiesContainer;
-        actionType = 'penalty';
-      }
-    } else if (lastGoal) {
-      itemToDelete = lastGoal;
-      containerToUse = goalsContainer;
-      actionType = 'goal';
-    } else if (lastPenalty) {
-      itemToDelete = lastPenalty;
-      containerToUse = penaltiesContainer;
-      actionType = 'penalty';
-    }
+    const candidates = [];
+    if (lastGoal) candidates.push({ item: lastGoal, container: goalsContainer, type: 'goal' });
+    if (lastPenalty) candidates.push({ item: lastPenalty, container: penaltiesContainer, type: 'penalty' });
+    if (lastShot) candidates.push({ item: lastShot, container: shotsContainer, type: 'shot on goal' });
     
-    if (!itemToDelete) {
+    if (candidates.length === 0) {
       return res.status(404).json({ error: 'No actions found to undo for this game' });
     }
+    
+    // Find the most recent action by timestamp
+    const mostRecent = candidates.reduce((latest, current) => {
+      const currentTime = new Date(current.item.timeRecorded || current.item.recordedAt);
+      const latestTime = new Date(latest.item.timeRecorded || latest.item.recordedAt);
+      return currentTime > latestTime ? current : latest;
+    });
+    
+    itemToDelete = mostRecent.item;
+    containerToUse = mostRecent.container;
+    actionType = mostRecent.type;
     
     // Delete the most recent action
     await containerToUse.item(itemToDelete.id).delete();
@@ -3114,7 +3114,7 @@ app.post('/api/undo-last-action', async (req, res) => {
       deletedAction: {
         type: actionType,
         id: itemToDelete.id,
-        timeRecorded: itemToDelete.timeRecorded
+        timeRecorded: itemToDelete.timeRecorded || itemToDelete.recordedAt
       }
     });
   } catch (error) {

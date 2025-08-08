@@ -294,23 +294,23 @@ export default function InGameMenu() {
             </div>
             <button
               onClick={() => navigate('/roster')}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center h-full"
             >
               Rosters
             </button>
 
-            {/* Row 3: Admin and Undo */}
-            <button
-              onClick={() => navigate('/admin')}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
-            >
-              Admin
-            </button>
+            {/* Row 3: Undo and Admin (swapped) */}
             <button
               onClick={handleUndo}
               className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
               Undo
+            </button>
+            <button
+              onClick={() => navigate('/admin')}
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+            >
+              Admin
             </button>
 
             {/* Row 4: Cancel and Submit */}

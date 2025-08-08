@@ -3213,7 +3213,7 @@ app.post('/api/tts/dual-line', async (req, res) => {
         console.log(`📊 Audio stats: ${audioResult.size} bytes, settings: ${JSON.stringify(audioResult.settings)}`);
         res.json({
           success: true,
-          audioPath: audioResult.audioPath,
+          audioPath: audioResult.filename, // return filename instead of undefined audioPath
           speaker: speaker,
           voice: selectedVoice,
           size: audioResult.size,

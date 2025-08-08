@@ -1,4 +1,4 @@
-import React, { useState, useContext, useRef } from 'react';
+import React, { useState, useContext, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { GameContext } from '../contexts/GameContext.jsx';
 
@@ -23,6 +23,14 @@ export default function AnnouncerControls({ gameId }) {
   const [selectedVoice, setSelectedVoice] = useState(() => {
     return localStorage.getItem('selectedVoice') || 'female';
   });
+
+  // Force female announcer as default on first load
+  useEffect(() => {
+    if (!localStorage.getItem('selectedVoice')) {
+      localStorage.setItem('selectedVoice', 'female');
+      setSelectedVoice('female');
+    }
+  }, []);
   
   // Audio progress state
   const [audioProgress, setAudioProgress] = useState({ 
@@ -201,16 +209,26 @@ export default function AnnouncerControls({ gameId }) {
         
         // Generate TTS for this line using backend with Studio voices
         try {
-          const response = await axios.post('/api/tts/dual-line', {
+          const ttsUrl = import.meta.env.DEV
+            ? '/api/tts/dual-line'
+            : `${import.meta.env.VITE_API_BASE_URL}/api/tts/dual-line`;
+
+          const response = await axios.post(ttsUrl, {
             text: line.text,
             speaker: line.speaker,
             gameId: gameId
           });
           
           if (response.data.success && response.data.audioPath) {
+            // prepend /api/audio/ to filename
+            const audioFile = response.data.audioPath;
+            const audioUrl = import.meta.env.DEV
+              ? `/api/audio/${audioFile}`
+              : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${audioFile}`;
+
             // Play the generated audio
             await new Promise((resolve, reject) => {
-              const audio = new Audio(response.data.audioPath);
+              const audio = new Audio(audioUrl);
               
               audio.oncanplaythrough = () => {
                 audio.play().then(() => {
@@ -795,7 +813,7 @@ export default function AnnouncerControls({ gameId }) {
             <div className="mt-2">
               <button
                 onClick={stopAudio}
-                className="w-full px-2 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm font-medium transition-colors"
+                className="w-full px-2 py-2 bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white rounded text-sm font-medium transition-colors"
                 title="Stop Audio"
               >
                 Stop

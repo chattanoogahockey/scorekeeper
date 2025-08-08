@@ -37,7 +37,7 @@ export default function RosterAttendance() {
         <div className="text-center">
           <button
             onClick={() => navigate('/')}
-            className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+            className="px-4 py-2 bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white rounded transition-colors"
           >
             Back to Game Selection
           </button>

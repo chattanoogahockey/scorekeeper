@@ -680,7 +680,7 @@ Shot Type: ${formData.shotType}`;
         {/* Back Button */}
         <button
           onClick={() => navigate('/ingame')}
-          className="w-full mt-3 bg-gray-600 text-white py-2 rounded-lg font-medium hover:bg-gray-700 transition-colors text-sm"
+          className="w-full mt-3 bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white py-2 rounded-lg font-medium transition-colors text-sm"
         >
           Back to In Game Menu
         </button>

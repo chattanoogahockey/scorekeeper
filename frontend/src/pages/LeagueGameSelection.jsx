@@ -45,17 +45,23 @@ export default function LeagueGameSelection() {
 
         console.log(`📊 SUCCESS: Received ${res.data.length} games from API (Request ID: ${requestId}):`, res.data);
 
-        // Filter games - Gold division only, not completed/submitted, with valid teams
+        // Fetch submitted games to exclude them
+        const submittedRes = await axios.get('/api/games/submitted');
+        const submittedIds = new Set(submittedRes.data.map(g => g.id || g.gameId));
+        console.log(`📋 Found ${submittedIds.size} submitted games to exclude:`, Array.from(submittedIds));
+
+        // Filter games - Gold division only, not submitted, with valid teams
         const availableGames = res.data.filter(game => {
-          const isGoldDivision = game.division?.toLowerCase() === 'gold';
-          const isNotCompleted = game.status !== 'completed' && game.status !== 'submitted';
+          const id = game.id || game.gameId;
+          const isGold = game.division?.toLowerCase() === 'gold';
           const hasValidTeams = game.homeTeam && game.awayTeam && 
                                game.homeTeam.trim() !== '' && game.awayTeam.trim() !== '' &&
                                game.homeTeam !== 'vs' && game.awayTeam !== 'vs';
+          const notSubmitted = !submittedIds.has(id);
           
-          const isValid = isGoldDivision && isNotCompleted && hasValidTeams;
+          const isValid = isGold && hasValidTeams && notSubmitted;
           
-          console.log(`Game ${game.awayTeam} vs ${game.homeTeam}: division=${game.division}, valid=${isValid}, status=${game.status}`);
+          console.log(`Game ${game.awayTeam} vs ${game.homeTeam}: division=${game.division}, valid=${isValid}, submitted=${submittedIds.has(id)}, status=${game.status}`);
           
           return isValid;
         });
@@ -276,7 +282,7 @@ export default function LeagueGameSelection() {
           <div className="flex items-center">
             <button
               onClick={() => navigate('/')}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg mr-4 transition-all duration-200"
+              className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-2 px-4 rounded-lg mr-4 transition-all duration-200"
             >
               ← Back to Menu
             </button>

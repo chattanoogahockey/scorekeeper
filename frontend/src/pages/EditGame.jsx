@@ -204,7 +204,7 @@ export default function EditGame() {
             <div className="space-x-2">
               <button
                 onClick={() => navigate('/admin')}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors"
+                className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white px-4 py-2 rounded-lg transition-colors"
               >
                 Back to Admin
               </button>

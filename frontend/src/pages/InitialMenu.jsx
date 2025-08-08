@@ -69,7 +69,7 @@ export default function InitialMenu() {
           
           <button
             onClick={handleAdminClick}
-            className="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-4 px-8 rounded-lg text-xl shadow-lg transition-colors"
+            className="w-full bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-4 px-8 rounded-lg text-xl shadow-lg transition-colors"
           >
             Admin
           </button>
@@ -109,7 +109,7 @@ export default function InitialMenu() {
                   setAdminPassword('');
                   setLoginError('');
                 }}
-                className="flex-1 bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+                className="flex-1 bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-3 px-4 rounded-lg transition-colors"
               >
                 Cancel
               </button>

@@ -264,7 +264,7 @@ export default function LeagueGameSelection() {
               rosters: processedRosters,
               bypassedRoster: true 
             });
-            navigate('/in-game', { 
+            navigate('/ingame', { 
               state: { 
                 game: game,
                 rosters: processedRosters,
@@ -315,9 +315,40 @@ export default function LeagueGameSelection() {
       }
       
       // If we reach here, this is either a new game OR user chose to start over
-      console.log('� Starting new game or fresh start - proceeding to roster attendance');
+      console.log('🆕 Starting new game or fresh start - proceeding to roster attendance');
       setSelectedGame(game);
       setSelectedLeague(game.division);
+
+      // Preload rosters so the roster page renders immediately
+      try {
+        const rostersResponse = await axios.get('/api/rosters', {
+          params: { gameId },
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        const existingRosters = rostersResponse.data || [];
+        const processedRosters = existingRosters.map(roster => ({
+          teamName: roster.teamName,
+          teamId: roster.teamName,
+          players: roster.players.map(player => ({
+            name: player.name,
+            firstName: player.firstName || player.name.split(' ')[0],
+            lastName: player.lastName || player.name.split(' ').slice(1).join(' '),
+            jerseyNumber: player.jerseyNumber,
+            position: player.position || 'Player'
+          }))
+        }));
+        setRosters(processedRosters);
+        try {
+          sessionStorage.setItem('selectedRosters', JSON.stringify(processedRosters));
+        } catch {}
+      } catch (e) {
+        console.warn('⚠️ Failed to preload rosters, roster page will handle display', e);
+      }
+
       navigate('/roster');
       
     } catch (error) {

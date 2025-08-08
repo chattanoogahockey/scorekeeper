@@ -98,8 +98,8 @@ export default function RosterAttendance() {
       
       // Navigate to in-game menu after short delay
       setTimeout(() => {
-        navigate('/ingame');
-      }, 1000);
+        navigate('/ingame', { replace: true });
+      }, 600);
       
     } catch (err) {
       console.error('❌ Failed to submit attendance:', err);

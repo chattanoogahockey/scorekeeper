@@ -143,7 +143,7 @@ export default function InGameMenu() {
   // Only redirect after initialization and if still no game data
   if (isInitialized && !currentGame) {
     console.log('🚨 No game data found after initialization, redirecting to home');
-    navigate('/');
+  navigate('/');
     return null;
   }
 

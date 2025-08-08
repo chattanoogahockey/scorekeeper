@@ -186,16 +186,26 @@ app.get('/api/version', (req, res) => {
 
     // Prefer explicit deployment timestamp if provided (set by workflow or admin endpoint)
     let deploymentTime;
+    let buildTimeSource = 'fallback';
+    
     if (process.env.DEPLOYMENT_TIMESTAMP) {
-      deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
-      console.log('Using deployment timestamp from environment:', process.env.DEPLOYMENT_TIMESTAMP);
+      try {
+        deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
+        buildTimeSource = 'environment';
+        console.log('Using deployment timestamp from environment:', process.env.DEPLOYMENT_TIMESTAMP);
+      } catch (parseError) {
+        console.warn('Invalid deployment timestamp format:', process.env.DEPLOYMENT_TIMESTAMP);
+        deploymentTime = new Date();
+        buildTimeSource = 'fallback-error';
+      }
     } else {
       // Fallback to current time (local dev or first boot before workflow update)
       deploymentTime = new Date();
+      buildTimeSource = 'current-time';
       console.log('Using current time for local build');
     }
     
-    // Format the time in Eastern timezone
+    // Format the time in Eastern timezone with explicit formatting
     const buildTime = deploymentTime.toLocaleString("en-US", {
       timeZone: "America/New_York",
       year: 'numeric',
@@ -207,7 +217,7 @@ app.get('/api/version', (req, res) => {
       timeZoneName: 'short'
     });
     
-    console.log('Final backend buildTime:', buildTime);
+    console.log(`Final backend buildTime: ${buildTime} (source: ${buildTimeSource})`);
     console.log('🔄 Version endpoint called at:', new Date().toISOString());
     console.log('⚡ Server uptime:', process.uptime(), 'seconds');
     
@@ -245,9 +255,16 @@ app.post('/api/admin/update-deployment-time', (req, res) => {
       return res.status(400).json({ error: 'Missing deploymentTimestamp' });
     }
     
-    // Verify this is a valid GitHub deployment by checking SHA
-    if (githubSha && process.env.BUILD_SOURCEVERSION && githubSha !== process.env.BUILD_SOURCEVERSION) {
-      console.warn('⚠️ GitHub SHA mismatch:', { provided: githubSha, expected: process.env.BUILD_SOURCEVERSION });
+    // Verify this is a valid GitHub deployment by checking SHA (lenient check)
+    if (githubSha && process.env.BUILD_SOURCEVERSION) {
+      if (githubSha !== process.env.BUILD_SOURCEVERSION) {
+        console.log('ℹ️ GitHub SHA differs (common during concurrent deployments):', { 
+          provided: githubSha.substring(0, 8), 
+          expected: process.env.BUILD_SOURCEVERSION.substring(0, 8) 
+        });
+      } else {
+        console.log('✅ GitHub SHA matches deployment');
+      }
     }
     
     // Update the environment variable for this process instance

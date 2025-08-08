@@ -10,29 +10,41 @@ const VersionInfo = () => {
   useEffect(() => {
     const fetchVersionInfo = async () => {
       try {
-        // Try backend API first
-        const response = await axios.get('/api/version');
+        // Try backend API first with cache busting
+        const response = await axios.get('/api/version', {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          },
+          params: {
+            t: Date.now() // Cache busting
+          }
+        });
+        
+        console.log('Version info received:', response.data);
         setVersionInfo(response.data);
       } catch (error) {
         console.error('Error fetching version from API:', error);
         
         // Fallback to static version file
         try {
-          const staticResponse = await fetch('/version.json');
+          const staticResponse = await fetch(`/version.json?t=${Date.now()}`);
           if (staticResponse.ok) {
             const staticData = await staticResponse.json();
+            console.log('Static version info:', staticData);
             setVersionInfo(staticData);
           } else {
             throw new Error('Static version file not found');
           }
         } catch (staticError) {
           console.error('Error fetching static version:', staticError);
-          // Final fallback
+          // Final fallback - but preserve existing buildTime format
           setVersionInfo({
             version: '1.0.0',
             commit: 'unknown',
             branch: 'unknown',
-            buildTime: new Date().toISOString()
+            buildTime: 'Unknown build time'
           });
         }
       }

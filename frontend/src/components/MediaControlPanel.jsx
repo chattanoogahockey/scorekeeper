@@ -315,40 +315,57 @@ export default function MediaControlPanel({ gameId }) {
       await requestWakeLock();
       
       const apiUrl = import.meta.env.DEV 
-        ? '/api/tts/goal' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/tts/goal`;
+        ? '/api/goals/announce-last' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/goals/announce-last`;
       
       const response = await axios.post(apiUrl, {
         gameId: currentGameId,
-        speaker: selectedVoice
+        voiceGender: selectedVoice,
+        announcerMode: selectedVoice === 'dual' ? 'dual' : 'single'
       });
       
-      if (response.data && response.data.audioUrl) {
-        const audio = new Audio(response.data.audioUrl);
-        announcerAudioRef.current = audio;
-        
-        audio.addEventListener('loadedmetadata', () => {
-          setAnnouncerAudioProgress({ 
-            current: 0, 
-            duration: audio.duration, 
-            isPlaying: true 
+      if (response.data && response.data.success) {
+        // Handle dual announcer mode
+        if (response.data.conversation) {
+          setMessage('Dual announcer conversation generated');
+          // Dual announcer conversation is handled by the backend TTS
+        } 
+        // Handle single announcer mode with audio
+        else if (response.data.announcement && response.data.announcement.audioPath) {
+          const audioUrl = import.meta.env.DEV 
+            ? `http://localhost:3001/audio/${response.data.announcement.audioPath}`
+            : `${import.meta.env.VITE_API_BASE_URL}/audio/${response.data.announcement.audioPath}`;
+            
+          const audio = new Audio(audioUrl);
+          announcerAudioRef.current = audio;
+          
+          audio.addEventListener('loadedmetadata', () => {
+            setAnnouncerAudioProgress({ 
+              current: 0, 
+              duration: audio.duration, 
+              isPlaying: true 
+            });
           });
-        });
-        
-        audio.addEventListener('timeupdate', () => {
-          setAnnouncerAudioProgress(prev => ({
-            ...prev,
-            current: audio.currentTime
-          }));
-        });
-        
-        audio.addEventListener('ended', () => {
-          setAnnouncerAudioProgress({ current: 0, duration: 0, isPlaying: false });
-          releaseWakeLock();
-        });
-        
-        await audio.play();
-        setMessage(response.data.text || 'Goal announcement played');
+          
+          audio.addEventListener('timeupdate', () => {
+            setAnnouncerAudioProgress(prev => ({
+              ...prev,
+              current: audio.currentTime
+            }));
+          });
+          
+          audio.addEventListener('ended', () => {
+            setAnnouncerAudioProgress({ current: 0, duration: 0, isPlaying: false });
+            releaseWakeLock();
+          });
+          
+          await audio.play();
+          setMessage(response.data.announcement.text || 'Goal announcement played');
+        }
+        // Handle scoreless game
+        else if (response.data.scoreless) {
+          setMessage('No goals yet - scoreless commentary generated');
+        }
       }
     } catch (error) {
       console.error('Error announcing goal:', error);
@@ -372,16 +389,27 @@ export default function MediaControlPanel({ gameId }) {
       await requestWakeLock();
       
       const apiUrl = import.meta.env.DEV 
-        ? '/api/tts/penalty' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/tts/penalty`;
+        ? '/api/penalties/announce-last' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/penalties/announce-last`;
       
       const response = await axios.post(apiUrl, {
         gameId: currentGameId,
-        speaker: selectedVoice
+        voiceGender: selectedVoice,
+        announcerMode: selectedVoice === 'dual' ? 'dual' : 'single'
       });
       
-      if (response.data && response.data.audioUrl) {
-        const audio = new Audio(response.data.audioUrl);
+      // Handle dual announcer mode
+      if (selectedVoice === 'dual' && response.data.conversation) {
+        displayDualConversation(response.data.conversation);
+        setMessage('Dual penalty announcement played');
+      } 
+      // Handle single announcer mode  
+      else if (response.data.announcement && response.data.announcement.audioPath) {
+        const audioUrl = import.meta.env.DEV 
+          ? `http://localhost:3001/audio/${response.data.announcement.audioPath.split('/').pop()}`
+          : `${import.meta.env.VITE_API_BASE_URL}/audio/${response.data.announcement.audioPath.split('/').pop()}`;
+        
+        const audio = new Audio(audioUrl);
         announcerAudioRef.current = audio;
         
         audio.addEventListener('loadedmetadata', () => {
@@ -405,7 +433,9 @@ export default function MediaControlPanel({ gameId }) {
         });
         
         await audio.play();
-        setMessage(response.data.text || 'Penalty announcement played');
+        setMessage(response.data.announcement.text || 'Penalty announcement played');
+      } else {
+        setMessage('No penalty data available to announce');
       }
     } catch (error) {
       console.error('Error announcing penalty:', error);
@@ -429,16 +459,27 @@ export default function MediaControlPanel({ gameId }) {
       await requestWakeLock();
       
       const apiUrl = import.meta.env.DEV 
-        ? '/api/tts/random' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/tts/random`;
+        ? '/api/randomCommentary' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/randomCommentary`;
       
       const response = await axios.post(apiUrl, {
         gameId: currentGameId,
-        speaker: selectedVoice
+        voiceGender: selectedVoice,
+        announcerMode: selectedVoice === 'dual' ? 'dual' : 'single'
       });
       
-      if (response.data && response.data.audioUrl) {
-        const audio = new Audio(response.data.audioUrl);
+      // Handle dual announcer mode  
+      if (selectedVoice === 'dual' && response.data.conversation) {
+        displayDualConversation(response.data.conversation);
+        setMessage('Dual random commentary played');
+      }
+      // Handle single announcer mode
+      else if (response.data.audioPath) {
+        const audioUrl = import.meta.env.DEV 
+          ? `http://localhost:3001/audio/${response.data.audioPath.split('/').pop()}`
+          : `${import.meta.env.VITE_API_BASE_URL}/audio/${response.data.audioPath.split('/').pop()}`;
+        
+        const audio = new Audio(audioUrl);
         announcerAudioRef.current = audio;
         
         audio.addEventListener('loadedmetadata', () => {
@@ -462,7 +503,9 @@ export default function MediaControlPanel({ gameId }) {
         });
         
         await audio.play();
-        setMessage(response.data.text || 'Random announcement played');
+        setMessage(response.data.text || 'Random commentary played');
+      } else {
+        setMessage('Random commentary generated');
       }
     } catch (error) {
       console.error('Error announcing random message:', error);

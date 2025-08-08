@@ -3134,29 +3134,17 @@ app.post('/api/tts/dual-line', async (req, res) => {
     
     console.log(`🎤 Generating dual announcer TTS for ${speaker}: "${text.substring(0, 50)}..."`);
     
-    // Get current voice configuration from database
-    const voiceConfigQuery = `
-      SELECT * FROM c 
-      WHERE c.type = 'voice-config' 
-      AND c.id = 'default-config'
-    `;
+    // Get voice configuration using the proper voice config helper
+    const { getVoiceConfig } = await import('./voiceConfig.js');
+    const voiceConfig = await getVoiceConfig();
     
-    const penaltiesContainer = await getPenaltiesContainer();
-    const voiceConfigResult = await penaltiesContainer
-      .items.query(voiceConfigQuery)
-      .fetchAll();
+    const maleVoice = voiceConfig.maleVoice || 'en-US-Studio-Q';
+    const femaleVoice = voiceConfig.femaleVoice || 'en-US-Studio-O';
     
-    let maleVoice = 'en-US-Studio-Q';
-    let femaleVoice = 'en-US-Studio-O';
-    
-    if (voiceConfigResult.resources.length > 0) {
-      const config = voiceConfigResult.resources[0];
-      maleVoice = config.maleVoice || 'en-US-Studio-Q';
-      femaleVoice = config.femaleVoice || 'en-US-Studio-O';
-    }
-    
-    // Select voice based on speaker
+    // Select studio voice based on speaker
     const selectedVoice = speaker === 'male' ? maleVoice : femaleVoice;
+    
+    console.log(`🎙️ Using ${speaker} studio voice: ${selectedVoice}`);
     
     // Temporarily set the voice in TTS service for this request
     const originalVoice = ttsService.selectedVoice;

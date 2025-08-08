@@ -281,63 +281,70 @@ export default function InGameMenu() {
           </div>
         </div>
 
-        {/* Main Action Buttons */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <button
-            onClick={handleGoalClick}
-            className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-4 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
-          >
-            Goal
-          </button>
+        {/* Game Controls Panel */}
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 mb-4">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 mb-3">
+            <h2 className="text-md font-bold text-blue-800 text-center">Game Controls</h2>
+          </div>
 
-          <button
-            onClick={handlePenaltyClick}
-            className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-4 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
-          >
-            Penalty
-          </button>
-        </div>
+          {/* Main Action Buttons */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button
+              onClick={handleGoalClick}
+              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+            >
+              🥅 Goal
+            </button>
 
-        {/* OT/Shootout Button */}
-        <div className="mb-4">
-          <OTShootoutButton onGameCompleted={handleGameCompleted} />
-        </div>
+            <button
+              onClick={handlePenaltyClick}
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+            >
+              🚨 Penalty
+            </button>
+          </div>
 
-        {/* Utility Buttons */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <button
-            onClick={() => navigate('/roster')}
-            className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
-          >
-            📋 Rosters
-          </button>
-          <button
-            onClick={() => navigate('/admin')}
-            className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
-          >
-            ⚙️ Admin
-          </button>
-        </div>
+          {/* OT/Shootout Button */}
+          <div className="mb-3">
+            <OTShootoutButton onGameCompleted={handleGameCompleted} />
+          </div>
 
-        {/* Submit and Cancel Game Buttons */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
-          <button
-            onClick={handleCancelGame}
-            className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
-          >
-            Cancel Game
-          </button>
-          <button
-            onClick={handleSubmitGame}
-            disabled={isSubmittingGame}
-            className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg transition-all duration-200"
-          >
-            {isSubmittingGame ? 'Submitting...' : 'Submit Game'}
-          </button>
+          {/* Utility Buttons */}
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button
+              onClick={() => navigate('/roster')}
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+            >
+              📋 Rosters
+            </button>
+            <button
+              onClick={() => navigate('/admin')}
+              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+            >
+              ⚙️ Admin
+            </button>
+          </div>
+
+          {/* Submit and Cancel Game Buttons */}
+          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
+            <button
+              onClick={handleCancelGame}
+              className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200"
+            >
+              Cancel Game
+            </button>
+            <button
+              onClick={handleSubmitGame}
+              disabled={isSubmittingGame}
+              className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200"
+            >
+              {isSubmittingGame ? 'Submitting...' : '✅ Submit Game'}
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 text-center mt-2">
+            Submit finalizes data • Cancel deletes all game data
+          </p>
         </div>
-        <p className="text-xs text-gray-500 text-center mb-4">
-          Submit finalizes data • Cancel deletes all game data
-        </p>
 
         {/* Integrated Dashboard Components */}
         <div className="space-y-4">

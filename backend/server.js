@@ -2679,9 +2679,11 @@ app.get('/api/player-stats', async (req, res) => {
     
     // If refresh is requested, recalculate stats
     if (refresh === 'true') {
-      console.log('Refreshing player stats...');
-      const { default: calculateStats } = await import('./calculateStats.js');
-      await calculateStats();
+      console.warn('Player stats refresh requested but not implemented in this deployment.');
+      return res.status(501).json({
+        error: 'Player stats refresh is disabled',
+        message: 'The refresh operation is not available in this deployment.'
+      });
     }
     
     let querySpec;

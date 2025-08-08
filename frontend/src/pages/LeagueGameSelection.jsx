@@ -89,7 +89,8 @@ export default function LeagueGameSelection() {
       abortController.abort();
       clearInterval(pollInterval);
     };
-  }, [reset]); // Include reset in dependency array
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount only
 
   // Real-time clock update
   useEffect(() => {

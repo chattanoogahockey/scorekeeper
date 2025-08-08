@@ -301,7 +301,12 @@ export default function LeagueGameSelection() {
             
             // Reset shots on goal
             if (totalShots > 0) {
-              await axios.delete(shotsUrl);
+              // Get the shots record to find its ID
+              const shotsRecord = shots.id ? shots : { id: `shots_${gameId}` };
+              const shotDeleteUrl = import.meta.env.DEV 
+                ? `/api/shots-on-goal/${shotsRecord.id}` 
+                : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal/${shotsRecord.id}`;
+              await axios.delete(shotDeleteUrl, { params: { gameId } });
             }
             
             console.log('✅ Game data cleared successfully');

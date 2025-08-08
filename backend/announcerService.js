@@ -476,7 +476,7 @@ FORMAT: Return ONLY a JSON array with 5 lines alternating male-female-male-femal
           content: prompt
         }
       ],
-      max_tokens: 400,
+      max_tokens: 300, // Reduced for faster responses
       temperature: 0.9,
     });
 
@@ -576,7 +576,7 @@ FORMAT: Return ONLY a JSON array with 5 lines alternating male-female-male-femal
           content: prompt
         }
       ],
-      max_tokens: 350,
+      max_tokens: 300, // Reduced for faster responses
       temperature: 0.8,
     });
 
@@ -646,7 +646,7 @@ Return just the opening line text, no JSON or formatting.`;
           content: starterPrompt
         }
       ],
-      max_tokens: 150,
+      max_tokens: 100, // Reduced for faster responses
       temperature: 0.9,
     });
 
@@ -670,10 +670,13 @@ FEMALE ANNOUNCER (Linda Cohn style):
 - Brings up player backgrounds and team dynamics
 
 CONVERSATION DYNAMICS:
-- Sound like seasoned broadcast partners
-- Natural conversational flow
+- Sound like seasoned broadcast partners who enjoy working together
+- Natural conversational flow with back-and-forth energy
+- React to each other's points, agree/disagree naturally
+- Show personality and chemistry between announcers
 - Cover topics like strategy, player performance, team dynamics
-- Keep it concise but engaging
+- Make it engaging and unpredictable - surprise each other
+- Keep it concise but entertaining
 
 FORMAT: Return ONLY a JSON array with exactly 5 lines alternating male-female-male-female-male`;
 
@@ -689,7 +692,7 @@ FORMAT: Return ONLY a JSON array with exactly 5 lines alternating male-female-ma
           content: conversationPrompt
         }
       ],
-      max_tokens: 400,
+      max_tokens: 350, // Reduced for faster responses
       temperature: 0.9,
     });
 

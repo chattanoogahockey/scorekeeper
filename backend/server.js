@@ -2988,6 +2988,141 @@ app.get('/api/penalties/game/:gameId', async (req, res) => {
   }
 });
 
+// Shots on Goal API endpoints
+app.post('/api/shots-on-goal', async (req, res) => {
+  console.log('🥅 Recording shot on goal...');
+  const { gameId, team } = req.body;
+  
+  try {
+    // Create shots on goal container reference
+    const container = await getGoalsContainer(); // We'll store in goals container for now
+    
+    const shotOnGoal = {
+      id: `shot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      gameId: gameId,
+      team: team,
+      type: 'shot-on-goal',
+      timeRecorded: new Date().toISOString()
+    };
+    
+    await container.items.create(shotOnGoal);
+    
+    console.log(`✅ Shot on goal recorded for ${team} in game ${gameId}`);
+    res.status(201).json(shotOnGoal);
+  } catch (error) {
+    console.error('❌ Error recording shot on goal:', error);
+    handleError(res, error);
+  }
+});
+
+app.get('/api/shots-on-goal/game/:gameId', async (req, res) => {
+  const { gameId } = req.params;
+  
+  try {
+    const container = await getGoalsContainer();
+    
+    const query = {
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId AND c.type = @type ORDER BY c.timeRecorded ASC',
+      parameters: [
+        { name: '@gameId', value: gameId },
+        { name: '@type', value: 'shot-on-goal' }
+      ]
+    };
+    
+    const { resources: shots } = await container.items.query(query).fetchAll();
+    
+    // Count shots by team
+    const shotCounts = shots.reduce((acc, shot) => {
+      acc[shot.team] = (acc[shot.team] || 0) + 1;
+      return acc;
+    }, { home: 0, away: 0 });
+    
+    console.log(`✅ Found ${shots.length} shots on goal for game ${gameId}`);
+    res.status(200).json(shotCounts);
+  } catch (error) {
+    console.error('❌ Error fetching shots on goal for game:', error);
+    handleError(res, error);
+  }
+});
+
+// Undo Last Action API endpoint
+app.post('/api/undo-last-action', async (req, res) => {
+  console.log('↩️ Undoing last action...');
+  const { gameId } = req.body;
+  
+  try {
+    const goalsContainer = getGoalsContainer();
+    const penaltiesContainer = getPenaltiesContainer();
+    
+    // Find the most recent goal or penalty for this game
+    const goalsQuery = {
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId AND (c.type IS NOT DEFINED OR c.type != @shotType) ORDER BY c.timeRecorded DESC',
+      parameters: [
+        { name: '@gameId', value: gameId },
+        { name: '@shotType', value: 'shot-on-goal' }
+      ]
+    };
+    
+    const penaltiesQuery = {
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.timeRecorded DESC',
+      parameters: [{ name: '@gameId', value: gameId }]
+    };
+    
+    const [goalsResult, penaltiesResult] = await Promise.all([
+      goalsContainer.items.query(goalsQuery).fetchAll(),
+      penaltiesContainer.items.query(penaltiesQuery).fetchAll()
+    ]);
+    
+    const lastGoal = goalsResult.resources[0];
+    const lastPenalty = penaltiesResult.resources[0];
+    
+    let itemToDelete = null;
+    let containerToUse = null;
+    let actionType = null;
+    
+    // Determine which action was most recent
+    if (lastGoal && lastPenalty) {
+      if (new Date(lastGoal.timeRecorded) > new Date(lastPenalty.timeRecorded)) {
+        itemToDelete = lastGoal;
+        containerToUse = goalsContainer;
+        actionType = 'goal';
+      } else {
+        itemToDelete = lastPenalty;
+        containerToUse = penaltiesContainer;
+        actionType = 'penalty';
+      }
+    } else if (lastGoal) {
+      itemToDelete = lastGoal;
+      containerToUse = goalsContainer;
+      actionType = 'goal';
+    } else if (lastPenalty) {
+      itemToDelete = lastPenalty;
+      containerToUse = penaltiesContainer;
+      actionType = 'penalty';
+    }
+    
+    if (!itemToDelete) {
+      return res.status(404).json({ error: 'No actions found to undo for this game' });
+    }
+    
+    // Delete the most recent action
+    await containerToUse.item(itemToDelete.id).delete();
+    
+    console.log(`✅ Undid last ${actionType} action for game ${gameId}`);
+    res.status(200).json({ 
+      message: `Successfully undid last ${actionType}`,
+      deletedAction: {
+        type: actionType,
+        id: itemToDelete.id,
+        timeRecorded: itemToDelete.timeRecorded
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error undoing last action:', error);
+    handleError(res, error);
+  }
+});
+
 // Rink Reports API endpoint
 app.get('/api/rink-reports', async (req, res) => {
   console.log('📰 Fetching rink reports...');

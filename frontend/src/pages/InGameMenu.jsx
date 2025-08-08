@@ -18,172 +18,83 @@ export default function InGameMenu() {
   const [eventsError, setEventsError] = useState(null);
   const [loadingDescriptions, setLoadingDescriptions] = useState(new Set());
   
-  // State for current game score
+  // State for current game score and shots on goal
   const [currentScore, setCurrentScore] = useState({ away: 0, home: 0 });
+  const [shotsOnGoal, setShotsOnGoal] = useState({ away: 0, home: 0 });
   const [isSubmittingGame, setIsSubmittingGame] = useState(false);
+
+  // Function to refresh data (can be called from returning navigation)
+  const refreshGameData = async () => {
+    if (!selectedGame) return;
+    
+    try {
+      // Fetch penalties, goals, and shots on goal
+      const penaltiesUrl = import.meta.env.DEV 
+        ? '/api/penalties' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/penalties`;
+      const goalsUrl = import.meta.env.DEV 
+        ? '/api/goals' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/goals`;
+      const shotsUrl = import.meta.env.DEV 
+        ? `/api/shots-on-goal/game/${selectedGame.id || selectedGame.gameId}` 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal/game/${selectedGame.id || selectedGame.gameId}`;
+        
+      const [penaltiesRes, goalsRes, shotsRes] = await Promise.all([
+        axios.get(penaltiesUrl, { params: { gameId: selectedGame.id || selectedGame.gameId } }),
+        axios.get(goalsUrl, { params: { gameId: selectedGame.id || selectedGame.gameId } }),
+        axios.get(shotsUrl)
+      ]);
+      
+      const penalties = (penaltiesRes.data || []).map(p => ({ ...p, eventType: 'penalty' }));
+      const goals = (goalsRes.data || []).map(g => ({ ...g, eventType: 'goal' }));
+      
+      // Combine and sort by recorded time
+      const allEvents = [...penalties, ...goals].sort((a, b) => 
+        new Date(b.recordedAt) - new Date(a.recordedAt)
+      );
+      
+      setEvents(allEvents);
+      setEventsError(null);
+      
+      // Calculate current score
+      const awayScore = goals.filter(g => g.scoringTeam === (selectedGame.awayTeam || selectedGame.awayTeamId)).length;
+      const homeScore = goals.filter(g => g.scoringTeam === (selectedGame.homeTeam || selectedGame.homeTeamId)).length;
+      setCurrentScore({ away: awayScore, home: homeScore });
+      
+      // Set shots on goal
+      setShotsOnGoal(shotsRes.data || { home: 0, away: 0 });
+      try {
+        const shotsUrl = import.meta.env.DEV 
+          ? '/api/shots-on-goal' 
+          : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal`;
+        const shotsRes = await axios.get(shotsUrl, { 
+          params: { gameId: selectedGame.id || selectedGame.gameId } 
+        });
+        const shots = shotsRes.data || [];
+        
+        const awayShots = shots.filter(s => s.teamName === (selectedGame.awayTeam || selectedGame.awayTeamId)).length;
+        const homeShots = shots.filter(s => s.teamName === (selectedGame.homeTeam || selectedGame.homeTeamId)).length;
+        setShotsOnGoal({ away: awayShots, home: homeShots });
+      } catch (shotsErr) {
+        console.log('Shots on goal endpoint not available yet');
+        setShotsOnGoal({ away: 0, home: 0 });
+      }
+      
+    } catch (err) {
+      console.error('Failed to refresh game data', err);
+      setEventsError('Error loading events');
+    }
+  };
 
   // Event-driven data fetching
   useEffect(() => {
     if (!selectedGame) return;
     
-    const fetchEvents = async () => {
-      try {
-        // Fetch both penalties and goals
-        const penaltiesUrl = import.meta.env.DEV 
-          ? '/api/penalties' 
-          : `${import.meta.env.VITE_API_BASE_URL}/api/penalties`;
-        const goalsUrl = import.meta.env.DEV 
-          ? '/api/goals' 
-          : `${import.meta.env.VITE_API_BASE_URL}/api/goals`;
-          
-        const [penaltiesRes, goalsRes] = await Promise.all([
-          axios.get(penaltiesUrl, { params: { gameId: selectedGame.id || selectedGame.gameId } }),
-          axios.get(goalsUrl, { params: { gameId: selectedGame.id || selectedGame.gameId } })
-        ]);
-        
-        const penalties = (penaltiesRes.data || []).map(p => ({ ...p, eventType: 'penalty' }));
-        const goals = (goalsRes.data || []).map(g => ({ ...g, eventType: 'goal' }));
-        
-        // Combine and sort by recorded time
-        const allEvents = [...penalties, ...goals].sort((a, b) => 
-          new Date(b.recordedAt) - new Date(a.recordedAt)
-        );
-        
-        setEvents(allEvents);
-        setEventsError(null);
-      } catch (err) {
-        console.error('Failed to fetch events', err);
-        setEventsError('Error loading events');
-      }
-    };
+    // Initial fetch on component mount only
+    refreshGameData();
     
-    const fetchScore = async () => {
-      try {
-        const apiUrl = import.meta.env.DEV 
-          ? '/api/goals' 
-          : `${import.meta.env.VITE_API_BASE_URL}/api/goals`;
-        const res = await axios.get(apiUrl, { 
-          params: { gameId: selectedGame.id || selectedGame.gameId } 
-        });
-        const goals = res.data || [];
-        
-        // Calculate current score
-        const awayScore = goals.filter(g => g.scoringTeam === (selectedGame.awayTeam || selectedGame.awayTeamId)).length;
-        const homeScore = goals.filter(g => g.scoringTeam === (selectedGame.homeTeam || selectedGame.homeTeamId)).length;
-        setCurrentScore({ away: awayScore, home: homeScore });
-      } catch (err) {
-        console.error('Failed to fetch score', err);
-      }
-    };
-    
-    // Initial fetch on component mount
-    fetchEvents();
-    fetchScore();
-    
-    // Add event listener for when the page becomes visible (user returns from other routes)
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        fetchEvents();
-        fetchScore();
-      }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    
-    // Generate AI descriptions for events
-    const generateEventDescriptions = async (eventsData) => {
-      const eventsWithDescriptions = [...eventsData];
-      
-      for (let i = 0; i < eventsWithDescriptions.length; i++) {
-        const event = eventsWithDescriptions[i];
-        
-        // Skip if already has AI description or currently loading
-        if (event.aiDescription || loadingDescriptions.has(`${event.id}-${event.eventType}`)) {
-          continue;
-        }
-        
-        try {
-          // Mark as loading
-          setLoadingDescriptions(prev => new Set([...prev, `${event.id}-${event.eventType}`]));
-          
-          if (event.eventType === 'goal') {
-            const goalFeedUrl = import.meta.env.DEV 
-              ? '/api/generate-goal-feed' 
-              : `${import.meta.env.VITE_API_BASE_URL}/api/generate-goal-feed`;
-            
-            const response = await axios.post(goalFeedUrl, {
-              goalData: {
-                playerName: event.scorer,
-                teamName: event.scoringTeam,
-                period: event.period,
-                time: event.time,
-                assists: event.assists || []
-              },
-              gameContext: {
-                homeTeam: selectedGame.homeTeam || selectedGame.homeTeamId,
-                awayTeam: selectedGame.awayTeam || selectedGame.awayTeamId,
-                currentScore: currentScore
-              }
-            });
-            
-            if (response.data.success) {
-              eventsWithDescriptions[i] = {
-                ...event,
-                aiDescription: response.data.description
-              };
-            }
-          } else if (event.eventType === 'penalty') {
-            const penaltyFeedUrl = import.meta.env.DEV 
-              ? '/api/generate-penalty-feed' 
-              : `${import.meta.env.VITE_API_BASE_URL}/api/generate-penalty-feed`;
-            
-            const response = await axios.post(penaltyFeedUrl, {
-              penaltyData: {
-                playerName: event.penalizedPlayer,
-                teamName: event.penalizedTeam,
-                penaltyType: event.penaltyType,
-                period: event.period,
-                time: event.time,
-                length: event.penaltyLength
-              },
-              gameContext: {
-                homeTeam: selectedGame.homeTeam || selectedGame.homeTeamId,
-                awayTeam: selectedGame.awayTeam || selectedGame.awayTeamId,
-                currentScore: currentScore
-              }
-            });
-            
-            if (response.data.success) {
-              eventsWithDescriptions[i] = {
-                ...event,
-                aiDescription: response.data.description
-              };
-            }
-          }
-        } catch (error) {
-          console.error('Failed to generate AI description for event:', error);
-        } finally {
-          // Remove from loading set
-          setLoadingDescriptions(prev => {
-            const newSet = new Set([...prev]);
-            newSet.delete(`${event.id}-${event.eventType}`);
-            return newSet;
-          });
-        }
-      }
-      
-      return eventsWithDescriptions;
-    };
-    
-    // Initial fetch
-    fetchEvents();
-    fetchScore();
-    
-    // Event-driven updates only - no continuous polling
-    // Data will be updated when navigating back from goal/penalty forms
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
+    // Purely event-driven - only fetch on mount, no polling or visibility changes
+    // Data will be refreshed when user returns from goal/penalty entry forms
   }, [selectedGame]);
 
   if (!selectedGame) {
@@ -198,6 +109,54 @@ export default function InGameMenu() {
 
   const handlePenaltyClick = () => {
     navigate('/penalty');
+  };
+
+  const handleShotsOnGoal = (team) => {
+    // Increment shots on goal for the specified team
+    setShotsOnGoal(prev => ({
+      ...prev,
+      [team]: prev[team] + 1
+    }));
+    
+    // Send to backend
+    const apiUrl = import.meta.env.DEV 
+      ? '/api/shots-on-goal' 
+      : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal`;
+    
+    axios.post(apiUrl, {
+      gameId: selectedGame.id || selectedGame.gameId,
+      team: team
+    }).catch(error => {
+      console.error('Failed to record shot on goal:', error);
+      // Revert the local state on error
+      setShotsOnGoal(prev => ({
+        ...prev,
+        [team]: prev[team] - 1
+      }));
+    });
+  };
+
+  const handleUndo = async () => {
+    if (!confirm('Are you sure you want to undo the last action? This will delete the most recent goal or penalty from the database.')) {
+      return;
+    }
+    
+    try {
+      const apiUrl = import.meta.env.DEV 
+        ? '/api/undo-last-action' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/undo-last-action`;
+      
+      await axios.post(apiUrl, {
+        gameId: selectedGame.id || selectedGame.gameId
+      });
+      
+      // Refresh game data after undo
+      refreshGameData();
+      
+    } catch (error) {
+      console.error('Failed to undo last action:', error);
+      alert(`Error undoing last action: ${error.response?.data?.error || error.message}`);
+    }
   };
 
   const handleSubmitGame = async () => {
@@ -280,18 +239,30 @@ export default function InGameMenu() {
             {selectedGame.awayTeam || selectedGame.awayTeamId} vs {selectedGame.homeTeam || selectedGame.homeTeamId}
           </p>
           
-          {/* Current Score Display */}
+          {/* Current Score Display with Shots on Goal */}
           <div className="bg-gray-100 rounded-lg p-3 my-3">
             <div className="text-xs text-gray-500 mb-1">CURRENT SCORE</div>
             <div className="flex justify-between items-center text-lg font-bold">
               <div className="text-center">
                 <div className="text-xs text-gray-600">{selectedGame.awayTeam || selectedGame.awayTeamId}</div>
                 <div className="text-2xl">{currentScore.away}</div>
+                <button
+                  onClick={() => handleShotsOnGoal('away')}
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded mt-1 transition-colors"
+                >
+                  S.O.G. ({shotsOnGoal.away})
+                </button>
               </div>
               <div className="text-gray-400">-</div>
               <div className="text-center">
                 <div className="text-xs text-gray-600">{selectedGame.homeTeam || selectedGame.homeTeamId}</div>
                 <div className="text-2xl">{currentScore.home}</div>
+                <button
+                  onClick={() => handleShotsOnGoal('home')}
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-2 py-1 rounded mt-1 transition-colors"
+                >
+                  S.O.G. ({shotsOnGoal.home})
+                </button>
               </div>
             </div>
           </div>
@@ -301,62 +272,65 @@ export default function InGameMenu() {
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 mb-4">
           <h2 className="text-lg font-semibold mb-3">Scorekeeper</h2>
 
-          {/* Main Action Buttons */}
-          <div className="grid grid-cols-2 gap-2 mb-3">
+          {/* 8 buttons in 2x4 grid layout */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Row 1: Goal and Penalty */}
             <button
               onClick={handleGoalClick}
               className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
               Goal
             </button>
-
             <button
               onClick={handlePenaltyClick}
               className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
               Penalty
             </button>
-          </div>
 
-          {/* OT/Shootout Button */}
-          <div className="mb-3">
-            <OTShootoutButton onGameCompleted={handleGameCompleted} />
-          </div>
-
-          {/* Utility Buttons */}
-          <div className="grid grid-cols-2 gap-2 mb-3">
+            {/* Row 2: OT-Shootout and Rosters */}
+            <div className="col-span-1">
+              <OTShootoutButton onGameCompleted={handleGameCompleted} />
+            </div>
             <button
               onClick={() => navigate('/roster')}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
               Rosters
             </button>
+
+            {/* Row 3: Admin and Undo */}
             <button
               onClick={() => navigate('/admin')}
-              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
               Admin
             </button>
-          </div>
+            <button
+              onClick={handleUndo}
+              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+            >
+              Undo
+            </button>
 
-          {/* Submit and Cancel Game Buttons */}
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
+            {/* Row 4: Cancel and Submit */}
             <button
               onClick={handleCancelGame}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200"
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200"
             >
               Cancel Game
             </button>
             <button
               onClick={handleSubmitGame}
               disabled={isSubmittingGame}
-              className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200"
+              className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200"
             >
               {isSubmittingGame ? 'Submitting...' : 'Submit Game'}
             </button>
           </div>
-          <p className="text-xs text-gray-500 text-center mt-2">
-            Submit finalizes data • Cancel deletes all game data
+
+          <p className="text-xs text-gray-500 text-center mt-3">
+            Submit finalizes data • Cancel deletes all game data • Undo removes last action
           </p>
         </div>
 

@@ -21,17 +21,12 @@ export default function AnnouncerControls({ gameId }) {
   const currentAudioRef = useRef(null); // For tracking dual announcer audio
   const isDualAnnouncerPlayingRef = useRef(false); // Flag to stop dual announcer loop
 
-  // Voice selection state - get from localStorage or default to 'female'
-  const [selectedVoice, setSelectedVoice] = useState(() => {
-    return localStorage.getItem('selectedVoice') || 'female';
-  });
+  // Voice selection state - default to 'female' every time
+  const [selectedVoice, setSelectedVoice] = useState('female');
 
-  // Force female announcer as default on first load
+  // Force female announcer as default on component mount
   useEffect(() => {
-    if (!localStorage.getItem('selectedVoice')) {
-      localStorage.setItem('selectedVoice', 'female');
-      setSelectedVoice('female');
-    }
+    setSelectedVoice('female');
   }, []);
   
   // Audio progress state
@@ -273,10 +268,10 @@ export default function AnnouncerControls({ gameId }) {
                 currentTime += (line.text.split(' ').length / 150) * 60;
                 setAudioProgress(prev => ({ ...prev, current: currentTime }));
                 
-                // Small pause between speakers
+                // Faster transition between speakers (reduced from 500ms to 200ms)
                 setTimeout(() => {
                   resolve();
-                }, 500);
+                }, 200);
               };
               
               audio.onerror = (event) => {
@@ -658,7 +653,7 @@ export default function AnnouncerControls({ gameId }) {
       const response = await axios.post(apiUrl, { 
         gameId: currentGameId,
         voiceGender: selectedVoice, // Include selected voice
-        announcerMode: selectedVoice // Add announcer mode for backend
+        announcerMode: selectedVoice === 'dual' ? 'dual' : 'single' // Proper announcer mode
       });
       
       if (response.data.success) {

@@ -223,7 +223,7 @@ export default function DJPanel() {
           Goal Horn
         </button>
         <button
-          onClick={() => playSound('whistle')}
+          onClick={() => playSound('whistle', 'mp3')}
           disabled={isPlaying}
           className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 

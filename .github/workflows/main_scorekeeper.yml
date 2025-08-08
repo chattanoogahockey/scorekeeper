@@ -59,10 +59,14 @@ jobs:
     - name: Create deployment package
       run: |
         mkdir -p deploy
-        # Copy backend files to root of deploy
-        cp -r backend/* deploy/
-        # CRITICAL: Copy backend node_modules to deploy
-        cp -r backend/node_modules deploy/node_modules
+        # Copy backend files to root of deploy, excluding heavy folders
+        rsync -a --delete \
+          --exclude=node_modules \
+          --exclude=audio-cache \
+          --exclude='.*cache' \
+          backend/ deploy/
+        # CRITICAL: Copy backend node_modules to deploy (only once, at root)
+        rsync -a backend/node_modules/ deploy/node_modules/
         # CRITICAL: Copy built frontend to where backend serves it
         rm -rf deploy/frontend
         mkdir -p deploy/frontend

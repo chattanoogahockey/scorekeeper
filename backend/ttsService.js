@@ -260,6 +260,19 @@ class TTSService {
       return null;
     }
 
+    // Validate voice exists in Google Cloud catalog to prevent fallback
+    const { validateVoice } = await import('./voiceConfig.js');
+    const isValidVoice = await validateVoice(this.client, this.selectedVoice);
+    
+    if (!isValidVoice) {
+      console.error(`❌ Voice '${this.selectedVoice}' not available in Google Cloud TTS`);
+      return {
+        success: false,
+        error: `Voice '${this.selectedVoice}' not found in Google Cloud TTS catalog`,
+        voice: this.selectedVoice
+      };
+    }
+
     try {
       const cleanText = text.replace(/[^\w\s.,!?;:()-]/g, '').substring(0, 500);
       

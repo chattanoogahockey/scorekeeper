@@ -1186,41 +1186,21 @@ app.post('/api/goals/announce-last', async (req, res) => {
     });
   }
 
-  // Map voice gender to Google TTS Studio voices using database configuration
-  let selectedVoice = 'en-US-Studio-Q'; // Default fallback
+  // Map voice gender to Google TTS Studio voices using UNIFIED voice configuration
+  const { getAnnouncerVoices, logTtsUse } = await import('./voiceConfig.js');
+  const voiceConfig = await getAnnouncerVoices();
   
-  try {
-    const gamesContainer = getGamesContainer();
-    const { resources: configs } = await gamesContainer.items
-      .query({
-        query: "SELECT * FROM c WHERE c.id = 'voiceConfig'",
-        parameters: []
-      })
-      .fetchAll();
-    
-    if (configs.length > 0) {
-      const voiceConfig = configs[0];
-      if (voiceGender === 'male' && voiceConfig.maleVoice) {
-        selectedVoice = voiceConfig.maleVoice;
-      } else if (voiceGender === 'female' && voiceConfig.femaleVoice) {
-        selectedVoice = voiceConfig.femaleVoice;
-      }
-    } else {
-      // Use defaults based on corrected gender mapping
-      const defaultMapping = {
-        'male': 'en-US-Studio-Q',    // Studio-Q is male
-        'female': 'en-US-Studio-O'   // Studio-O is female  
-      };
-      selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
-    }
-  } catch (configError) {
-    console.warn('⚠️ Could not fetch voice config, using defaults:', configError.message);
-    const defaultMapping = {
-      'male': 'en-US-Studio-Q',    // Studio-Q is male
-      'female': 'en-US-Studio-O'   // Studio-O is female
-    };
-    selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
-  }
+  let selectedVoice = voiceGender === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
+  
+  // Log TTS usage for debugging
+  logTtsUse({ 
+    where: voiceGender === 'male' ? 'MaleButton' : 'FemaleButton', 
+    provider: voiceConfig.provider, 
+    voice: selectedVoice, 
+    rate: voiceConfig.settings.rate, 
+    pitch: voiceConfig.settings.pitch, 
+    style: 'none' 
+  });
   
   console.log(`🎤 Using voice: ${selectedVoice} (requested: ${voiceGender}, mode: ${announcerMode})`);
   console.log(`🎚️ Voice type: ${selectedVoice.includes('Studio') ? 'Studio (Professional)' : selectedVoice.includes('Neural2') ? 'Neural2 (Standard)' : 'Unknown'}`);
@@ -1416,41 +1396,21 @@ app.post('/api/penalties/announce-last', async (req, res) => {
     });
   }
 
-  // Map voice gender to Google TTS Studio voices using database configuration
-  let selectedVoice = 'en-US-Studio-Q'; // Default fallback
+  // Map voice gender to Google TTS Studio voices using UNIFIED voice configuration
+  const { getAnnouncerVoices, logTtsUse } = await import('./voiceConfig.js');
+  const voiceConfig = await getAnnouncerVoices();
   
-  try {
-    const gamesContainer = getGamesContainer();
-    const { resources: configs } = await gamesContainer.items
-      .query({
-        query: "SELECT * FROM c WHERE c.id = 'voiceConfig'",
-        parameters: []
-      })
-      .fetchAll();
-    
-    if (configs.length > 0) {
-      const voiceConfig = configs[0];
-      if (voiceGender === 'male' && voiceConfig.maleVoice) {
-        selectedVoice = voiceConfig.maleVoice;
-      } else if (voiceGender === 'female' && voiceConfig.femaleVoice) {
-        selectedVoice = voiceConfig.femaleVoice;
-      }
-    } else {
-      // Use defaults based on corrected gender mapping
-      const defaultMapping = {
-        'male': 'en-US-Studio-Q',    // Studio-Q is male
-        'female': 'en-US-Studio-O'   // Studio-O is female  
-      };
-      selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
-    }
-  } catch (configError) {
-    console.warn('⚠️ Could not fetch voice config, using defaults:', configError.message);
-    const defaultMapping = {
-      'male': 'en-US-Studio-Q',    // Studio-Q is male
-      'female': 'en-US-Studio-O'   // Studio-O is female
-    };
-    selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
-  }
+  let selectedVoice = voiceGender === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
+  
+  // Log TTS usage for debugging
+  logTtsUse({ 
+    where: voiceGender === 'male' ? 'MaleButton_Penalty' : 'FemaleButton_Penalty', 
+    provider: voiceConfig.provider, 
+    voice: selectedVoice, 
+    rate: voiceConfig.settings.rate, 
+    pitch: voiceConfig.settings.pitch, 
+    style: 'none' 
+  });
   
   console.log(`🎤 Using voice for penalty: ${selectedVoice} (requested: ${voiceGender}, mode: ${announcerMode})`);
   
@@ -3217,37 +3177,25 @@ app.post('/api/tts/dual-line', async (req, res) => {
     
     console.log(`🎤 Generating dual announcer TTS for ${speaker}: "${text.substring(0, 50)}..."`);
     
-    // Use the SAME voice configuration source as individual announcer buttons
-    // Query gamesContainer for ID 'voiceConfig' to ensure consistency
-    let maleVoice = 'en-US-Studio-Q';   // Default Studio-Q is male
-    let femaleVoice = 'en-US-Studio-O'; // Default Studio-O is female
+    // Use the UNIFIED voice configuration system - same as individual buttons
+    const { getAnnouncerVoices, logTtsUse } = await import('./voiceConfig.js');
+    const voiceConfig = await getAnnouncerVoices();
     
-    try {
-      const gamesContainer = getGamesContainer();
-      const { resources: configs } = await gamesContainer.items
-        .query({
-          query: "SELECT * FROM c WHERE c.id = 'voiceConfig'",
-          parameters: []
-        })
-        .fetchAll();
-      
-      if (configs.length > 0) {
-        const voiceConfig = configs[0];
-        maleVoice = voiceConfig.maleVoice || 'en-US-Studio-Q';
-        femaleVoice = voiceConfig.femaleVoice || 'en-US-Studio-O';
-        console.log(`🎯 Found voice config in database: male=${maleVoice}, female=${femaleVoice}`);
-      } else {
-        console.log(`🎯 No voice config found, using defaults: male=${maleVoice}, female=${femaleVoice}`);
-      }
-    } catch (configError) {
-      console.warn('⚠️ Could not fetch voice config, using defaults:', configError.message);
-    }
+    // Select studio voice based on speaker using the SAME voices as individual buttons
+    const selectedVoice = speaker === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
     
-    // Select studio voice based on speaker
-    const selectedVoice = speaker === 'male' ? maleVoice : femaleVoice;
+    // Log TTS usage for debugging
+    logTtsUse({ 
+      where: `DualAnnouncer_${speaker}`, 
+      provider: voiceConfig.provider, 
+      voice: selectedVoice, 
+      rate: voiceConfig.settings.rate, 
+      pitch: voiceConfig.settings.pitch, 
+      style: 'none' 
+    });
     
     console.log(`🎙️ Using ${speaker} studio voice: ${selectedVoice}`);
-    console.log(`🎯 Voice mapping - male: ${maleVoice}, female: ${femaleVoice}`);
+    console.log(`🎯 Voice mapping - male: ${voiceConfig.maleVoice}, female: ${voiceConfig.femaleVoice}`);
     console.log(`🔧 TTS client status: ${ttsService.client ? 'Connected' : 'Not connected'}`);
     console.log(`🌍 Google credentials: ${process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'File path set' : 'Using JSON env var'}`);
     console.log(`🎚️ Expected voice type: ${selectedVoice.includes('Studio') ? 'Studio (Professional)' : selectedVoice.includes('Neural2') ? 'Neural2 (Standard)' : 'Unknown'}`);

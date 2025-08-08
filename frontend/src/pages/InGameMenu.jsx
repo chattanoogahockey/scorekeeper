@@ -281,11 +281,9 @@ export default function InGameMenu() {
           </div>
         </div>
 
-        {/* Game Controls Panel */}
+        {/* Scorekeeper Panel */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4 mb-4">
-          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-3 mb-3">
-            <h2 className="text-md font-bold text-blue-800 text-center">Game Controls</h2>
-          </div>
+          <h2 className="text-lg font-semibold mb-3">Scorekeeper</h2>
 
           {/* Main Action Buttons */}
           <div className="grid grid-cols-2 gap-2 mb-3">
@@ -293,14 +291,14 @@ export default function InGameMenu() {
               onClick={handleGoalClick}
               className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
-              🥅 Goal
+              Goal
             </button>
 
             <button
               onClick={handlePenaltyClick}
               className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
-              🚨 Penalty
+              Penalty
             </button>
           </div>
 
@@ -315,13 +313,13 @@ export default function InGameMenu() {
               onClick={() => navigate('/roster')}
               className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
-              📋 Rosters
+              Rosters
             </button>
             <button
               onClick={() => navigate('/admin')}
               className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
-              ⚙️ Admin
+              Admin
             </button>
           </div>
 
@@ -338,7 +336,7 @@ export default function InGameMenu() {
               disabled={isSubmittingGame}
               className="bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200"
             >
-              {isSubmittingGame ? 'Submitting...' : '✅ Submit Game'}
+              {isSubmittingGame ? 'Submitting...' : 'Submit Game'}
             </button>
           </div>
           <p className="text-xs text-gray-500 text-center mt-2">
@@ -361,7 +359,7 @@ export default function InGameMenu() {
           {/* Recent Events Feed - Moved to bottom */}
           <div className="bg-white rounded-lg shadow-md p-4">
             <h3 className="font-semibold text-gray-800 mb-3 flex items-center">
-              📈 Live Game Feed
+              Live Game Feed
             </h3>
             {eventsError ? (
               <p className="text-red-500 text-sm">{eventsError}</p>

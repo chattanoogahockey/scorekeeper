@@ -16,6 +16,9 @@ export default function AnnouncerControls({ gameId }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState(null);
   
+  // Audio refs for stop functionality
+  const audioElementRef = useRef(null);
+
   // Voice selection state - get from localStorage or default to 'female'
   const [selectedVoice, setSelectedVoice] = useState(() => {
     return localStorage.getItem('selectedVoice') || 'female';
@@ -33,6 +36,26 @@ export default function AnnouncerControls({ gameId }) {
 
   // Use gameId prop if provided, otherwise use context
   const currentGameId = gameId || selectedGameId;
+
+  // Stop all audio playback
+  const stopAudio = () => {
+    // Stop browser TTS
+    if ('speechSynthesis' in window) {
+      speechSynthesis.cancel();
+    }
+    
+    // Stop audio element if playing
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.currentTime = 0;
+      audioElementRef.current = null;
+    }
+    
+    // Reset states
+    setMessage('');
+    setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+    releaseWakeLock();
+  };
 
   // Voice selection handler
   const handleVoiceSelection = (voice) => {
@@ -100,7 +123,7 @@ export default function AnnouncerControls({ gameId }) {
         const estimatedDuration = (wordCount / 150) * 60; // seconds
         
         utterance.onstart = () => {
-          setMessage('🔊 Playing announcement...');
+          setMessage('Playing announcement...');
           setAudioProgress({ current: 0, duration: estimatedDuration, isPlaying: true });
           
           // Update progress simulation for TTS (since we can't get real progress)
@@ -174,7 +197,7 @@ export default function AnnouncerControls({ gameId }) {
       for (let i = 0; i < conversation.length; i++) {
         const line = conversation[i];
         
-        setMessage(`🎤 ${line.speaker === 'male' ? '👨' : '👩'} ${line.speaker.charAt(0).toUpperCase() + line.speaker.slice(1)} announcer speaking...`);
+        setMessage(`${line.speaker === 'male' ? '👨' : '👩'} ${line.speaker.charAt(0).toUpperCase() + line.speaker.slice(1)} announcer speaking...`);
         
         // Generate TTS for this line using backend with Studio voices
         try {
@@ -264,7 +287,7 @@ export default function AnnouncerControls({ gameId }) {
         }
       }
       
-      setMessage('✅ Dual announcer conversation complete');
+      setMessage('Dual announcer conversation complete');
       setTimeout(() => setMessage(''), 2000);
       
     } catch (error) {
@@ -321,9 +344,10 @@ export default function AnnouncerControls({ gameId }) {
               ? `/api/audio/${announcement.audioPath}` 
               : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
             
-            console.log('🎵 Attempting to play Studio voice audio:', audioUrl);
+            console.log('Attempting to play Studio voice audio:', audioUrl);
             
             const audio = new Audio(audioUrl);
+            audioElementRef.current = audio; // Store reference for stop functionality
             let audioPlaybackStarted = false;
             let fallbackTriggered = false;
             
@@ -333,7 +357,7 @@ export default function AnnouncerControls({ gameId }) {
             // Set up event handlers before attempting to play
             const setupAudioHandlers = async () => {
               audio.onloadedmetadata = async () => {
-                setMessage('🔊 Playing Studio voice announcement...');
+                setMessage('Playing Studio voice announcement...');
                 setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
                 // Request wake lock for long audio
                 await requestWakeLock();
@@ -375,7 +399,7 @@ export default function AnnouncerControls({ gameId }) {
               if (playPromise !== undefined) {
                 await playPromise;
                 audioPlaybackStarted = true; // Mark that Studio audio started successfully
-                console.log('✅ Studio voice audio playing successfully');
+                console.log('Studio voice audio playing successfully');
               }
             } catch (playError) {
               console.log('Studio audio autoplay blocked, using fallback:', playError);
@@ -388,7 +412,7 @@ export default function AnnouncerControls({ gameId }) {
           } catch (audioError) {
             console.error('Studio audio creation error:', audioError);
             // Fallback to browser TTS if audio creation fails
-            console.log('🔄 Falling back to browser TTS due to audio creation error');
+            console.log('Falling back to browser TTS due to audio creation error');
             speakText(announcement.text);
           }
         } else {
@@ -458,9 +482,10 @@ export default function AnnouncerControls({ gameId }) {
               ? `/api/audio/${announcement.audioPath}` 
               : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${announcement.audioPath}`;
             
-            console.log('🎵 Attempting to play Studio penalty audio:', audioUrl);
+            console.log('Attempting to play Studio penalty audio:', audioUrl);
             
             const audio = new Audio(audioUrl);
+            audioElementRef.current = audio; // Store reference for stop functionality
             let audioPlaybackStarted = false;
             let fallbackTriggered = false;
             
@@ -470,7 +495,7 @@ export default function AnnouncerControls({ gameId }) {
             // Set up event handlers before attempting to play
             const setupAudioHandlers = () => {
               audio.onloadedmetadata = () => {
-                setMessage('🔊 Playing Studio voice penalty announcement...');
+                setMessage('Playing Studio voice penalty announcement...');
                 setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
               };
               
@@ -506,7 +531,7 @@ export default function AnnouncerControls({ gameId }) {
               if (playPromise !== undefined) {
                 await playPromise;
                 audioPlaybackStarted = true; // Mark that Studio audio started successfully
-                console.log('✅ Studio voice penalty audio playing successfully');
+                console.log('Studio voice penalty audio playing successfully');
               }
             } catch (playError) {
               console.log('Studio penalty audio autoplay blocked, using fallback:', playError);
@@ -588,9 +613,10 @@ export default function AnnouncerControls({ gameId }) {
               ? `/api/audio/${audioPath}` 
               : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${audioPath}`;
             
-            console.log('🎵 Attempting to play random commentary audio:', audioUrl);
+            console.log('Attempting to play random commentary audio:', audioUrl);
             
             const audio = new Audio(audioUrl);
+            audioElementRef.current = audio; // Store reference for stop functionality
             let audioPlaybackStarted = false;
             let fallbackTriggered = false;
             
@@ -600,7 +626,7 @@ export default function AnnouncerControls({ gameId }) {
             // Set up event handlers before attempting to play
             const setupAudioHandlers = async () => {
               audio.onloadedmetadata = async () => {
-                setMessage('🔊 Playing random commentary...');
+                setMessage('Playing random commentary...');
                 setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
                 // Request wake lock for long audio
                 await requestWakeLock();
@@ -689,7 +715,7 @@ export default function AnnouncerControls({ gameId }) {
 
   return (
     <div className="border rounded shadow p-3">
-      <h4 className="text-lg font-semibold mb-3">🎙️ Announcer</h4>
+      <h4 className="text-lg font-semibold mb-3">Announcer</h4>
       <div className="grid grid-cols-2 gap-4">
         {/* Left column: Voice selection */}
         <div>
@@ -744,7 +770,7 @@ export default function AnnouncerControls({ gameId }) {
               className="px-2 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
               title="Announce Latest Goal"
             >
-              {goalLoading ? '⏳' : 'Goal'}
+              {goalLoading ? 'Loading...' : 'Goal'}
             </button>
             <button
               onClick={announceLatestPenalty}
@@ -752,7 +778,7 @@ export default function AnnouncerControls({ gameId }) {
               className="px-2 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
               title="Announce Latest Penalty"
             >
-              {penaltyLoading ? '⏳' : 'Penalty'}
+              {penaltyLoading ? 'Loading...' : 'Penalty'}
             </button>
             <button
               onClick={announceRandomCommentary}
@@ -760,16 +786,29 @@ export default function AnnouncerControls({ gameId }) {
               className="px-2 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
               title="Random Commentary"
             >
-              {randomLoading ? '⏳' : 'Random'}
+              {randomLoading ? 'Loading...' : 'Random'}
             </button>
           </div>
+          
+          {/* Stop button - only show when audio is playing */}
+          {audioProgress.isPlaying && (
+            <div className="mt-2">
+              <button
+                onClick={stopAudio}
+                className="w-full px-2 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm font-medium transition-colors"
+                title="Stop Audio"
+              >
+                Stop
+              </button>
+            </div>
+          )}
         </div>
       </div>
       {/* Audio Progress Bar */}
       {audioProgress.isPlaying && (
         <div className="mt-3 p-2 bg-gray-50 rounded border">
           <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-            <span>🎵 Audio Progress</span>
+            <span>Audio Progress</span>
             <span>{Math.round(audioProgress.current)}s / {Math.round(audioProgress.duration)}s</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">

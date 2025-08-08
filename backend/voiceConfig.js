@@ -1,7 +1,8 @@
-import { getSettingsContainer } from './cosmosClient.js';
+import { getSettingsContainer, getGamesContainer } from './cosmosClient.js';
 
 /**
  * Voice configuration helper functions for production use
+ * This is the SINGLE source of truth for all announcer voices
  */
 
 // Default voice configuration
@@ -11,7 +12,59 @@ const DEFAULT_VOICES = {
 };
 
 /**
- * Get voice configuration from settings container
+ * UNIFIED voice configuration getter - used by ALL announcer types
+ * This function queries the SAME database source that individual buttons use
+ */
+export async function getAnnouncerVoices() {
+  try {
+    // Use the SAME source as individual announcer buttons: gamesContainer with ID 'voiceConfig'
+    const gamesContainer = getGamesContainer();
+    const { resources: configs } = await gamesContainer.items
+      .query({
+        query: "SELECT * FROM c WHERE c.id = 'voiceConfig'",
+        parameters: []
+      })
+      .fetchAll();
+    
+    let maleVoice = DEFAULT_VOICES.male;
+    let femaleVoice = DEFAULT_VOICES.female;
+    
+    if (configs.length > 0) {
+      const voiceConfig = configs[0];
+      maleVoice = voiceConfig.maleVoice || DEFAULT_VOICES.male;
+      femaleVoice = voiceConfig.femaleVoice || DEFAULT_VOICES.female;
+      console.log(`🎯 Found voice config in database: male=${maleVoice}, female=${femaleVoice}`);
+    } else {
+      console.log(`🎯 No voice config found, using defaults: male=${maleVoice}, female=${femaleVoice}`);
+    }
+    
+    return {
+      provider: 'google',
+      maleVoice,
+      femaleVoice,
+      settings: {
+        rate: 1.0,
+        pitch: 0.0,
+        volume: 1.0
+      }
+    };
+  } catch (error) {
+    console.warn('⚠️ Could not fetch voice config, using defaults:', error.message);
+    return {
+      provider: 'google',
+      maleVoice: DEFAULT_VOICES.male,
+      femaleVoice: DEFAULT_VOICES.female,
+      settings: {
+        rate: 1.0,
+        pitch: 0.0,
+        volume: 1.0
+      }
+    };
+  }
+}
+
+/**
+ * Get voice configuration from settings container (LEGACY - keeping for compatibility)
  */
 export async function getVoiceConfig() {
   try {
@@ -72,21 +125,60 @@ export async function updateVoiceConfig(maleVoice, femaleVoice) {
 
 /**
  * Get voice for announcement based on gender preference
+ * Uses the unified voice configuration
  */
 export async function getVoiceForGender(voiceGender) {
   try {
-    const config = await getVoiceConfig();
+    const config = await getAnnouncerVoices();
     
-    if (voiceGender === 'male' && config.maleVoice) {
+    if (voiceGender === 'male') {
       return config.maleVoice;
-    } else if (voiceGender === 'female' && config.femaleVoice) {
+    } else if (voiceGender === 'female') {
       return config.femaleVoice;
     }
     
-    // Fallback to defaults
-    return DEFAULT_VOICES[voiceGender] || DEFAULT_VOICES.male;
+    // Fallback to male as default
+    return config.maleVoice;
   } catch (error) {
     console.warn('⚠️ Error getting voice for gender, using default:', error.message);
     return DEFAULT_VOICES[voiceGender] || DEFAULT_VOICES.male;
+  }
+}
+
+/**
+ * Logging function for TTS usage tracking
+ */
+export function logTtsUse({ where, provider, voice, rate, pitch, style }) {
+  console.info(`[TTS] ${where}: provider=${provider} voice=${voice} rate=${rate} pitch=${pitch || 0} style=${style || 'none'}`);
+}
+
+/**
+ * Validate that a voice exists in the Google Cloud TTS catalog
+ * This prevents silent fallback to robotic voices
+ */
+export async function validateVoice(ttsClient, voiceName) {
+  if (!ttsClient) {
+    console.warn('⚠️ TTS client not available, cannot validate voice');
+    return false;
+  }
+  
+  try {
+    // List available voices from Google Cloud TTS
+    const [result] = await ttsClient.listVoices({
+      languageCode: 'en-US'
+    });
+    
+    const availableVoices = result.voices || [];
+    const voiceExists = availableVoices.some(voice => voice.name === voiceName);
+    
+    if (!voiceExists) {
+      console.error(`❌ Voice '${voiceName}' not found in Google Cloud TTS catalog`);
+      console.log(`Available Studio voices: ${availableVoices.filter(v => v.name.includes('Studio')).map(v => v.name).join(', ')}`);
+    }
+    
+    return voiceExists;
+  } catch (error) {
+    console.warn('⚠️ Could not validate voice availability:', error.message);
+    return true; // Assume valid if we can't check
   }
 }

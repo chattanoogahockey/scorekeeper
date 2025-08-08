@@ -18,6 +18,8 @@ export default function AnnouncerControls({ gameId }) {
   
   // Audio refs for stop functionality
   const audioElementRef = useRef(null);
+  const currentAudioRef = useRef(null); // For tracking dual announcer audio
+  const isDualAnnouncerPlayingRef = useRef(false); // Flag to stop dual announcer loop
 
   // Voice selection state - get from localStorage or default to 'female'
   const [selectedVoice, setSelectedVoice] = useState(() => {
@@ -52,7 +54,17 @@ export default function AnnouncerControls({ gameId }) {
       speechSynthesis.cancel();
     }
     
-    // Stop audio element if playing
+    // Stop dual announcer flag
+    isDualAnnouncerPlayingRef.current = false;
+    
+    // Stop current audio element if playing
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      currentAudioRef.current = null;
+    }
+    
+    // Stop main audio element if playing
     if (audioElementRef.current) {
       audioElementRef.current.pause();
       audioElementRef.current.currentTime = 0;
@@ -190,6 +202,9 @@ export default function AnnouncerControls({ gameId }) {
 
     setMessage('🎤 Playing dual announcer conversation...');
     await requestWakeLock();
+    
+    // Set flag to indicate dual announcer is playing
+    isDualAnnouncerPlayingRef.current = true;
 
     let totalDuration = 0;
     conversation.forEach(line => {
@@ -203,6 +218,12 @@ export default function AnnouncerControls({ gameId }) {
     
     try {
       for (let i = 0; i < conversation.length; i++) {
+        // Check if stop was requested
+        if (!isDualAnnouncerPlayingRef.current) {
+          console.log('Dual announcer stopped by user');
+          break;
+        }
+        
         const line = conversation[i];
         
         setMessage(`${line.speaker === 'male' ? '👨' : '👩'} ${line.speaker.charAt(0).toUpperCase() + line.speaker.slice(1)} announcer speaking...`);
@@ -228,9 +249,21 @@ export default function AnnouncerControls({ gameId }) {
 
             // Play the generated audio
             await new Promise((resolve, reject) => {
+              // Check if stop was requested before creating audio
+              if (!isDualAnnouncerPlayingRef.current) {
+                resolve();
+                return;
+              }
+              
               const audio = new Audio(audioUrl);
+              currentAudioRef.current = audio; // Track current audio
               
               audio.oncanplaythrough = () => {
+                // Check if stop was requested before playing
+                if (!isDualAnnouncerPlayingRef.current) {
+                  resolve();
+                  return;
+                }
                 audio.play().then(() => {
                   // Audio is playing
                 }).catch(reject);
@@ -259,6 +292,12 @@ export default function AnnouncerControls({ gameId }) {
           
           // Fallback to browser TTS if backend fails
           await new Promise((resolve, reject) => {
+            // Check if stop was requested before browser TTS
+            if (!isDualAnnouncerPlayingRef.current) {
+              resolve();
+              return;
+            }
+            
             if ('speechSynthesis' in window) {
               const utterance = new SpeechSynthesisUtterance(line.text);
               
@@ -305,13 +344,21 @@ export default function AnnouncerControls({ gameId }) {
         }
       }
       
-      setMessage('Dual announcer conversation complete');
-      setTimeout(() => setMessage(''), 2000);
+      // Check if completed naturally or was stopped
+      if (isDualAnnouncerPlayingRef.current) {
+        setMessage('Dual announcer conversation complete');
+        setTimeout(() => setMessage(''), 2000);
+      } else {
+        setMessage('Dual announcer stopped');
+        setTimeout(() => setMessage(''), 1000);
+      }
       
     } catch (error) {
       console.error('Dual announcer playback error:', error);
       setError('Failed to play dual announcer conversation');
     } finally {
+      isDualAnnouncerPlayingRef.current = false;
+      currentAudioRef.current = null;
       setAudioProgress({ current: 0, duration: 0, isPlaying: false });
       await releaseWakeLock();
     }

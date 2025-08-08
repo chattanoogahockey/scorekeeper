@@ -166,8 +166,14 @@ export default function GoalRecord() {
       // Starting fresh
       currentDigits = '';
     } else {
-      // Get current digits without colon and remove leading zeros
-      currentDigits = currentTime.replace(/:/g, '').replace(/^0+/, '') || '';
+      // Get current digits without colon, preserving all digits
+      currentDigits = currentTime.replace(/:/g, '');
+      // Only remove leading zeros if we have more than just zeros
+      if (currentDigits !== '0000' && currentDigits !== '000' && currentDigits !== '00' && currentDigits !== '0') {
+        currentDigits = currentDigits.replace(/^0+/, '');
+      } else {
+        currentDigits = '';
+      }
     }
     
     console.log('Current digits (processed):', currentDigits, 'Length:', currentDigits.length);

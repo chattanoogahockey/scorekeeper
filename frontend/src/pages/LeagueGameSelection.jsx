@@ -160,17 +160,47 @@ export default function LeagueGameSelection() {
       
       // Check for existing goals
       console.log('🥅 Checking for existing goals...');
-      const goalsResponse = await axios.get('/api/goals', { params: { gameId } });
+      const goalsResponse = await axios.get('/api/goals', { 
+        params: { gameId },
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       const goals = goalsResponse.data || [];
       console.log(`Found ${goals.length} existing goals`);
       
       // Check for existing penalties
       console.log('🚫 Checking for existing penalties...');
-      const penaltiesResponse = await axios.get('/api/penalties', { params: { gameId } });
+      const penaltiesResponse = await axios.get('/api/penalties', { 
+        params: { gameId },
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       const penalties = penaltiesResponse.data || [];
       console.log(`Found ${penalties.length} existing penalties`);
       
-      const hasExistingData = goals.length > 0 || penalties.length > 0;
+      // Check for existing shots on goal
+      console.log('🥅 Checking for existing shots on goal...');
+      const shotsUrl = import.meta.env.DEV 
+        ? `/api/shots-on-goal/game/${gameId}` 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal/game/${gameId}`;
+      const shotsResponse = await axios.get(shotsUrl, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
+      const shots = shotsResponse.data || { home: 0, away: 0 };
+      const totalShots = (shots.home || 0) + (shots.away || 0);
+      console.log(`Found ${totalShots} existing shots on goal (home: ${shots.home}, away: ${shots.away})`);
+      
+      const hasExistingData = goals.length > 0 || penalties.length > 0 || totalShots > 0;
       
       if (hasExistingData) {
         // Check if any data is already submitted (finalized)
@@ -184,13 +214,47 @@ export default function LeagueGameSelection() {
         
         // Ask user if they want to continue or start over
         const continueGame = window.confirm(
-          `This game has existing data (${goals.length} goals, ${penalties.length} penalties).\n\n` +
+          `This game has existing data (${goals.length} goals, ${penalties.length} penalties, ${totalShots} shots).\n\n` +
           'Do you want to:\n' +
           '✅ YES - Continue where you left off\n' +
           '❌ NO - Start over (this will clear existing data)'
         );
         
-        if (!continueGame) {
+        if (continueGame) {
+          // User wants to continue - skip roster page and go directly to game
+          console.log('🎯 User chose to continue existing game - skipping roster page');
+          setSelectedGame(game);
+          setSelectedLeague(game.division);
+          
+          // Load rosters without navigation
+          try {
+            const rostersResponse = await axios.get('/api/rosters', {
+              params: { gameId: game.id || game.gameId }
+            });
+            const gameRosters = rostersResponse.data;
+            
+            const processedRosters = gameRosters.map(roster => ({
+              teamName: roster.teamName,
+              teamId: roster.teamName,
+              players: roster.players.map(player => ({
+                name: player.name,
+                firstName: player.firstName || player.name.split(' ')[0],
+                lastName: player.lastName || player.name.split(' ').slice(1).join(' '),
+                jerseyNumber: player.jerseyNumber,
+                position: player.position || 'Player'
+              }))
+            }));
+            
+            setRosters(processedRosters);
+            // Go directly to in-game menu
+            navigate('/in-game');
+            return;
+          } catch (error) {
+            console.error('Error loading rosters for existing game:', error);
+            alert('Failed to load team rosters. Please try again.');
+            return;
+          }
+        } else {
           // User wants to start over - clear existing data
           const confirmStartOver = window.confirm(
             'Are you sure you want to start over? This will permanently delete all existing goals and penalties for this game.'
@@ -212,6 +276,11 @@ export default function LeagueGameSelection() {
             // Delete all penalties for this game  
             for (const penalty of penalties) {
               await axios.delete(`/api/penalties/${penalty.id}`, { params: { gameId } });
+            }
+            
+            // Delete all shots on goal for this game
+            for (const shot of shots) {
+              await axios.delete(`/api/shots-on-goal/${shot.id}`, { params: { gameId } });
             }
             
             alert('Game data cleared successfully. Starting fresh.');

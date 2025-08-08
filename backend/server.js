@@ -3022,9 +3022,28 @@ app.post('/api/shots-on-goal', async (req, res) => {
         type: 'shots-on-goal-summary',
         home: team === 'home' ? 1 : 0,
         away: team === 'away' ? 1 : 0,
+        homeTeam: '',  // Will be populated from game data
+        awayTeam: '',  // Will be populated from game data
         createdAt: new Date().toISOString(),
         lastUpdated: new Date().toISOString()
       };
+      
+      // Try to get team names from game data
+      try {
+        const gamesContainer = getGamesContainer();
+        const gameQuery = {
+          query: 'SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId',
+          parameters: [{ name: '@gameId', value: gameId }]
+        };
+        const { resources: games } = await gamesContainer.items.query(gameQuery).fetchAll();
+        if (games.length > 0) {
+          const game = games[0];
+          shotRecord.homeTeam = game.homeTeam || game.homeTeamId || '';
+          shotRecord.awayTeam = game.awayTeam || game.awayTeamId || '';
+        }
+      } catch (gameError) {
+        console.log('Could not fetch game details for team names:', gameError.message);
+      }
       
       await container.items.create(shotRecord);
       console.log(`✅ Created new shot record for game ${gameId}, ${team}: 1`);
@@ -3072,6 +3091,30 @@ app.get('/api/shots-on-goal/game/:gameId', async (req, res) => {
   } catch (error) {
     console.error('❌ Error fetching shots on goal for game:', error);
     handleError(res, error);
+  }
+});
+
+// Delete shots on goal record
+app.delete('/api/shots-on-goal/:id', async (req, res) => {
+  const { id } = req.params;
+  const { gameId } = req.query;
+  
+  try {
+    const container = getShotsOnGoalContainer();
+    
+    console.log(`🗑️ Deleting shots on goal record ${id} for game ${gameId}`);
+    
+    await container.item(id, gameId).delete();
+    
+    console.log('✅ Shots on goal record deleted successfully');
+    res.status(200).json({ message: 'Shots on goal record deleted successfully' });
+  } catch (error) {
+    console.error('❌ Error deleting shots on goal record:', error);
+    if (error.code === 404) {
+      res.status(404).json({ error: 'Shots on goal record not found' });
+    } else {
+      handleError(res, error);
+    }
   }
 });
 

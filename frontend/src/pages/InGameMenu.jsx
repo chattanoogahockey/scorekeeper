@@ -1,8 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GameContext } from '../contexts/GameContext.jsx';
-import AnnouncerControls from '../components/AnnouncerControls.jsx';
-import DJPanel from '../components/DJPanel.jsx';
+import MediaControlPanel from '../components/MediaControlPanel.jsx';
 import OTShootoutButton from '../components/OTShootoutButton.jsx';
 import axios from 'axios';
 
@@ -96,16 +95,27 @@ export default function InGameMenu() {
   };
 
   const handleShotsOnGoal = async (team) => {
+    console.log(`🎯 handleShotsOnGoal called for team: ${team}`);
+    console.log(`🎯 Selected game:`, selectedGame);
+    
     try {
       // Send to backend first
       const apiUrl = import.meta.env.DEV 
         ? '/api/shots-on-goal' 
         : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal`;
       
+      console.log(`🎯 Making API call to: ${apiUrl}`);
+      console.log(`🎯 Request payload:`, {
+        gameId: selectedGame.id || selectedGame.gameId,
+        team: team
+      });
+      
       const response = await axios.post(apiUrl, {
         gameId: selectedGame.id || selectedGame.gameId,
         team: team
       });
+      
+      console.log(`✅ Response received:`, response.data);
       
       // Update local state with the server response to ensure consistency
       if (response.data) {
@@ -113,11 +123,14 @@ export default function InGameMenu() {
           home: response.data.home || 0,
           away: response.data.away || 0
         });
+        console.log(`✅ Local state updated: home=${response.data.home}, away=${response.data.away}`);
       }
       
       console.log(`✅ Shot on goal recorded for ${team}`);
     } catch (error) {
-      console.error('Failed to record shot on goal:', error);
+      console.error('❌ Failed to record shot on goal:', error);
+      console.error('❌ Error details:', error.response?.data || error.message);
+      alert(`Failed to record shot on goal: ${error.response?.data?.error || error.message}`);
       // Refresh game data to get current state from server
       refreshGameData();
     }
@@ -324,13 +337,9 @@ export default function InGameMenu() {
         {/* Integrated Dashboard Components */}
         <div className="space-y-4">
           {/* Announcer Controls */}
+          {/* Media Control Panel - Combined DJ and Announcer */}
           <div className="bg-white rounded-lg shadow-md">
-            <AnnouncerControls gameId={selectedGame.id || selectedGame.gameId} />
-          </div>
-
-          {/* DJ Panel */}
-          <div className="bg-white rounded-lg shadow-md">
-            <DJPanel />
+            <MediaControlPanel gameId={selectedGame.id || selectedGame.gameId} />
           </div>
 
           {/* Recent Events Feed - Moved to bottom */}

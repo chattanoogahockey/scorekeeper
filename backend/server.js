@@ -98,20 +98,18 @@ if (isProduction && !(hasConnString || hasSeparateCreds)) {
   console.log('✅ Cosmos DB configuration detected');
 }
 
-// Initialize database containers asynchronously so startup isn't blocked
-(async () => {
-  try {
-    console.log('🔄 Initializing database containers (async)...');
-    await initializeContainers();
-    console.log('🗄️ Database ready');
-  } catch (error) {
-    console.error('💥 Database initialization failed:', error.message);
-    if (!isProduction) {
-      console.error('💥 Full error:', error);
-    }
-    console.log('⚠️ Continuing in degraded mode - some features may not work');
+// Initialize database containers synchronously on startup
+try {
+  console.log('🔄 Initializing database containers...');
+  await initializeContainers();
+  console.log('🗄️ Database containers initialized successfully');
+} catch (error) {
+  console.error('💥 Database initialization failed:', error.message);
+  if (!isProduction) {
+    console.error('💥 Full error:', error);
   }
-})();
+  console.log('⚠️ Continuing in degraded mode - some features may not work');
+}
 
 // HEALTH CHECK ENDPOINT for Azure (only at /health, not root)
 app.get('/health', (req, res) => {
@@ -326,13 +324,7 @@ app.get('/api/games', async (req, res) => {
   });
 
   try {
-    let container;
-    try {
-      container = getGamesContainer();
-    } catch (e) {
-      console.warn('⚠️ Games container unavailable:', e.message);
-      return res.status(503).json({ error: 'Database not configured', games: [] });
-    }
+    const container = getGamesContainer();
     console.log('📦 Got games container');
     
     let querySpec;
@@ -3334,11 +3326,6 @@ const server = app.listen(process.env.PORT || 8080, () => {
   setTimeout(() => {
     console.log('\n[Echo] THE SCOREKEEPER banner check: server is up at', new Date().toISOString());
   }, 5000);
-
-  // Lightweight heartbeat so Log Stream shows periodic activity
-  setInterval(() => {
-    console.log('💓 Heartbeat', new Date().toISOString());
-  }, 30000);
 });
 
 // Handle server errors

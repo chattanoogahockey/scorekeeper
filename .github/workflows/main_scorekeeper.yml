@@ -37,89 +37,87 @@ jobs:
       with:
         node-version: '20.x'
         cache: 'npm'
-      
-       - name: Clean and install dependencies
-         run: |
-           rm -rf node_modules
-           npm ci
-
-       - name: Build frontend
-         run: |
-           cd frontend
-           npm ci
-           # Generate version info with deployment timestamp
-           NODE_ENV=production DEPLOYMENT_TIMESTAMP=$DEPLOYMENT_TIMESTAMP node generate-version.js
-           npm run build
-
-       - name: Install backend dependencies
-         run: |
-           cd backend  
-           npm ci --omit=dev
     
-       - name: Create deployment package
-         run: |
-           mkdir -p deploy
-           # Copy backend files to root of deploy, excluding heavy folders
-           rsync -a --delete \
-             --exclude=node_modules \
-             --exclude=audio-cache \
-             --exclude='.*cache' \
-             backend/ deploy/
-           # CRITICAL: Copy backend node_modules to deploy (only once, at root)
-           rsync -a backend/node_modules/ deploy/node_modules/
-           # CRITICAL: Copy built frontend to where backend serves it
-           rm -rf deploy/frontend
-           mkdir -p deploy/frontend
-           cp -r frontend/dist/* deploy/frontend/
-           # Copy root package.json and web.config
-           cp package.json deploy/
-           cp web.config deploy/
-           # Verify frontend was copied correctly
-           echo "Frontend files copied:"
-           ls -la deploy/frontend/
-           # Verify node_modules copied
-           echo "Backend dependencies copied:"
-           ls -la deploy/node_modules/ | head -10
+    - name: Clean and install dependencies
+      run: |
+        rm -rf node_modules
+        npm install
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm install
+        # Generate version info with deployment timestamp
+        NODE_ENV=production DEPLOYMENT_TIMESTAMP=$DEPLOYMENT_TIMESTAMP node generate-version.js
+        npm run build
     
-       - name: Create deployment environment
-         run: |
-           # Create .env file for deployment with git info
-           echo "BUILD_SOURCEVERSION=${{ github.sha }}" >> deploy/.env
-           echo "BUILD_SOURCEBRANCH=${{ github.ref_name }}" >> deploy/.env
-           echo "GITHUB_ACTIONS=true" >> deploy/.env
-           echo "Environment variables for deployment:"
-           cat deploy/.env
+    - name: Install backend dependencies
+      run: |
+        cd backend  
+        npm install --production
+    
+    - name: Create deployment package
+      run: |
+        mkdir -p deploy
+        # Copy backend files to root of deploy
+        cp -r backend/* deploy/
+        # CRITICAL: Copy backend node_modules to deploy
+        cp -r backend/node_modules deploy/node_modules
+        # CRITICAL: Copy built frontend to where backend serves it
+        rm -rf deploy/frontend
+        mkdir -p deploy/frontend
+        cp -r frontend/dist/* deploy/frontend/
+        # Copy root package.json and web.config
+        cp package.json deploy/
+        cp web.config deploy/
+        # Verify frontend was copied correctly
+        echo "Frontend files copied:"
+        ls -la deploy/frontend/
+        # Verify node_modules copied
+        echo "Backend dependencies copied:"
+        ls -la deploy/node_modules/ | head -10
+    
+    - name: Create deployment environment
+      run: |
+        # Create .env file for deployment with git info
+        echo "BUILD_SOURCEVERSION=${{ github.sha }}" >> deploy/.env
+        echo "BUILD_SOURCEBRANCH=${{ github.ref_name }}" >> deploy/.env
+        echo "GITHUB_ACTIONS=true" >> deploy/.env
+        echo "Environment variables for deployment:"
+        cat deploy/.env
 
-       - name: 'Deploy to Azure Web App'
-         uses: azure/webapps-deploy@v3
-         with: 
-           app-name: 'scorekeeper'
-           slot-name: 'production'
-           publish-profile: ${{ secrets.AzureAppService_PublishProfile_aa98474905f14a53afdc3e9da94e0ae4 }}
-           package: './deploy'
+    - name: 'Deploy to Azure Web App'
+      uses: azure/webapps-deploy@v3
+      with: 
+        app-name: 'scorekeeper'
+        slot-name: 'production'
+        publish-profile: ${{ secrets.AzureAppService_PublishProfile_aa98474905f14a53afdc3e9da94e0ae4 }}
+        package: './deploy'
 
-       - name: Set final deployment timestamp
-         run: |
-           # Set the actual deployment completion timestamp
-           FINAL_DEPLOYMENT_TIMESTAMP=$(TZ='America/New_York' date +%Y-%m-%dT%H:%M:%S%z)
-           echo "FINAL_DEPLOYMENT_TIMESTAMP=$FINAL_DEPLOYMENT_TIMESTAMP" >> $GITHUB_ENV
-           echo "Final deployment completed at: $FINAL_DEPLOYMENT_TIMESTAMP"
-           # Brief wait for Azure to initialize
-           sleep 5
-           # Update the deployed app with the actual completion timestamp
-           curl --max-time 5 -X POST "https://scorekeeper.azurewebsites.net/api/admin/update-deployment-time" \
-             -H "Content-Type: application/json" \
-             -d "{\"deploymentTimestamp\": \"$FINAL_DEPLOYMENT_TIMESTAMP\", \"githubSha\": \"${{ github.sha }}\"}" \
-             || echo "Could not update deployment timestamp via API"
+    - name: Set final deployment timestamp
+      run: |
+        # Set the actual deployment completion timestamp
+        FINAL_DEPLOYMENT_TIMESTAMP=$(TZ='America/New_York' date +%Y-%m-%dT%H:%M:%S%z)
+        echo "FINAL_DEPLOYMENT_TIMESTAMP=$FINAL_DEPLOYMENT_TIMESTAMP" >> $GITHUB_ENV
+        echo "Final deployment completed at: $FINAL_DEPLOYMENT_TIMESTAMP"
+        
+        # Wait a moment for Azure to fully initialize
+        sleep 15
+        
+        # Update the deployed app with the actual completion timestamp
+        curl -X POST "https://scorekeeper.azurewebsites.net/api/admin/update-deployment-time" \
+          -H "Content-Type: application/json" \
+          -d "{\"deploymentTimestamp\": \"$FINAL_DEPLOYMENT_TIMESTAMP\", \"githubSha\": \"${{ github.sha }}\"}" \
+          || echo "Could not update deployment timestamp via API"
 
-       - name: Verify deployment
-         run: |
-           # Short wait for deployment to complete
-           sleep 10
-           # Check health endpoint
-           curl --max-time 5 -sSf https://scorekeeper.azurewebsites.net/api/health || echo "Health check failed"
-           # Check version endpoint and verify it matches package.json
-           curl --max-time 5 -sSf https://scorekeeper.azurewebsites.net/api/version | tee /tmp/version.json
+    - name: Verify deployment
+      run: |
+        # Wait a moment for deployment to complete
+        sleep 30
+        # Check health endpoint
+        curl -sSf https://scorekeeper.azurewebsites.net/api/health || echo "Health check failed"
+        # Check version endpoint and verify it matches package.json
+        curl -sSf https://scorekeeper.azurewebsites.net/api/version | tee /tmp/version.json
         if command -v jq > /dev/null; then
           DEPLOYED_VERSION=$(jq -r .version /tmp/version.json)
           PACKAGE_VERSION=$(jq -r .version package.json)

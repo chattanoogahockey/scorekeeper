@@ -2997,18 +2997,45 @@ app.post('/api/shots-on-goal', async (req, res) => {
   try {
     const container = getShotsOnGoalContainer();
     
-    const shotOnGoal = {
-      id: `shot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      gameId: gameId,
-      team: team,
-      type: 'shot-on-goal',
-      timeRecorded: new Date().toISOString()
+    // Try to find existing record for this game
+    const query = {
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId',
+      parameters: [{ name: '@gameId', value: gameId }]
     };
     
-    await container.items.create(shotOnGoal);
+    const { resources: existingRecords } = await container.items.query(query).fetchAll();
+    let shotRecord;
     
-    console.log(`✅ Shot on goal recorded for ${team} in game ${gameId}`);
-    res.status(201).json(shotOnGoal);
+    if (existingRecords.length > 0) {
+      // Update existing record
+      shotRecord = existingRecords[0];
+      shotRecord[team] = (shotRecord[team] || 0) + 1;
+      shotRecord.lastUpdated = new Date().toISOString();
+      
+      await container.item(shotRecord.id).replace(shotRecord);
+      console.log(`✅ Updated shot count for ${team} in game ${gameId}: ${shotRecord[team]}`);
+    } else {
+      // Create new record
+      shotRecord = {
+        id: `shots_${gameId}`,
+        gameId: gameId,
+        type: 'shots-on-goal-summary',
+        home: team === 'home' ? 1 : 0,
+        away: team === 'away' ? 1 : 0,
+        createdAt: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
+      };
+      
+      await container.items.create(shotRecord);
+      console.log(`✅ Created new shot record for game ${gameId}, ${team}: 1`);
+    }
+    
+    res.status(201).json({
+      gameId: shotRecord.gameId,
+      home: shotRecord.home,
+      away: shotRecord.away,
+      lastUpdated: shotRecord.lastUpdated
+    });
   } catch (error) {
     console.error('❌ Error recording shot on goal:', error);
     handleError(res, error);
@@ -3022,7 +3049,7 @@ app.get('/api/shots-on-goal/game/:gameId', async (req, res) => {
     const container = getShotsOnGoalContainer();
     
     const query = {
-      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.timeRecorded ASC',
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId',
       parameters: [
         { name: '@gameId', value: gameId }
       ]
@@ -3030,13 +3057,17 @@ app.get('/api/shots-on-goal/game/:gameId', async (req, res) => {
     
     const { resources: shots } = await container.items.query(query).fetchAll();
     
-    // Count shots by team
-    const shotCounts = shots.reduce((acc, shot) => {
-      acc[shot.team] = (acc[shot.team] || 0) + 1;
-      return acc;
-    }, { home: 0, away: 0 });
+    let shotCounts = { home: 0, away: 0 };
     
-    console.log(`✅ Found ${shots.length} shots on goal for game ${gameId}`);
+    if (shots.length > 0) {
+      const shotRecord = shots[0];
+      shotCounts = {
+        home: shotRecord.home || 0,
+        away: shotRecord.away || 0
+      };
+    }
+    
+    console.log(`✅ Found shot counts for game ${gameId}: Home: ${shotCounts.home}, Away: ${shotCounts.away}`);
     res.status(200).json(shotCounts);
   } catch (error) {
     console.error('❌ Error fetching shots on goal for game:', error);
@@ -3066,7 +3097,7 @@ app.post('/api/undo-last-action', async (req, res) => {
     };
     
     const shotsQuery = {
-      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.timeRecorded DESC',
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
     
@@ -3076,19 +3107,26 @@ app.post('/api/undo-last-action', async (req, res) => {
       shotsContainer.items.query(shotsQuery).fetchAll()
     ]);
     
-    const lastGoal = goalsResult.resources[0];
-    const lastPenalty = penaltiesResult.resources[0];
-    const lastShot = shotsResult.resources[0];
-    
-    let itemToDelete = null;
-    let containerToUse = null;
-    let actionType = null;
+    // For shots on goal, we need to handle them differently since they're accumulated
+    // We'll check if there are any shots and if so, we'll need special handling
+    const shotRecord = lastShot;
+    let canUndoShot = false;
+    if (shotRecord && (shotRecord.home > 0 || shotRecord.away > 0)) {
+      // We have shots that can be undone, but we need to determine which team had the most recent shot
+      // For now, we'll assume the team with more shots had the most recent one
+      // TODO: In future, consider tracking last shot team/timestamp
+      canUndoShot = true;
+    }
     
     // Determine which action was most recent
     const candidates = [];
-    if (lastGoal) candidates.push({ item: lastGoal, container: goalsContainer, type: 'goal' });
-    if (lastPenalty) candidates.push({ item: lastPenalty, container: penaltiesContainer, type: 'penalty' });
-    if (lastShot) candidates.push({ item: lastShot, container: shotsContainer, type: 'shot on goal' });
+    if (lastGoal) candidates.push({ item: lastGoal, container: goalsContainer, type: 'goal', timestamp: new Date(lastGoal.timeRecorded || lastGoal.recordedAt) });
+    if (lastPenalty) candidates.push({ item: lastPenalty, container: penaltiesContainer, type: 'penalty', timestamp: new Date(lastPenalty.timeRecorded || lastPenalty.recordedAt) });
+    
+    // Only add shots if we have a record with actual shots and no other actions are more recent
+    if (canUndoShot && shotRecord.lastUpdated) {
+      candidates.push({ item: shotRecord, container: shotsContainer, type: 'shot on goal', timestamp: new Date(shotRecord.lastUpdated) });
+    }
     
     if (candidates.length === 0) {
       return res.status(404).json({ error: 'No actions found to undo for this game' });
@@ -3096,17 +3134,37 @@ app.post('/api/undo-last-action', async (req, res) => {
     
     // Find the most recent action by timestamp
     const mostRecent = candidates.reduce((latest, current) => {
-      const currentTime = new Date(current.item.timeRecorded || current.item.recordedAt);
-      const latestTime = new Date(latest.item.timeRecorded || latest.item.recordedAt);
-      return currentTime > latestTime ? current : latest;
+      return current.timestamp > latest.timestamp ? current : latest;
     });
     
     itemToDelete = mostRecent.item;
     containerToUse = mostRecent.container;
     actionType = mostRecent.type;
     
-    // Delete the most recent action
-    await containerToUse.item(itemToDelete.id).delete();
+    // Handle different types of undo operations
+    if (actionType === 'shot on goal') {
+      // For shots, we decrement the count instead of deleting
+      if (shotRecord.home > shotRecord.away) {
+        shotRecord.home = Math.max(0, shotRecord.home - 1);
+      } else if (shotRecord.away > 0) {
+        shotRecord.away = Math.max(0, shotRecord.away - 1);
+      } else if (shotRecord.home > 0) {
+        shotRecord.home = Math.max(0, shotRecord.home - 1);
+      }
+      
+      shotRecord.lastUpdated = new Date().toISOString();
+      
+      if (shotRecord.home === 0 && shotRecord.away === 0) {
+        // If no shots left, delete the record
+        await containerToUse.item(itemToDelete.id).delete();
+      } else {
+        // Update the record with decremented count
+        await containerToUse.item(itemToDelete.id).replace(shotRecord);
+      }
+    } else {
+      // For goals and penalties, delete the record as before
+      await containerToUse.item(itemToDelete.id).delete();
+    }
     
     console.log(`✅ Undid last ${actionType} action for game ${gameId}`);
     res.status(200).json({ 
@@ -3119,6 +3177,60 @@ app.post('/api/undo-last-action', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error undoing last action:', error);
+    handleError(res, error);
+  }
+});
+
+// Undo specific shot on goal
+app.post('/api/undo-shot-on-goal', async (req, res) => {
+  console.log('↩️ Undoing shot on goal...');
+  const { gameId, team } = req.body;
+  
+  try {
+    const container = getShotsOnGoalContainer();
+    
+    // Find the shot record for this game
+    const query = {
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId',
+      parameters: [{ name: '@gameId', value: gameId }]
+    };
+    
+    const { resources: shots } = await container.items.query(query).fetchAll();
+    
+    if (shots.length === 0) {
+      return res.status(404).json({ error: 'No shot records found for this game' });
+    }
+    
+    const shotRecord = shots[0];
+    const currentCount = shotRecord[team] || 0;
+    
+    if (currentCount === 0) {
+      return res.status(400).json({ error: `No shots to undo for team ${team}` });
+    }
+    
+    // Decrement the count
+    shotRecord[team] = currentCount - 1;
+    shotRecord.lastUpdated = new Date().toISOString();
+    
+    if (shotRecord.home === 0 && shotRecord.away === 0) {
+      // If no shots left, delete the record
+      await container.item(shotRecord.id).delete();
+      console.log(`✅ Deleted empty shot record for game ${gameId}`);
+    } else {
+      // Update the record with decremented count
+      await container.item(shotRecord.id).replace(shotRecord);
+      console.log(`✅ Undid shot for ${team} in game ${gameId}: ${shotRecord[team]}`);
+    }
+    
+    res.status(200).json({
+      message: `Successfully undid shot for ${team}`,
+      gameId: shotRecord.gameId,
+      home: shotRecord.home || 0,
+      away: shotRecord.away || 0,
+      lastUpdated: shotRecord.lastUpdated
+    });
+  } catch (error) {
+    console.error('❌ Error undoing shot on goal:', error);
     handleError(res, error);
   }
 });

@@ -111,29 +111,32 @@ export default function InGameMenu() {
     navigate('/penalty');
   };
 
-  const handleShotsOnGoal = (team) => {
-    // Increment shots on goal for the specified team
-    setShotsOnGoal(prev => ({
-      ...prev,
-      [team]: prev[team] + 1
-    }));
-    
-    // Send to backend
-    const apiUrl = import.meta.env.DEV 
-      ? '/api/shots-on-goal' 
-      : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal`;
-    
-    axios.post(apiUrl, {
-      gameId: selectedGame.id || selectedGame.gameId,
-      team: team
-    }).catch(error => {
+  const handleShotsOnGoal = async (team) => {
+    try {
+      // Send to backend first
+      const apiUrl = import.meta.env.DEV 
+        ? '/api/shots-on-goal' 
+        : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal`;
+      
+      const response = await axios.post(apiUrl, {
+        gameId: selectedGame.id || selectedGame.gameId,
+        team: team
+      });
+      
+      // Update local state with the server response to ensure consistency
+      if (response.data) {
+        setShotsOnGoal({
+          home: response.data.home || 0,
+          away: response.data.away || 0
+        });
+      }
+      
+      console.log(`✅ Shot on goal recorded for ${team}`);
+    } catch (error) {
       console.error('Failed to record shot on goal:', error);
-      // Revert the local state on error
-      setShotsOnGoal(prev => ({
-        ...prev,
-        [team]: prev[team] - 1
-      }));
-    });
+      // Refresh game data to get current state from server
+      refreshGameData();
+    }
   };
 
   const handleUndo = async () => {

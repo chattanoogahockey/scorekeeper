@@ -1276,7 +1276,7 @@ app.post('/api/goals/announce-last', async (req, res) => {
             homeTeam: game.homeTeam,
             awayTeam: game.awayTeam,
             period: 1 // Default to first period for scoreless games
-          });
+          }, voiceGender);
           
           // Generate TTS audio for scoreless commentary using admin-selected voice
           const audioResult = await ttsService.generateSpeech(scorelessCommentary, gameId, 'announcement');
@@ -1348,7 +1348,7 @@ app.post('/api/goals/announce-last', async (req, res) => {
       });
     } else {
       // Generate single announcer text
-      const announcementText = await generateGoalAnnouncement(goalData, playerStats);
+      const announcementText = await generateGoalAnnouncement(goalData, playerStats, voiceGender);
       
       // Generate TTS audio for goal announcement using optimized goal speech
       const audioResult = await ttsService.generateGoalSpeech(announcementText, gameId);
@@ -1509,7 +1509,7 @@ app.post('/api/penalties/announce-last', async (req, res) => {
       });
     } else {
       // Generate single announcer text
-      const announcementText = await generatePenaltyAnnouncement(penaltyData, gameContext);
+      const announcementText = await generatePenaltyAnnouncement(penaltyData, gameContext, voiceGender);
       
       // Generate TTS audio for penalty announcement (using special penalty voice)
       const audioResult = await ttsService.generatePenaltySpeech(announcementText, gameId);

@@ -8,7 +8,7 @@ const openai = new OpenAI({
 /**
  * Generate professional roller hockey goal announcement using OpenAI
  */
-export async function generateGoalAnnouncement(goalData, playerStats = null) {
+export async function generateGoalAnnouncement(goalData, playerStats = null, voiceGender = 'male') {
   try {
     const { 
       playerName, 
@@ -36,18 +36,28 @@ export async function generateGoalAnnouncement(goalData, playerStats = null) {
       `This is ${playerName}'s ${playerStats.goalsThisGame + 1}${getOrdinalSuffix(playerStats.goalsThisGame + 1)} goal of the game, and ${playerStats.seasonGoals + 1}${getOrdinalSuffix(playerStats.seasonGoals + 1)} of the season.` :
       '';
 
-    const prompt = `You are a professional roller hockey arena announcer with the style and personality of **Al Michaels**—adapted for roller hockey. You are the play-by-play voice in the Scorekeeper app. Create an exciting goal announcement that captures the rhythm, tone, and delivery that made Michaels iconic—just applied to a roller rink.
+    // Determine personality based on voice gender
+    const personalityPrompt = voiceGender === 'female' ? 
+      `You are a professional roller hockey arena announcer with the style and personality of **Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey. You are the play-by-play voice in the Scorekeeper app. Create an exciting goal announcement that captures Linda's upbeat, bright, energetic approach to hockey broadcasting.` :
+      `You are a professional roller hockey arena announcer with the style and personality of **Al Michaels**—adapted for roller hockey. You are the play-by-play voice in the Scorekeeper app. Create an exciting goal announcement that captures the rhythm, tone, and delivery that made Michaels iconic—just applied to a roller rink.`;
 
-Player: ${playerName}
-Team: ${teamName} 
-Period: ${period}
-Time: ${timeRemaining}
-Goal Type: ${goalType}
-${assistText}
-Current Score: ${scoreText}
-${statsText}
+    const styleGuidelines = voiceGender === 'female' ? 
+      `**STYLE GUIDELINES (Linda Cohn approach):**
+- **Upbeat and energetic**: Bright, warm tone that makes every goal feel electric
+- **Confident and conversational**: Clear delivery like she's smiling as she speaks
+- **Fan-first excitement**: Genuine enthusiasm for every scoring moment
+- **Emotional presence**: Let the joy and excitement come through naturally
+- **Never gets jaded**: Every goal matters, every game is important
+- **Skill appreciation**: Highlights the talent and effort behind each goal
 
-**STYLE GUIDELINES:**
+**PERSONALITY TRAITS:**
+- Joyful and fan-friendly approach to every call
+- Believes in comebacks and momentum shifts
+- Credits skill, grit, and character
+- Upbeat without being over-the-top
+- Conversational warmth with professional authority
+- Uses roller-specific terms only (no ice hockey references)` :
+      `**STYLE GUIDELINES (Al Michaels approach):**
 - **Play-by-play lyricist**: The game is the melody—you provide the lyrics
 - **Vivid but minimal**: Use clear, concise phrases to match the energy on the rink
 - **Spontaneous**: Never sound prewritten. Let the game drive your emotion and reaction
@@ -59,22 +69,45 @@ ${statsText}
 - Natural voice of excitement during big plays
 - Genuinely optimistic without sounding naïve
 - Quick with dry, understated humor when appropriate
-- Professional but fan-minded—loves the game and the players
+- Professional but fan-minded—loves the game and the players`;
 
-Write this as Al Michaels would call it - be energetic, clear, and exciting. Include the player name prominently, mention assists if any, and build excitement around the goal. Keep it concise but impactful (1-2 sentences max). Do not include any stage directions or formatting - just the announcement text that would be spoken.
-
-Examples in Al Michaels style for roller hockey:
+    const examples = voiceGender === 'female' ?
+      `Examples in Linda Cohn style for roller hockey:
+- "OH MY! ${playerName} lights the lamp! What a beautiful shot and what a moment!"
+- "YES! ${playerName} finds the back of the net! The energy in this rink is incredible!"` :
+      `Examples in Al Michaels style for roller hockey:
 - "He fires—SCORES! ${playerName} gives them the lead with 19 seconds left! Can you believe this place?!"
-- "Shot on goal—HE SCORES! ${playerName} with the snipe! What a moment!"
+- "Shot on goal—HE SCORES! ${playerName} with the snipe! What a moment!"`;
 
-Your Al Michaels-style announcement:`;
+    const prompt = `${personalityPrompt}
+
+Player: ${playerName}
+Team: ${teamName} 
+Period: ${period}
+Time: ${timeRemaining}
+Goal Type: ${goalType}
+${assistText}
+Current Score: ${scoreText}
+${statsText}
+
+${styleGuidelines}
+
+Write this as ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'} would call it - be energetic, clear, and exciting. Include the player name prominently, mention assists if any, and build excitement around the goal. Keep it concise but impactful (1-2 sentences max). Do not include any stage directions or formatting - just the announcement text that would be spoken.
+
+${examples}
+
+Your ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'}-style announcement:`;
+
+    const systemContent = voiceGender === 'female' ?
+      "You are a professional roller hockey arena announcer with the style and personality of Linda Cohn, adapted for roller hockey. Use her upbeat, energetic, and warm delivery style with genuine excitement for every goal." :
+      "You are a professional roller hockey arena announcer with the style and personality of Al Michaels, adapted for roller hockey. Use his vivid but minimal play-by-play style, natural excitement, and understated humor to create compelling goal announcements.";
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: "You are a professional roller hockey arena announcer with the style and personality of Al Michaels, adapted for roller hockey. Use his vivid but minimal play-by-play style, natural excitement, and understated humor to create compelling goal announcements."
+          content: systemContent
         },
         {
           role: "user",
@@ -95,11 +128,33 @@ Your Al Michaels-style announcement:`;
 /**
  * Generate scoreless game commentary
  */
-export async function generateScorelessCommentary(gameData) {
+export async function generateScorelessCommentary(gameData, voiceGender = 'male') {
   try {
     const { homeTeam, awayTeam, period } = gameData;
 
-    const prompt = `You are a professional roller hockey announcer during a scoreless game between ${homeTeam} and ${awayTeam}. We're in period ${period} and it's still 0-0. Generate exciting commentary about:
+    // Determine personality based on voice gender
+    const personalityPrompt = voiceGender === 'female' ? 
+      `You are a professional roller hockey announcer with the style and personality of **Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey. Generate exciting commentary about this scoreless battle with Linda's bright, energetic approach.` :
+      `You are a professional roller hockey announcer with the style and personality of **Al Michaels**—adapted for roller hockey. Generate commentary about this scoreless game with Al's play-by-play mastery and natural excitement.`;
+
+    const styleGuidelines = voiceGender === 'female' ? 
+      `**STYLE GUIDELINES (Linda Cohn approach):**
+- **Upbeat energy**: Even scoreless games are exciting with the right perspective
+- **Fan-first excitement**: Make viewers appreciate the defensive battle
+- **Confident commentary**: Clear delivery that builds anticipation
+- **Warm enthusiasm**: Genuine appreciation for both teams' efforts
+- **Hockey knowledge**: Highlight the tactical battle and goaltending
+- **Never gets jaded**: Every scoreless moment builds toward something special` :
+      `**STYLE GUIDELINES (Al Michaels approach):**
+- **Build tension naturally**: Let the scoreless drama unfold through your words
+- **Vivid but minimal**: Paint the picture without overcomplicating
+- **Professional appreciation**: Respect the defensive battle and goaltending
+- **Natural anticipation**: Create excitement for the eventual breakthrough
+- **Understated authority**: Let the game situation speak through your delivery`;
+
+    const prompt = `${personalityPrompt}
+
+You're covering a scoreless game between ${homeTeam} and ${awayTeam}. We're in period ${period} and it's still 0-0. Generate exciting commentary about:
 
 - The defensive battle happening
 - Goaltending performances 
@@ -107,16 +162,22 @@ export async function generateScorelessCommentary(gameData) {
 - Building tension of a tight game
 - Historical context about these teams if possible
 
-Keep it engaging and create excitement even without goals. 2-3 sentences max. Sound like a real roller hockey announcer building drama.
+${styleGuidelines}
 
-Your commentary:`;
+Keep it engaging and create excitement even without goals. 2-3 sentences max. Sound like ${voiceGender === 'female' ? 'Linda Cohn building energy and appreciation for both teams' : 'Al Michaels building drama naturally'}.
+
+Your ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'}-style commentary:`;
+
+    const systemContent = voiceGender === 'female' ?
+      "You are a professional roller hockey announcer with the style and personality of Linda Cohn, adapted for roller hockey. Use her upbeat, energetic approach to make even scoreless games exciting with genuine enthusiasm and hockey knowledge." :
+      "You are a professional roller hockey announcer with the style and personality of Al Michaels, adapted for roller hockey. Use his tension-building ability and natural excitement to make scoreless games compelling.";
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system", 
-          content: "You are a professional roller hockey announcer who can make even scoreless games exciting with your commentary about defensive play, goaltending, and game tension."
+          content: systemContent
         },
         {
           role: "user",
@@ -244,7 +305,7 @@ Your description:`;
 /**
  * Generate professional roller hockey penalty announcement using OpenAI
  */
-export async function generatePenaltyAnnouncement(penaltyData, gameContext = null) {
+export async function generatePenaltyAnnouncement(penaltyData, gameContext = null, voiceGender = 'male') {
   try {
     const { 
       playerName, 
@@ -257,7 +318,46 @@ export async function generatePenaltyAnnouncement(penaltyData, gameContext = nul
 
     const { homeTeam, awayTeam, currentScore } = gameContext || {};
 
-    const prompt = `You are a professional roller hockey arena announcer with the style and personality of **Al Michaels**—adapted for roller hockey. Create a clear, authoritative penalty announcement for the following penalty:
+    // Determine personality based on voice gender
+    const personalityPrompt = voiceGender === 'female' ? 
+      `You are a professional roller hockey arena announcer with the style and personality of **Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey. Create a clear, authoritative penalty announcement with Linda's upbeat but professional approach.` :
+      `You are a professional roller hockey arena announcer with the style and personality of **Al Michaels**—adapted for roller hockey. Create a clear, authoritative penalty announcement for the following penalty:`;
+
+    const styleGuidelines = voiceGender === 'female' ? 
+      `**STYLE GUIDELINES (Linda Cohn approach):**
+- **Professional but warm**: Clear, authoritative delivery with Linda's signature warmth
+- **Confident and conversational**: Matter-of-fact delivery with underlying enthusiasm
+- **Fan-first approach**: Explain the call clearly for everyone watching
+- **Emotional intelligence**: Balanced reaction appropriate to the situation
+- **Never condescending**: Respectful of players while being clear about the penalty
+- **Uses roller-specific terms only**: No ice hockey references
+
+**PERSONALITY TRAITS:**
+- Upbeat professionalism even during penalty calls
+- Clear communication with underlying hockey knowledge
+- Warm authority that keeps the game moving
+- Professional but approachable delivery` :
+      `**STYLE GUIDELINES (Al Michaels approach):**
+- **Play-by-play clarity comes first**: Clear, concise phrases that match the moment
+- **Professional but fan-minded**: Loves the game, understands the players
+- **Understated authority**: Professional delivery without being overly dramatic
+- **Natural rhythm**: Let the call feel spontaneous, not scripted
+
+**PERSONALITY TRAITS:**
+- Warm and composed under pressure
+- Professional delivery with natural touch
+- Clear, authoritative, and professional
+- Quick with dry, understated humor when appropriate`;
+
+    const examples = voiceGender === 'female' ?
+      `Examples in Linda Cohn style:
+- "Number 14, John Smith, two minutes for tripping. Clear call by the official."
+- "Interference on Jake Wilson, that's a two-minute minor. Good eye by the ref there."` :
+      `Examples in Al Michaels style:
+- "Number 14, John Smith... two minutes for tripping"
+- "Interference on Jake Wilson, and that's two minutes"`;
+
+    const prompt = `${personalityPrompt}
 
 Player: ${playerName}
 Team: ${teamName}
@@ -267,24 +367,22 @@ Time: ${timeRemaining}
 Penalty Length: ${length} minutes
 ${gameContext ? `Score: ${homeTeam} ${currentScore?.home || 0}, ${awayTeam} ${currentScore?.away || 0}` : ''}
 
-**STYLE GUIDELINES (Al Michaels approach):**
-- **Play-by-play clarity comes first**: Clear, concise phrases that match the moment
-- **Professional but fan-minded**: Loves the game, understands the players
-- **Understated authority**: Professional delivery without being overly dramatic
-- **Natural rhythm**: Let the call feel spontaneous, not scripted
+${styleGuidelines}
 
-Write this as Al Michaels would call it - be clear, authoritative, and professional with his natural touch. State the penalty clearly and include the time. Keep it concise and authoritative (1-2 sentences). Do not include any stage directions or formatting - just the announcement text that would be spoken.
+Write this as ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'} would call it - be clear, authoritative, and professional with ${voiceGender === 'female' ? 'her warm but professional' : 'his natural'} touch. State the penalty clearly and include the time. Keep it concise and authoritative (1-2 sentences). Do not include any stage directions or formatting - just the announcement text that would be spoken.
 
-Examples in Al Michaels style:
-- "Number 14, John Smith... two minutes for tripping"
-- "Interference on Jake Wilson, and that's two minutes"`;
+${examples}`;
+
+    const systemContent = voiceGender === 'female' ?
+      "You are a professional hockey arena announcer with the style and personality of Linda Cohn, adapted for roller hockey. Use her warm but professional delivery style with clear authority for penalty announcements." :
+      "You are a professional hockey arena announcer with the style and personality of Al Michaels, adapted for roller hockey. Use his clear, authoritative yet natural delivery style for penalty announcements.";
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: "You are a professional hockey arena announcer with the style and personality of Al Michaels, adapted for roller hockey. Use his clear, authoritative yet natural delivery style for penalty announcements."
+          content: systemContent
         },
         {
           role: "user",
@@ -354,10 +452,17 @@ MALE ANNOUNCER (starts first):
 - Professional but fan-minded—loves the game and the players
 
 FEMALE ANNOUNCER:
-- Optimistic and cheerful
-- Loves all teams, slight Red Wings preference  
-- Balances male's classic style with positivity
-- Teases him lightly when he gets cranky
+- **Inspired by Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey
+- Upbeat, bright, energetic, and warm tone
+- Confident, conversational, and clear—like she's smiling as she speaks
+- Fan-first, pro-level commentator who makes every game feel electric
+- Loves roller hockey—has followed it, played it, lived it
+- Joyful, fan-friendly, and emotionally present
+- Believes in comebacks, momentum shifts, and giving credit where it's due
+- Never gets jaded—every game matters
+- Highlights skill, grit, and character, especially from unsung heroes
+- Uses roller-specific terms only (no ice hockey references)
+- Balances male's classic style with genuine excitement and fun
 
 CONVERSATION RULES:
 - Exactly 6 lines total (3 each, alternating male-female-male-female-male-female)
@@ -462,9 +567,17 @@ MALE ANNOUNCER (starts first):
 - Professional but fan-minded—loves the game and the players
 
 FEMALE ANNOUNCER:
-- Optimistic and cheerful
-- Loves all teams, slight Red Wings preference
-- Balances male's classic style with positivity
+- **Inspired by Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey
+- Upbeat, bright, energetic, and warm tone
+- Confident, conversational, and clear—like she's smiling as she speaks
+- Fan-first, pro-level commentator who makes every game feel electric
+- Loves roller hockey—has followed it, played it, lived it
+- Joyful, fan-friendly, and emotionally present
+- Believes in comebacks, momentum shifts, and giving credit where it's due
+- Never gets jaded—every game matters
+- Highlights skill, grit, and character, especially from unsung heroes
+- Uses roller-specific terms only (no ice hockey references)
+- Balances male's classic style with genuine excitement and clean fun
 
 CONVERSATION RULES:
 - Exactly 4 lines total (2 each, alternating male-female-male-female)
@@ -590,10 +703,18 @@ MALE ANNOUNCER:
 - Professional but fan-minded—loves the game and the players
 
 FEMALE ANNOUNCER:
-- Optimistic and cheerful
-- Loves all teams, slight Red Wings preference
-- Balances his classic style with positivity and fun facts
-- Teases him lightly when he gets too serious
+- **Inspired by Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey
+- Upbeat, bright, energetic, and warm tone
+- Confident, conversational, and clear—like she's smiling as she speaks
+- Fan-first, pro-level commentator who makes every game feel electric
+- Loves roller hockey—has followed it, played it, lived it
+- Joyful, fan-friendly, and emotionally present
+- Believes in comebacks, momentum shifts, and giving credit where it's due
+- Never gets jaded—every game matters
+- Highlights skill, grit, and character, especially from unsung heroes
+- Uses roller-specific terms only (no ice hockey references)
+- Balances his classic style with genuine excitement and fun facts
+- Uses tasteful humor: "That shot had some serious sauce on it"
 
 RULES:
 - Exactly 10 lines (5 each, alternating starting with male)

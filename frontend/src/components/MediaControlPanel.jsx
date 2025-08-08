@@ -476,7 +476,6 @@ export default function MediaControlPanel({ gameId }) {
   return (
     <div className="border rounded-lg shadow-lg p-4 bg-gradient-to-br from-gray-50 to-gray-100">
       <div className="flex justify-between items-center mb-4">
-        <h3 className="text-xl font-bold text-gray-800">Media Control Center</h3>
         {/* Fade Out Button - Only show when DJ sounds are playing */}
         {isPlaying && (
           <button
@@ -496,7 +495,7 @@ export default function MediaControlPanel({ gameId }) {
       <div className="grid grid-cols-2 gap-6">
         {/* Left Side - DJ Panel */}
         <div className="bg-white rounded-lg p-3 shadow-inner border border-gray-200">
-          <h4 className="text-lg font-semibold mb-3 text-center text-blue-700">DJ Sounds</h4>
+          <h4 className="text-lg font-bold mb-3 text-center text-black">DJ</h4>
           
           <div className="grid grid-cols-2 gap-2">
             {/* Row 1 */}
@@ -593,43 +592,43 @@ export default function MediaControlPanel({ gameId }) {
 
         {/* Right Side - Announcer Panel */}
         <div className="bg-white rounded-lg p-3 shadow-inner border border-gray-200">
-          <h4 className="text-lg font-semibold mb-3 text-center text-purple-700">Announcer</h4>
+          <h4 className="text-lg font-bold mb-3 text-center text-black">Announcer</h4>
           
           {/* Voice Selection - Above buttons */}
           <div className="mb-3">
             <div className="flex justify-center gap-2">
               <button
                 onClick={() => handleVoiceSelection('male')}
-                className={`flex items-center justify-center px-3 py-2 rounded-lg border-2 transition-all duration-200 text-xs font-medium ${
+                className={`flex items-center justify-center px-3 py-2 rounded-lg border-2 transition-all duration-200 text-2xl ${
                   selectedVoice === 'male'
                     ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md'
                     : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
                 }`}
                 title="Male Voice"
               >
-                Male
+                👨
               </button>
               <button
                 onClick={() => handleVoiceSelection('female')}
-                className={`flex items-center justify-center px-3 py-2 rounded-lg border-2 transition-all duration-200 text-xs font-medium ${
+                className={`flex items-center justify-center px-3 py-2 rounded-lg border-2 transition-all duration-200 text-2xl ${
                   selectedVoice === 'female'
                     ? 'border-pink-500 bg-pink-50 text-pink-700 shadow-md'
                     : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
                 }`}
                 title="Female Voice"
               >
-                Female
+                👩
               </button>
               <button
                 onClick={() => handleVoiceSelection('dual')}
-                className={`flex items-center justify-center px-3 py-2 rounded-lg border-2 transition-all duration-200 text-xs font-medium ${
+                className={`flex items-center justify-center px-3 py-2 rounded-lg border-2 transition-all duration-200 text-xl ${
                   selectedVoice === 'dual'
                     ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-md'
                     : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
                 }`}
                 title="Dual Announcer Mode"
               >
-                Dual
+                👨👩
               </button>
             </div>
           </div>

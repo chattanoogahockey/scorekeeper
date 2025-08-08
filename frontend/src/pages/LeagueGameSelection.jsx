@@ -244,11 +244,17 @@ export default function LeagueGameSelection() {
             }))
           }));
           
-          // CRITICAL: Set context synchronously and wait for state to settle
+          // CRITICAL: Set context synchronously and persist to sessionStorage as a fallback
           console.log('🎯 Setting context before navigation...');
           setSelectedLeague(game.division);
           setRosters(processedRosters);
           setSelectedGame(game);
+          try {
+            sessionStorage.setItem('selectedGame', JSON.stringify(game));
+            sessionStorage.setItem('selectedRosters', JSON.stringify(processedRosters));
+          } catch (e) {
+            console.warn('⚠️ Failed to write session storage for game/rosters', e);
+          }
           
           // Use setTimeout to ensure context has been set before navigation
           console.log('🎯 Scheduling navigation to in-game menu...');
@@ -263,7 +269,8 @@ export default function LeagueGameSelection() {
                 game: game,
                 rosters: processedRosters,
                 bypassedRoster: true 
-              } 
+              },
+              replace: true
             });
           }, 100); // Small delay to ensure React state has been updated
           return;

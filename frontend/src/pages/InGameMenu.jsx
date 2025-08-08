@@ -9,7 +9,7 @@ import axios from 'axios';
  * Enhanced In-Game Menu with integrated dashboard functionality
  */
 export default function InGameMenu() {
-  const { selectedGame, setSelectedGame } = useContext(GameContext);
+  const { selectedGame, setSelectedGame, rosters, setRosters } = useContext(GameContext);
   const navigate = useNavigate();
   const location = useLocation();
   const [isInitialized, setIsInitialized] = useState(false);
@@ -18,14 +18,26 @@ export default function InGameMenu() {
   useEffect(() => {
     console.log('🔍 InGameMenu useEffect - selectedGame:', selectedGame);
     console.log('🔍 InGameMenu useEffect - location.state:', location.state);
-    
+
+    // 1) Prefer navigation state
     if (!selectedGame && location.state?.game) {
-      // If we have game data in navigation state but not in context, update context
-      console.log('🎮 Setting game from navigation state:', location.state.game);
+      console.log('🎮 Hydrating game from navigation state');
       setSelectedGame(location.state.game);
+    } else if (!selectedGame) {
+      // 2) Fallback: sessionStorage (resilient resume across reloads)
+      try {
+        const storedGame = sessionStorage.getItem('selectedGame');
+        if (storedGame) {
+          const parsed = JSON.parse(storedGame);
+          console.log('💾 Hydrating game from sessionStorage');
+          setSelectedGame(parsed);
+        }
+      } catch (e) {
+        console.warn('⚠️ Failed to read sessionStorage.selectedGame', e);
+      }
     }
-    
-    // Mark as initialized after context sync attempt
+
+    // Mark as initialized after hydration attempt
     if (!isInitialized) {
       console.log('🔧 Marking InGameMenu as initialized');
       setIsInitialized(true);
@@ -101,8 +113,32 @@ export default function InGameMenu() {
     // Data will be refreshed when user returns from goal/penalty entry forms
   }, [selectedGame]);
 
+  // Hydrate rosters from navigation state or session storage (non-blocking)
+  useEffect(() => {
+    if (rosters && rosters.length > 0) return;
+    if (location.state?.rosters) {
+      setRosters(location.state.rosters);
+      return;
+    }
+    try {
+      const stored = sessionStorage.getItem('selectedRosters');
+      if (stored) {
+        setRosters(JSON.parse(stored));
+      }
+    } catch (e) {
+      console.warn('⚠️ Failed to read sessionStorage.selectedRosters', e);
+    }
+  }, [rosters, setRosters, location.state]);
+
   // Use game from context or navigation state
-  const currentGame = selectedGame || location.state?.game;
+  const currentGame = selectedGame || location.state?.game || (() => {
+    try {
+      const g = sessionStorage.getItem('selectedGame');
+      return g ? JSON.parse(g) : null;
+    } catch {
+      return null;
+    }
+  })();
 
   // Only redirect after initialization and if still no game data
   if (isInitialized && !currentGame) {

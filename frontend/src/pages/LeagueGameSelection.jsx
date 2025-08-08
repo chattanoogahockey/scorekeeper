@@ -26,21 +26,24 @@ export default function LeagueGameSelection() {
       setError(null);
 
       try {
+        const requestId = Math.random().toString(36).substr(2, 9);
         const res = await axios.get('/api/games', {
           params: { 
             division: 'all', 
             t: Date.now(),
-            v: '4'
+            v: '4',
+            rid: requestId
           },
           signal: abortController.signal,
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
-            'Expires': '0'
+            'Expires': '0',
+            'X-Request-ID': requestId
           }
         });
 
-        console.log(`📊 SUCCESS: Received ${res.data.length} games from API:`, res.data);
+        console.log(`📊 SUCCESS: Received ${res.data.length} games from API (Request ID: ${requestId}):`, res.data);
 
         // Filter games - Gold division only, not completed/submitted, with valid teams
         const availableGames = res.data.filter(game => {
@@ -70,7 +73,26 @@ export default function LeagueGameSelection() {
         console.error('❌ Failed to load games:', err);
         console.error('Error details:', err.response?.data || err.message);
         
-        setError('Failed to load games from server. Please refresh the page.');
+        // Handle structured error responses from backend
+        const errorData = err.response?.data;
+        let errorMessage = 'Failed to load games from server.';
+        
+        if (errorData?.error && typeof errorData === 'object') {
+          // New structured error format
+          errorMessage = errorData.message || errorMessage;
+          if (errorData.code === 'DB_UNAVAILABLE') {
+            errorMessage += ' Database temporarily unavailable.';
+          }
+          if (errorData.canRetry) {
+            errorMessage += ' Please try refreshing the page.';
+          }
+        } else {
+          // Legacy error format
+          errorMessage = errorData?.error || errorData?.message || errorMessage;
+          errorMessage += ' Please refresh the page.';
+        }
+        
+        setError(errorMessage);
         setGames([]);
       } finally {
         setLoading(false);

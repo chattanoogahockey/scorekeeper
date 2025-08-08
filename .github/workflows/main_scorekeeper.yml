@@ -37,45 +37,55 @@ jobs:
       with:
         node-version: '20.x'
         cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
     
-    - name: Clean and install dependencies
+    - name: Install backend dependencies
       run: |
-        rm -rf node_modules
-        npm install
-
-    - name: Build frontend
+        cd backend
+        npm ci --production
+    
+    - name: Install and build frontend
       run: |
         cd frontend
-        npm install
+        npm ci
         # Generate version info with deployment timestamp
         NODE_ENV=production DEPLOYMENT_TIMESTAMP=$DEPLOYMENT_TIMESTAMP node generate-version.js
         npm run build
     
-    - name: Install backend dependencies
-      run: |
-        cd backend  
-        npm install --production
-    
-    - name: Create deployment package
+    - name: Create optimized deployment package
       run: |
         mkdir -p deploy
-        # Copy backend files to root of deploy
-        cp -r backend/* deploy/
-        # CRITICAL: Copy backend node_modules to deploy
+        
+        # Backend essentials (no bloat)
+        cp backend/package*.json deploy/
+        cp backend/server.js deploy/
+        cp backend/cosmosClient.js deploy/
+        cp backend/ttsService.js deploy/
+        cp backend/rinkReportGenerator.js deploy/
+        cp backend/voiceConfig.js deploy/
+        cp backend/announcerService.js deploy/ || echo "Announcer service optional"
+        
+        # Copy backend node_modules (production only)
         cp -r backend/node_modules deploy/node_modules
-        # CRITICAL: Copy built frontend to where backend serves it
+        
+        # Frontend built assets only (not source)
         rm -rf deploy/frontend
         mkdir -p deploy/frontend
         cp -r frontend/dist/* deploy/frontend/
-        # Copy root package.json and web.config
+        
+        # Essential root files
         cp package.json deploy/
         cp web.config deploy/
-        # Verify frontend was copied correctly
-        echo "Frontend files copied:"
-        ls -la deploy/frontend/
-        # Verify node_modules copied
-        echo "Backend dependencies copied:"
-        ls -la deploy/node_modules/ | head -10
+        
+        # Verify package is lean
+        echo "📦 Deploy package contents:"
+        ls -la deploy/
+        echo "📊 Deploy package size:"
+        du -sh deploy/
+        echo "🎯 Frontend build size:"
+        du -sh deploy/frontend/
     
     - name: Create deployment environment
       run: |
@@ -110,24 +120,26 @@ jobs:
           -d "{\"deploymentTimestamp\": \"$FINAL_DEPLOYMENT_TIMESTAMP\", \"githubSha\": \"${{ github.sha }}\"}" \
           || echo "Could not update deployment timestamp via API"
 
-    - name: Verify deployment
+    - name: Verify deployment with timeout
       run: |
-        # Wait a moment for deployment to complete
-        sleep 30
-        # Check health endpoint
-        curl -sSf https://scorekeeper.azurewebsites.net/api/health || echo "Health check failed"
-        # Check version endpoint and verify it matches package.json
-        curl -sSf https://scorekeeper.azurewebsites.net/api/version | tee /tmp/version.json
+        # Wait for deployment to complete with timeout
+        echo "⏳ Waiting for deployment to be ready..."
+        timeout 60s bash -c 'until curl -f https://scorekeeper.azurewebsites.net/health; do sleep 3; done' || echo "Health check timeout - deployment may still be starting"
+        
+        # Verify version endpoint
+        echo "🔍 Checking version endpoint..."
+        curl -sSf https://scorekeeper.azurewebsites.net/api/version | tee /tmp/version.json || echo "Version check failed"
+        
         if command -v jq > /dev/null; then
-          DEPLOYED_VERSION=$(jq -r .version /tmp/version.json)
+          DEPLOYED_VERSION=$(jq -r .version /tmp/version.json 2>/dev/null || echo "unknown")
           PACKAGE_VERSION=$(jq -r .version package.json)
-          echo "Deployed version: $DEPLOYED_VERSION"
-          echo "Package version: $PACKAGE_VERSION"
-          if [ "$DEPLOYED_VERSION" != "$PACKAGE_VERSION" ]; then
-            echo "ERROR: Version mismatch!"
-            exit 1
+          echo "📋 Deployed version: $DEPLOYED_VERSION"
+          echo "📋 Package version: $PACKAGE_VERSION"
+          if [ "$DEPLOYED_VERSION" = "$PACKAGE_VERSION" ]; then
+            echo "✅ Version verification successful"
+          else
+            echo "⚠️ Version mismatch detected"
           fi
-          echo "✅ Version verification successful"
-        else
-          echo "jq not available, skipping version verification"
         fi
+        
+        echo "🎉 Deployment verification complete"

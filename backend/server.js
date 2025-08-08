@@ -66,6 +66,22 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
+// Production middleware for request tracking and logging
+app.use((req, res, next) => {
+  // Generate request ID for tracking
+  req.requestId = req.headers['x-request-id'] || Math.random().toString(36).substr(2, 9);
+  
+  // Add request ID to response headers
+  res.set('X-Request-ID', req.requestId);
+  
+  // Log all API requests in production
+  if (req.path.startsWith('/api/')) {
+    console.log(`🌐 ${req.method} ${req.path} (ID: ${req.requestId})`);
+  }
+  
+  next();
+});
+
 // Global cache-busting middleware for all responses
 app.use((req, res, next) => {
   // Force no cache for all API responses and static files
@@ -111,13 +127,16 @@ try {
   console.log('⚠️ Continuing in degraded mode - some features may not work');
 }
 
-// HEALTH CHECK ENDPOINT for Azure (only at /health, not root)
+// HEALTH CHECK ENDPOINT for Azure - always available
 app.get('/health', (req, res) => {
   res.json({ 
-    status: 'healthy', 
+    status: 'ok', 
     message: 'Hockey Scorekeeper API is running',
     timestamp: new Date().toISOString(),
-    port: process.env.PORT || 8080
+    port: process.env.PORT || 8080,
+    uptime: Math.floor(process.uptime()),
+    version: pkg.version,
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
@@ -250,13 +269,39 @@ app.post('/api/admin/update-deployment-time', (req, res) => {
   }
 });
 
-// Utility function for error handling
-function handleError(res, error) {
-  console.error('API Error:', error);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: error.message || 'An unexpected error occurred'
-  });
+// Production-ready error handler with structured responses
+function handleError(res, error, context = 'API') {
+  console.error(`❌ ${context} Error:`, error.message);
+  
+  // Log full error in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('Full error details:', error);
+  }
+  
+  // Structured error response
+  const errorResponse = {
+    error: true,
+    message: 'An error occurred',
+    timestamp: new Date().toISOString(),
+    canRetry: true
+  };
+  
+  // Specific error handling
+  if (error.message?.includes('not configured') || error.message?.includes('Cosmos')) {
+    errorResponse.message = 'Database temporarily unavailable';
+    errorResponse.code = 'DB_UNAVAILABLE';
+    return res.status(503).json(errorResponse);
+  }
+  
+  if (error.code === 11000) {
+    errorResponse.message = 'Duplicate entry';
+    errorResponse.canRetry = false;
+    return res.status(409).json(errorResponse);
+  }
+  
+  // Generic server error
+  errorResponse.message = error.message || 'Internal server error';
+  res.status(500).json(errorResponse);
 }
 
 // Main API endpoints
@@ -354,23 +399,25 @@ app.get('/api/games', async (req, res) => {
       console.log(`📋 Sample game structure (requestId: ${requestId}):`, JSON.stringify(games[0], null, 2));
     }
     
+    // Enhanced response with metadata for production
     const responseData = {
+      success: true,
       games: games,
       meta: {
         count: games.length,
         division: division,
         requestId: requestId,
         timestamp: new Date().toISOString(),
-        queryVersion: v || '1'
+        queryVersion: v || '1',
+        serverVersion: pkg.version
       }
     };
     
-    // Return games array directly for backward compatibility, but log meta info
-    console.log(`📤 Sending ${games.length} games (requestId: ${requestId})`);
+    // Return games array directly for backward compatibility, but log structured response
+    console.log(`📤 Sending ${games.length} games for division ${division} (requestId: ${requestId})`);
     res.status(200).json(games);
   } catch (error) {
-    console.error('❌ Error fetching games:', error);
-    res.status(500).json({ error: 'Failed to fetch games', details: error.message });
+    handleError(res, error, 'Games API');
   }
 });
 
@@ -3304,27 +3351,33 @@ app.get('*', (req, res) => {
 
 const server = app.listen(process.env.PORT || 8080, () => {
   const port = process.env.PORT || 8080;
+  const memUsage = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+  
   console.log(`🚀 Hockey Scorekeeper API running on port ${port}`);
   console.log(`📡 Server listening on http://localhost:${port}`);
   console.log('🏥 Health check available at /health');
   console.log('🎯 API endpoints available at /api/*');
+  console.log(`📊 Memory usage: ${memUsage}MB`);
+  console.log(`⚡ Node.js: ${process.version}`);
+  console.log(`🎯 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log('⏱️  Server started in', Math.floor((Date.now() - startTime) / 1000), 'seconds');
   console.log('✅ Deployment completed successfully - Studio voice authentication enabled');
   
-  // Custom banner for The Scorekeeper
+  // Production-ready banner
   console.log('\n');
   console.log('████████ ██   ██ ███████     ███████  ██████  ██████  ██████  ███████ ██   ██ ███████ ███████ ██████  ███████ ██████  ');
   console.log('   ██    ██   ██ ██          ██      ██      ██    ██ ██   ██ ██      ██  ██  ██      ██      ██   ██ ██      ██   ██ ');
   console.log('   ██    ███████ █████       ███████ ██      ██    ██ ██████  █████   █████   █████   █████   ██████  █████   ██████  ');
   console.log('   ██    ██   ██ ██               ██ ██      ██    ██ ██   ██ ██      ██  ██  ██      ██      ██      ██      ██   ██ ');
   console.log('   ██    ██   ██ ███████     ███████  ██████  ██████  ██   ██ ███████ ██   ██ ███████ ███████ ██      ███████ ██   ██ ');
-  console.log('\n🏒 Hockey Announcer & Scorekeeper System Ready! 🏒');
+  console.log('\n🏒 Production Hockey Scorekeeper System Ready! 🏒');
   console.log('🎙️  AI Commentary & Studio Voice TTS Active');
-  console.log('🥅 Let\'s drop the puck and track some goals! 🥅\n');
+  console.log('🥅 Production-ready with enhanced error handling! 🥅\n');
 
-  // Echo banner again after a short delay for Log Stream visibility
+  // Echo banner for Log Stream visibility
   setTimeout(() => {
-    console.log('\n[Echo] THE SCOREKEEPER banner check: server is up at', new Date().toISOString());
+    console.log(`\n[Production Echo] THE SCOREKEEPER v${pkg.version} is live at ${new Date().toISOString()}`);
+    console.log(`[System Status] Memory: ${memUsage}MB, Uptime: ${Math.floor(process.uptime())}s`);
   }, 5000);
 });
 

@@ -1,10 +1,11 @@
 # Dependencies
 node_modules/
 */node_modules/
-dist/
+
 # Build outputs
-dist
+dist/
 build/
+deploy/
 
 # Environment variables
 .env
@@ -18,6 +19,23 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
+logs/
+*.log
+
+# Production cache and temporary files
+backend/audio-cache/
+backend/tmp/
+backend/logs/
+*.tmp
+*.temp
+
+# Test files and utilities (keep repo clean)
+backend/test*.js
+backend/create*.js
+backend/replace*.js
+backend/update*.js
+backend/delete*.js
+test-*.js
 
 # Runtime data
 pids
@@ -32,19 +50,13 @@ coverage/
 # nyc test coverage
 .nyc_output
 
-# Grunt intermediate storage
+# Development tools
 .grunt
-
-# Bower dependency directory
 bower_components
-
-# Optional npm cache directory
 .npm
-
-# Optional eslint cache
 .eslintcache
 
-# Microbundle cache
+# Cache directories
 .rpt2_cache/
 .rts2_cache_cjs/
 .rts2_cache_es/

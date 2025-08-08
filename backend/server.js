@@ -163,15 +163,13 @@ app.get('/api/version', (req, res) => {
       }
     }
 
-    // Use GitHub Actions workflow time if available, otherwise current time
+    // Prefer explicit deployment timestamp if provided (set by workflow or admin endpoint)
     let deploymentTime;
-    
-    if (process.env.GITHUB_ACTIONS && process.env.DEPLOYMENT_TIMESTAMP) {
-      // Use GitHub workflow deployment timestamp (already in Eastern time from workflow)
+    if (process.env.DEPLOYMENT_TIMESTAMP) {
       deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
       console.log('Using deployment timestamp from environment:', process.env.DEPLOYMENT_TIMESTAMP);
     } else {
-      // Fallback to current time for local builds
+      // Fallback to current time (local dev or first boot before workflow update)
       deploymentTime = new Date();
       console.log('Using current time for local build');
     }

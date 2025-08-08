@@ -15,6 +15,14 @@ export default function RinkReport() {
     fetchReports();
   }, []);
 
+  // When reports load, auto-select the first division that has data
+  useEffect(() => {
+    const divisionsWithReports = divisions.filter((d) => reports[d]);
+    if (divisionsWithReports.length > 0 && !reports[activeTab]) {
+      setActiveTab(divisionsWithReports[0]);
+    }
+  }, [reports]);
+
   const fetchReports = async () => {
     try {
       setLoading(true);

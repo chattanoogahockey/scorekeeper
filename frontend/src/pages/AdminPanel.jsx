@@ -184,7 +184,7 @@ export default function AdminPanel() {
   const handleBackToMain = () => {
     if (hasActiveGame) {
       // Navigate back to the in-game menu if there's an active game
-      navigate('/in-game-menu');
+  navigate('/ingame');
     } else {
       // Navigate to main menu if no active game
       navigate('/');

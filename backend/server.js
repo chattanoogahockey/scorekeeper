@@ -626,42 +626,60 @@ app.delete('/api/rosters/:id', async (req, res) => {
   }
 });
 
-// Add the `/api/game-events` endpoint for goals, assists, penalties, etc.
+// Add the `/api/game-events` endpoint for goals and penalties (aggregated view)
 app.get('/api/game-events', async (req, res) => {
   const { gameId, eventType } = req.query;
 
   try {
-    // const container = getGameEventsContainer(); // Removed gameEvents
-    let querySpec;
-    
-    if (!gameId && !eventType) {
-      // Return all game events
-      querySpec = {
-        query: 'SELECT * FROM c',
-        parameters: [],
-      };
-    } else {
-      // Build dynamic query based on provided filters
-      let conditions = [];
-      let parameters = [];
-      
-      if (gameId) {
-        conditions.push('c.gameId = @gameId');
-        parameters.push({ name: '@gameId', value: gameId });
-      }
-      
-      if (eventType) {
-        conditions.push('c.eventType = @eventType');
-        parameters.push({ name: '@eventType', value: eventType });
-      }
-      
-      querySpec = {
-        query: `SELECT * FROM c WHERE ${conditions.join(' AND ')}`,
-        parameters: parameters,
-      };
-    }
+    const goalsContainer = getGoalsContainer();
+    const penaltiesContainer = getPenaltiesContainer();
 
-    const { resources: events } = await container.items.query(querySpec).fetchAll();
+    // If eventType filters to a specific type, only query that container for efficiency
+    const wantsGoals = !eventType || eventType === 'goal' || eventType === 'goals';
+    const wantsPenalties = !eventType || eventType === 'penalty' || eventType === 'penalties';
+
+    const goalsQuery = wantsGoals
+      ? {
+          query: gameId
+            ? 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt DESC'
+            : 'SELECT * FROM c ORDER BY c.recordedAt DESC',
+          parameters: gameId ? [{ name: '@gameId', value: gameId }] : [],
+        }
+      : null;
+
+    const penaltiesQuery = wantsPenalties
+      ? {
+          query: gameId
+            ? 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt DESC'
+            : 'SELECT * FROM c ORDER BY c.recordedAt DESC',
+          parameters: gameId ? [{ name: '@gameId', value: gameId }] : [],
+        }
+      : null;
+
+    // Run allowed queries in parallel
+    const [goalsResult, penaltiesResult] = await Promise.all([
+      goalsQuery ? goalsContainer.items.query(goalsQuery).fetchAll() : Promise.resolve({ resources: [] }),
+      penaltiesQuery ? penaltiesContainer.items.query(penaltiesQuery).fetchAll() : Promise.resolve({ resources: [] }),
+    ]);
+
+    // Normalize payloads and include eventType for consumers
+    const normalizeRecordedAt = (item) =>
+      item.recordedAt || (item._ts ? new Date(item._ts * 1000).toISOString() : new Date(0).toISOString());
+
+    const goals = (goalsResult.resources || []).map((g) => ({
+      eventType: 'goal',
+      ...g,
+      recordedAt: normalizeRecordedAt(g),
+    }));
+    const penalties = (penaltiesResult.resources || []).map((p) => ({
+      eventType: 'penalty',
+      ...p,
+      recordedAt: normalizeRecordedAt(p),
+    }));
+
+    // Merge and sort by recordedAt DESC
+    const events = [...goals, ...penalties].sort((a, b) => (a.recordedAt < b.recordedAt ? 1 : -1));
+
     res.status(200).json(events);
   } catch (error) {
     console.error('Error fetching game events:', error);
@@ -669,35 +687,14 @@ app.get('/api/game-events', async (req, res) => {
   }
 });
 
-// Add the `/api/game-events` POST endpoint for creating game events
+// Deprecate generic game-events creation in favor of dedicated endpoints
 app.post('/api/game-events', async (req, res) => {
-  const { gameId, eventType, playerId, playerName, teamName, timestamp, details } = req.body;
-  
-  if (!gameId || !eventType || !teamName) {
-    return res.status(400).json({ 
-      error: 'Invalid payload. Expected: { gameId, eventType, teamName, ... }' 
-    });
-  }
-
-  try {
-    // const container = getGameEventsContainer(); // Removed gameEvents
-    const gameEvent = {
-      id: `${gameId}-${eventType}-${Date.now()}`,
-      gameId,
-      eventType, // 'goal', 'assist', 'penalty', 'substitution', etc.
-      playerId,
-      playerName,
-      teamName,
-      timestamp: timestamp || new Date().toISOString(),
-      details: details || {},
-      recordedAt: new Date().toISOString()
-    };
-    
-    const { resource } = await container.items.create(gameEvent);
-    res.status(201).json(resource);
-  } catch (error) {
-    handleError(res, error);
-  }
+  const { eventType } = req.body || {};
+  return res.status(501).json({
+    error: 'Use dedicated endpoints to create events',
+    next: eventType === 'goal' ? '/api/goals' : eventType === 'penalty' ? '/api/penalties' : undefined,
+    supported: ['/api/goals', '/api/penalties']
+  });
 });
 
 // Add the `/api/goals` POST endpoint for creating goals

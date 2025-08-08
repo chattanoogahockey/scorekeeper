@@ -295,14 +295,14 @@ export default function InGameMenu() {
           <div className="grid grid-cols-2 gap-2 mb-3">
             <button
               onClick={handleGoalClick}
-              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
               Goal
             </button>
 
             <button
               onClick={handlePenaltyClick}
-              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-3 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
               Penalty
             </button>
@@ -323,7 +323,7 @@ export default function InGameMenu() {
             </button>
             <button
               onClick={() => navigate('/admin')}
-              className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200 flex items-center justify-center"
             >
               Admin
             </button>
@@ -333,7 +333,7 @@ export default function InGameMenu() {
           <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
             <button
               onClick={handleCancelGame}
-              className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200"
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold py-2 px-3 rounded-lg shadow-md text-sm transition-all duration-200"
             >
               Cancel Game
             </button>

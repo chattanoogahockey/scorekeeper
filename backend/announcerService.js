@@ -427,7 +427,7 @@ export async function generateDualGoalAnnouncement(goalData, playerStats = null)
       `${homeTeam} ${homeScore}, ${awayTeam} ${awayScore}` :
       `${awayTeam} ${awayScore}, ${homeTeam} ${homeScore}`;
 
-    const prompt = `Create a realistic 6-line conversation between two hockey announcers about this goal. Alternate male/female, ending on female.
+    const prompt = `Create a realistic 8-line conversation between two veteran hockey announcers about this goal. These are seasoned broadcast partners who know each other well and naturally build on each other's commentary. Think Mike Emrick and Eddie Olczyk, or Doc Emrick and Pierre McGuire - they debate, agree, disagree, and create natural dialogue.
 
 GOAL DETAILS:
 - Player: ${playerName}
@@ -440,46 +440,45 @@ GOAL DETAILS:
 
 ANNOUNCER PERSONALITIES:
 
-MALE ANNOUNCER (starts first):
-- Style and personality of **Al Michaels**—adapted for roller hockey
-- Play-by-play lyricist: The game is the melody—you provide the lyrics
-- Vivid but minimal: Use clear, concise phrases to match the energy on the rink
-- Spontaneous: Never sound prewritten. Let the game drive your emotion and reaction
-- Intensity-aware: Modulate your voice to match the tempo. Build tension naturally
-- Warm and composed under pressure, natural voice of excitement during big plays
-- Genuinely optimistic without sounding naïve
-- Quick with dry, understated humor when appropriate
-- Professional but fan-minded—loves the game and the players
+MALE ANNOUNCER (Al Michaels style):
+- Calls the play-by-play with authority and excitement
+- Natural conversationalist who sets up his partner for analysis
+- Quick wit, can challenge or agree with female announcer
+- Makes observations about game flow, timing, momentum
+- Asks questions that let his partner elaborate
+- Not afraid to interrupt politely if he sees something
 
-FEMALE ANNOUNCER:
-- **Inspired by Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey
-- Upbeat, bright, energetic, and warm tone
-- Confident, conversational, and clear—like she's smiling as she speaks
-- Fan-first, pro-level commentator who makes every game feel electric
-- Loves roller hockey—has followed it, played it, lived it
-- Joyful, fan-friendly, and emotionally present
-- Believes in comebacks, momentum shifts, and giving credit where it's due
-- Never gets jaded—every game matters
-- Highlights skill, grit, and character, especially from unsung heroes
-- Uses roller-specific terms only (no ice hockey references)
-- Balances male's classic style with genuine excitement and fun
+FEMALE ANNOUNCER (Linda Cohn style):
+- Provides color commentary and analysis
+- Builds on male's observations with her own insights
+- Can disagree respectfully or add counterpoints
+- Brings up player history, team dynamics, strategic elements
+- Responds naturally to male's questions and comments
+- Interjects with enthusiasm when she sees great plays
 
-CONVERSATION RULES:
-- Exactly 6 lines total (3 each, alternating male-female-male-female-male-female)
-- Keep each line to 1-2 sentences max
-- Sound like real announcers, not scripted
-- Male starts with goal call, female responds
-- Include the goal details naturally
-- Show their personalities clearly
+CONVERSATION DYNAMICS:
+- Start with male announcer's goal call (scripted)
+- Female responds with immediate reaction
+- From there, let it flow naturally - they might:
+  * Debate the significance of the goal
+  * Discuss player performance or team strategy
+  * Reference earlier plays or season performance
+  * Interrupt each other politely (like real announcers do)
+  * Build excitement together or analyze the tactical aspect
+- Sound like broadcast partners who've worked together for years
+- Include natural transitions like "You're absolutely right" or "But here's what I noticed" or "Hold on, did you see..."
+- Let their personalities show through their reactions
 
-FORMAT: Return ONLY a JSON array like:
+FORMAT: Return ONLY a JSON array with 8 lines alternating male-female:
 [
-  {"speaker": "male", "text": "Line 1 here"},
-  {"speaker": "female", "text": "Line 2 here"},
-  {"speaker": "male", "text": "Line 3 here"},
-  {"speaker": "female", "text": "Line 4 here"},
-  {"speaker": "male", "text": "Line 5 here"},
-  {"speaker": "female", "text": "Line 6 here"}
+  {"speaker": "male", "text": "Initial goal call here"},
+  {"speaker": "female", "text": "Immediate reaction"},
+  {"speaker": "male", "text": "Follow-up observation or question"},
+  {"speaker": "female", "text": "Analysis or counterpoint"},
+  {"speaker": "male", "text": "Building on her point or new angle"},
+  {"speaker": "female", "text": "Agreement, disagreement, or deeper insight"},
+  {"speaker": "male", "text": "Wrap-up thought or new observation"},
+  {"speaker": "female", "text": "Final analysis or forward-looking comment"}
 ]`;
 
     const completion = await openai.chat.completions.create({
@@ -487,14 +486,14 @@ FORMAT: Return ONLY a JSON array like:
       messages: [
         {
           role: "system",
-          content: "You are creating realistic hockey announcer conversations. Return ONLY valid JSON with the exact format requested. No additional text or formatting."
+          content: "You are creating realistic, natural conversations between veteran hockey broadcast partners. They should sound like seasoned announcers who know each other well, can interrupt politely, agree/disagree, and build on each other's observations. Return ONLY valid JSON with exactly 8 alternating lines."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      max_tokens: 400,
+      max_tokens: 600,
       temperature: 0.9,
     });
 
@@ -503,20 +502,22 @@ FORMAT: Return ONLY a JSON array like:
     // Parse the JSON response
     try {
       const conversation = JSON.parse(conversationText);
-      if (Array.isArray(conversation) && conversation.length === 6) {
+      if (Array.isArray(conversation) && conversation.length === 8) {
         return conversation;
       } else {
         throw new Error('Invalid conversation format');
       }
     } catch (parseError) {
       console.error('Failed to parse dual announcer conversation:', parseError);
-      // Fallback to simple conversation
+      // Fallback to enhanced conversation
       return [
         {"speaker": "male", "text": `GOAL! ${playerName} scores for ${teamName}!`},
-        {"speaker": "female", "text": `What a shot! That's his ${(playerStats?.goalsThisGame || 0) + 1} of the game!`},
-        {"speaker": "male", "text": `${assistText}. Pretty solid play there.`},
-        {"speaker": "female", "text": `The crowd is on their feet! ${scoreText} now.`},
-        {"speaker": "male", "text": `Not bad for a ${goalType} goal.`},
+        {"speaker": "female", "text": `What a shot! That's exactly what this team needed!`},
+        {"speaker": "male", "text": `You can see the confidence building with each goal.`},
+        {"speaker": "female", "text": `Absolutely, and the way he positioned himself there shows real hockey IQ.`},
+        {"speaker": "male", "text": `The ${assistText.toLowerCase()} really set that up perfectly.`},
+        {"speaker": "female", "text": `Great teamwork, and now it's ${scoreText}.`},
+        {"speaker": "male", "text": `This changes the whole complexion of the game.`},
         {"speaker": "female", "text": `Hockey at its finest! What an exciting game!`}
       ];
     }
@@ -542,7 +543,7 @@ export async function generateDualPenaltyAnnouncement(penaltyData, gameContext =
 
     const { homeTeam, awayTeam, currentScore } = gameContext || {};
 
-    const prompt = `Create a realistic 4-line conversation between two hockey announcers about this penalty. Alternate male/female, ending on female.
+    const prompt = `Create a realistic 6-line conversation between two veteran hockey announcers about this penalty. These are seasoned broadcast partners who naturally discuss the call, its impact, and game flow.
 
 PENALTY DETAILS:
 - Player: ${playerName}
@@ -553,45 +554,39 @@ PENALTY DETAILS:
 - Length: ${length} minutes
 ${gameContext ? `- Score: ${homeTeam} ${currentScore?.home || 0}, ${awayTeam} ${currentScore?.away || 0}` : ''}
 
-ANNOUNCER PERSONALITIES (same as before):
+ANNOUNCER PERSONALITIES:
 
-MALE ANNOUNCER (starts first):
-- Style and personality of **Al Michaels**—adapted for roller hockey
-- Play-by-play lyricist: The game is the melody—you provide the lyrics
-- Vivid but minimal: Use clear, concise phrases to match the energy on the rink
-- Spontaneous: Never sound prewritten. Let the game drive your emotion and reaction
-- Intensity-aware: Modulate your voice to match the tempo. Build tension naturally
-- Warm and composed under pressure, natural voice of excitement during big plays
-- Genuinely optimistic without sounding naïve
-- Quick with dry, understated humor when appropriate
-- Professional but fan-minded—loves the game and the players
+MALE ANNOUNCER (Al Michaels style):
+- Calls the penalty with authority and context
+- Sets up discussion about impact on game flow
+- Can question or support referee decisions
+- Focuses on timing and strategic implications
 
-FEMALE ANNOUNCER:
-- **Inspired by Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey
-- Upbeat, bright, energetic, and warm tone
-- Confident, conversational, and clear—like she's smiling as she speaks
-- Fan-first, pro-level commentator who makes every game feel electric
-- Loves roller hockey—has followed it, played it, lived it
-- Joyful, fan-friendly, and emotionally present
-- Believes in comebacks, momentum shifts, and giving credit where it's due
-- Never gets jaded—every game matters
-- Highlights skill, grit, and character, especially from unsung heroes
-- Uses roller-specific terms only (no ice hockey references)
-- Balances male's classic style with genuine excitement and clean fun
+FEMALE ANNOUNCER (Linda Cohn style):
+- Provides analysis of the penalty call
+- Discusses player discipline and team impact
+- Can agree/disagree with male's assessment
+- Brings up power play opportunities or defensive strategies
 
-CONVERSATION RULES:
-- Exactly 4 lines total (2 each, alternating male-female-male-female)
-- Keep each line to 1-2 sentences max
-- Male announces penalty, female responds
-- Show their personalities clearly
-- Sound natural and conversational
+CONVERSATION DYNAMICS:
+- Start with male announcer's penalty call (factual)
+- Female responds with immediate assessment
+- Continue with natural back-and-forth about:
+  * Whether it was a good call
+  * Impact on the game/team
+  * Player's track record or team's penalty situation
+  * Strategic implications (power play, momentum)
+- Sound like experienced broadcast partners who respect each other's opinions
+- Include natural transitions and conversational flow
 
-FORMAT: Return ONLY a JSON array like:
+FORMAT: Return ONLY a JSON array with 6 lines alternating male-female:
 [
-  {"speaker": "male", "text": "Line 1 here"},
-  {"speaker": "female", "text": "Line 2 here"},
-  {"speaker": "male", "text": "Line 3 here"},
-  {"speaker": "female", "text": "Line 4 here"}
+  {"speaker": "male", "text": "Penalty call here"},
+  {"speaker": "female", "text": "Assessment of the call"},
+  {"speaker": "male", "text": "Follow-up or context"},
+  {"speaker": "female", "text": "Analysis or strategic impact"},
+  {"speaker": "male", "text": "Game flow or timing observation"},
+  {"speaker": "female", "text": "Final thought on impact"}
 ]`;
 
     const completion = await openai.chat.completions.create({
@@ -599,14 +594,14 @@ FORMAT: Return ONLY a JSON array like:
       messages: [
         {
           role: "system",
-          content: "You are creating realistic hockey announcer conversations about penalties. Return ONLY valid JSON with the exact format requested."
+          content: "You are creating realistic, natural conversations between veteran hockey broadcast partners about penalties. They should discuss the call, its impact, and game flow naturally. Return ONLY valid JSON with exactly 6 alternating lines."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      max_tokens: 300,
+      max_tokens: 400,
       temperature: 0.8,
     });
 
@@ -614,19 +609,21 @@ FORMAT: Return ONLY a JSON array like:
     
     try {
       const conversation = JSON.parse(conversationText);
-      if (Array.isArray(conversation) && conversation.length === 4) {
+      if (Array.isArray(conversation) && conversation.length === 6) {
         return conversation;
       } else {
         throw new Error('Invalid conversation format');
       }
     } catch (parseError) {
       console.error('Failed to parse dual penalty conversation:', parseError);
-      // Fallback conversation
+      // Enhanced fallback conversation
       return [
         {"speaker": "male", "text": `${playerName}, ${length} minutes for ${penaltyType}.`},
-        {"speaker": "female", "text": `That's going to put ${teamName} on the penalty kill.`},
-        {"speaker": "male", "text": `Looked like a good call to me. Can't do that.`},
-        {"speaker": "female", "text": `Great opportunity for the power play unit!`}
+        {"speaker": "female", "text": `That's a textbook call by the official there.`},
+        {"speaker": "male", "text": `Bad timing for ${teamName} - they were building momentum.`},
+        {"speaker": "female", "text": `Now it's a power play opportunity for the other team.`},
+        {"speaker": "male", "text": `These penalty kills can really test a team's discipline.`},
+        {"speaker": "female", "text": `Great opportunity to see what their special teams can do!`}
       ];
     }
   } catch (error) {
@@ -642,27 +639,24 @@ FORMAT: Return ONLY a JSON array like:
 export async function generateDualRandomCommentary(gameId, gameContext = {}) {
   try {
     // First, generate a conversation starter based on analytics/context
-    const starterPrompt = `Create a conversation starter for two hockey announcers during a break in the action. Base it on realistic hockey context.
+    const starterPrompt = `Create a conversation starter for two veteran hockey announcers during a break in the action. These are experienced broadcast partners who know each other well and can discuss hockey naturally.
 
 CONTEXT: ${JSON.stringify(gameContext, null, 2)}
 
 Generate a single opening line from the MALE announcer that could lead to interesting discussion. Topics could include:
-- Player performance (hot/cold streaks)
-- Team standings or recent games
-- Historical matchups
-- Hockey trivia or facts
-- Current game situation
+- Player performance or recent hot streaks
+- Team strategy or coaching decisions
+- League standings or playoff implications
+- Historical matchups between teams
+- Interesting hockey facts or observations
+- Game flow and momentum shifts
 
-MALE ANNOUNCER PERSONALITY:
-- Style and personality of **Al Michaels**—adapted for roller hockey
-- Play-by-play lyricist: The game is the melody—you provide the lyrics
-- Vivid but minimal: Use clear, concise phrases to match the energy on the rink
-- Spontaneous: Never sound prewritten. Let the game drive your emotion and reaction
-- Intensity-aware: Modulate your voice to match the tempo. Build tension naturally
-- Warm and composed under pressure, natural voice of excitement during big plays
-- Genuinely optimistic without sounding naïve
-- Quick with dry, understated humor when appropriate
-- Professional but fan-minded—loves the game and the players
+MALE ANNOUNCER (Al Michaels style):
+- Natural conversationalist with hockey knowledge
+- Can ask questions that set up his partner
+- Makes observations about game patterns
+- Uses understated humor appropriately
+- Professional but engaging delivery
 
 Return just the opening line text, no JSON or formatting.`;
 
@@ -671,7 +665,7 @@ Return just the opening line text, no JSON or formatting.`;
       messages: [
         {
           role: "system",
-          content: "You are a male hockey announcer with the style and personality of Al Michaels, adapted for roller hockey. Generate realistic conversation starters during hockey broadcasts using his vivid but minimal play-by-play style, natural optimism, and understated humor."
+          content: "You are a veteran male hockey announcer with the style and personality of Al Michaels, adapted for roller hockey. Generate natural conversation starters that experienced broadcast partners would use during hockey games."
         },
         {
           role: "user",
@@ -684,66 +678,52 @@ Return just the opening line text, no JSON or formatting.`;
 
     const conversationStarter = starterCompletion.choices[0].message.content.trim();
 
-    // Now generate the full 10-line conversation starting with that opener
-    const conversationPrompt = `Continue this hockey announcer conversation for exactly 10 lines total (5 each, alternating male-female). Start with the given opener.
+    // Now generate the full 12-line conversation starting with that opener
+    const conversationPrompt = `Continue this hockey announcer conversation for exactly 12 lines total (6 each, alternating male-female). These are veteran broadcast partners who naturally debate, agree, disagree, and build on each other's observations.
 
 OPENER: "${conversationStarter}"
 
-PERSONALITIES:
+ANNOUNCER PERSONALITIES:
 
-MALE ANNOUNCER:
-- Style and personality of **Al Michaels**—adapted for roller hockey
-- Play-by-play lyricist: The game is the melody—you provide the lyrics
-- Vivid but minimal: Use clear, concise phrases to match the energy on the rink
-- Spontaneous: Never sound prewritten. Let the game drive your emotion and reaction
-- Intensity-aware: Modulate your voice to match the tempo. Build tension naturally
-- Warm and composed under pressure, natural voice of excitement during big plays
-- Genuinely optimistic without sounding naïve
-- Quick with dry, understated humor when appropriate
-- Professional but fan-minded—loves the game and the players
+MALE ANNOUNCER (Al Michaels style):
+- Experienced play-by-play with natural conversational ability
+- Can challenge or support his partner's views
+- Makes strategic observations about hockey
+- Uses understated humor when appropriate
+- Sets up his partner for deeper analysis
 
-FEMALE ANNOUNCER:
-- **Inspired by Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey
-- Upbeat, bright, energetic, and warm tone
-- Confident, conversational, and clear—like she's smiling as she speaks
-- Fan-first, pro-level commentator who makes every game feel electric
-- Loves roller hockey—has followed it, played it, lived it
-- Joyful, fan-friendly, and emotionally present
-- Believes in comebacks, momentum shifts, and giving credit where it's due
-- Never gets jaded—every game matters
-- Highlights skill, grit, and character, especially from unsung heroes
-- Uses roller-specific terms only (no ice hockey references)
-- Balances his classic style with genuine excitement and fun facts
-- Uses tasteful humor: "That shot had some serious sauce on it"
+FEMALE ANNOUNCER (Linda Cohn style):
+- Expert color commentator with deep hockey knowledge
+- Can agree/disagree with male announcer's points
+- Brings up player backgrounds and team dynamics
+- Adds strategic insights and historical context
+- Responds naturally and can redirect conversation
 
-RULES:
-- Exactly 10 lines (5 each, alternating starting with male)
-- Keep each line to 1-2 sentences max
-- Sound like a natural conversation between broadcast partners
-- Female should respond to male's topics but add her own perspective
-- Include their personalities clearly
-- End on a positive note from the female announcer
+CONVERSATION DYNAMICS:
+- Sound like seasoned broadcast partners who've worked together for years
+- Natural interruptions and conversational flow
+- Debate points respectfully when they disagree
+- Build on each other's observations
+- Include hockey analysis mixed with personality
+- Cover topics like strategy, player performance, team dynamics
+- Use natural transitions like "That's a great point, but..." or "You know what I noticed..."
+- Let their different perspectives show through
 
-FORMAT: Return ONLY a JSON array starting with the opener:
-[
-  {"speaker": "male", "text": "${conversationStarter}"},
-  {"speaker": "female", "text": "Response here"},
-  ...continue for 8 more lines...
-]`;
+FORMAT: Return ONLY a JSON array with exactly 12 lines alternating male-female`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: "You are creating a realistic 10-line hockey announcer conversation. Return ONLY valid JSON with exactly 10 lines alternating male-female."
+          content: "You are creating realistic, natural conversations between veteran hockey broadcast partners. They should sound like experienced announcers who know each other well, can interrupt politely, agree/disagree, and build on each other's observations. Return ONLY valid JSON with exactly 12 alternating lines."
         },
         {
           role: "user",
           content: conversationPrompt
         }
       ],
-      max_tokens: 600,
+      max_tokens: 700,
       temperature: 0.9,
     });
 
@@ -751,25 +731,27 @@ FORMAT: Return ONLY a JSON array starting with the opener:
     
     try {
       const conversation = JSON.parse(conversationText);
-      if (Array.isArray(conversation) && conversation.length === 10) {
+      if (Array.isArray(conversation) && conversation.length === 12) {
         return conversation;
       } else {
         throw new Error('Invalid conversation length');
       }
     } catch (parseError) {
       console.error('Failed to parse dual random conversation:', parseError);
-      // Fallback to a basic conversation
+      // Enhanced fallback to a more natural conversation
       return [
         {"speaker": "male", "text": conversationStarter},
-        {"speaker": "female", "text": "Oh, I love talking hockey! What do you think about the pace of this game?"},
-        {"speaker": "male", "text": "It's alright. Could use more hitting, but that's just me."},
-        {"speaker": "female", "text": "The skill level is incredible though! These players are so talented."},
-        {"speaker": "male", "text": "True. Still prefer the old days when the Rangers actually won something."},
-        {"speaker": "female", "text": "Come on, every team has their ups and downs! That's what makes hockey great."},
-        {"speaker": "male", "text": "Easy for you to say. Your Red Wings had their dynasty."},
-        {"speaker": "female", "text": "And they earned it! Just like every championship team does."},
-        {"speaker": "male", "text": "I suppose. Still waiting for my turn though."},
-        {"speaker": "female", "text": "That's the beauty of hockey - anything can happen! Hope springs eternal!"}
+        {"speaker": "female", "text": "You know what I love about that? The way these teams are adapting their strategies."},
+        {"speaker": "male", "text": "Exactly! And speaking of strategy, have you noticed how much faster this league has gotten?"},
+        {"speaker": "female", "text": "Oh absolutely! The conditioning these players have now is just incredible."},
+        {"speaker": "male", "text": "But here's what I'm wondering - are we losing some of the grit that made hockey special?"},
+        {"speaker": "female", "text": "That's interesting, but I think the skill level more than makes up for it."},
+        {"speaker": "male", "text": "Fair point. Though I still miss those good old-fashioned battles in the corners."},
+        {"speaker": "female", "text": "True, but look at the creativity we see now! These players are artists on wheels."},
+        {"speaker": "male", "text": "I'll give you that. The goalscoring is certainly more exciting."},
+        {"speaker": "female", "text": "And the saves! These goalies are absolutely phenomenal."},
+        {"speaker": "male", "text": "Now that we can definitely agree on. The athleticism is off the charts."},
+        {"speaker": "female", "text": "This is exactly why I love covering this sport - there's always something new to appreciate!"}
       ];
     }
   } catch (error) {

@@ -28,7 +28,7 @@ export default function DJPanel() {
     const audio = currentAudioRef.current;
     const originalVolume = audio.volume;
     const fadeSteps = 50;
-    const fadeDuration = 2000; // 2 seconds
+    const fadeDuration = 6000; // 6 seconds (3x longer than before)
     const stepTime = fadeDuration / fadeSteps;
     const volumeStep = originalVolume / fadeSteps;
 
@@ -200,7 +200,7 @@ export default function DJPanel() {
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
           >
-            {isFading ? '🔄 Fading...' : '🔉 Fade Out'}
+            {isFading ? 'Fading...' : 'Fade Out'}
           </button>
         </div>
         {isPlaying && (
@@ -220,7 +220,7 @@ export default function DJPanel() {
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
           }`}
         >
-          🥅 Goal Horn
+          Goal Horn
         </button>
         <button
           onClick={() => playSound('whistle')}
@@ -231,7 +231,7 @@ export default function DJPanel() {
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
           }`}
         >
-          🔔 Whistle
+          Whistle
         </button>
         <button
           onClick={() => playSound('dj_air_horn', 'mp3')}
@@ -242,7 +242,7 @@ export default function DJPanel() {
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
           }`}
         >
-          📯 Air Horn
+          Air Horn
         </button>
         <button
           onClick={() => playSound('buzzer')}
@@ -253,7 +253,7 @@ export default function DJPanel() {
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
           }`}
         >
-          🚨 Buzzer
+          Buzzer
         </button>
         <button
           onClick={playOrganSound}
@@ -264,7 +264,7 @@ export default function DJPanel() {
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
           }`}
         >
-          🎹 Organs
+          Organs
         </button>
       </div>
       
@@ -272,7 +272,7 @@ export default function DJPanel() {
       {audioProgress.isPlaying && (
         <div className="mt-2 p-2 bg-gray-50 rounded border">
           <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-            <span>🎵 {audioProgress.fileName}</span>
+            <span>{audioProgress.fileName}</span>
             <span>{Math.round(audioProgress.current)}s / {Math.round(audioProgress.duration)}s</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-1">

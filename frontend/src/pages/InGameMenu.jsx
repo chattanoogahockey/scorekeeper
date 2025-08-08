@@ -22,7 +22,7 @@ export default function InGameMenu() {
   const [currentScore, setCurrentScore] = useState({ away: 0, home: 0 });
   const [isSubmittingGame, setIsSubmittingGame] = useState(false);
 
-  // Poll events every 10 seconds
+  // Event-driven data fetching
   useEffect(() => {
     if (!selectedGame) return;
     
@@ -76,8 +76,19 @@ export default function InGameMenu() {
       }
     };
     
+    // Initial fetch on component mount
     fetchEvents();
     fetchScore();
+    
+    // Add event listener for when the page becomes visible (user returns from other routes)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchEvents();
+        fetchScore();
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     // Generate AI descriptions for events
     const generateEventDescriptions = async (eventsData) => {
@@ -168,12 +179,11 @@ export default function InGameMenu() {
     fetchEvents();
     fetchScore();
     
-    // Less aggressive polling - every 2 minutes for backup
-    const interval = setInterval(() => {
-      fetchEvents();
-      fetchScore();
-    }, 120000);
-    return () => clearInterval(interval);
+    // Event-driven updates only - no continuous polling
+    // Data will be updated when navigating back from goal/penalty forms
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [selectedGame]);
 
   if (!selectedGame) {

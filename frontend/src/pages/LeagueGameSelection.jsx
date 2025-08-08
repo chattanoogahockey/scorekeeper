@@ -108,8 +108,8 @@ export default function LeagueGameSelection() {
     // Execute immediately on mount - no delay
     fetchGames();
 
-    // Optional: Set up polling for real-time updates
-    const pollInterval = setInterval(fetchGames, 30000); // Poll every 30 seconds
+    // Optional: Very light polling for new games only (once every 5 minutes)
+    const pollInterval = setInterval(fetchGames, 300000); // Poll every 5 minutes
 
     // Cleanup function
     return () => {

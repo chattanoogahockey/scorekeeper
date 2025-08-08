@@ -40,9 +40,8 @@ export default function Dashboard() {
     
     fetchEvents();
     
-    // Light polling every 60 seconds for backup (much less aggressive)
-    const interval = setInterval(fetchEvents, 60000);
-    return () => clearInterval(interval);
+    // Event-driven updates only - no polling
+    // Data will be updated when user submits goals/penalties
   }, [selectedGame]);
 
   // Goal form state

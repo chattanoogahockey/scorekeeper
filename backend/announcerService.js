@@ -427,7 +427,7 @@ export async function generateDualGoalAnnouncement(goalData, playerStats = null)
       `${homeTeam} ${homeScore}, ${awayTeam} ${awayScore}` :
       `${awayTeam} ${awayScore}, ${homeTeam} ${homeScore}`;
 
-    const prompt = `Create a realistic 8-line conversation between two veteran hockey announcers about this goal. These are seasoned broadcast partners who know each other well and naturally build on each other's commentary. Think Mike Emrick and Eddie Olczyk, or Doc Emrick and Pierre McGuire - they debate, agree, disagree, and create natural dialogue.
+    const prompt = `Create a realistic 5-line conversation between two veteran hockey announcers about this goal. These are seasoned broadcast partners who know each other well and naturally build on each other's commentary. Keep it concise but natural.
 
 GOAL DETAILS:
 - Player: ${playerName}
@@ -443,42 +443,25 @@ ANNOUNCER PERSONALITIES:
 MALE ANNOUNCER (Al Michaels style):
 - Calls the play-by-play with authority and excitement
 - Natural conversationalist who sets up his partner for analysis
-- Quick wit, can challenge or agree with female announcer
-- Makes observations about game flow, timing, momentum
-- Asks questions that let his partner elaborate
-- Not afraid to interrupt politely if he sees something
 
 FEMALE ANNOUNCER (Linda Cohn style):
 - Provides color commentary and analysis
 - Builds on male's observations with her own insights
-- Can disagree respectfully or add counterpoints
-- Brings up player history, team dynamics, strategic elements
-- Responds naturally to male's questions and comments
-- Interjects with enthusiasm when she sees great plays
 
 CONVERSATION DYNAMICS:
 - Start with male announcer's goal call (scripted)
 - Female responds with immediate reaction
-- From there, let it flow naturally - they might:
-  * Debate the significance of the goal
-  * Discuss player performance or team strategy
-  * Reference earlier plays or season performance
-  * Interrupt each other politely (like real announcers do)
-  * Build excitement together or analyze the tactical aspect
+- Brief back-and-forth with natural flow
 - Sound like broadcast partners who've worked together for years
-- Include natural transitions like "You're absolutely right" or "But here's what I noticed" or "Hold on, did you see..."
-- Let their personalities show through their reactions
+- Keep it concise but engaging
 
-FORMAT: Return ONLY a JSON array with 8 lines alternating male-female:
+FORMAT: Return ONLY a JSON array with 5 lines alternating male-female-male-female-male:
 [
   {"speaker": "male", "text": "Initial goal call here"},
   {"speaker": "female", "text": "Immediate reaction"},
-  {"speaker": "male", "text": "Follow-up observation or question"},
-  {"speaker": "female", "text": "Analysis or counterpoint"},
-  {"speaker": "male", "text": "Building on her point or new angle"},
-  {"speaker": "female", "text": "Agreement, disagreement, or deeper insight"},
-  {"speaker": "male", "text": "Wrap-up thought or new observation"},
-  {"speaker": "female", "text": "Final analysis or forward-looking comment"}
+  {"speaker": "male", "text": "Follow-up observation"},
+  {"speaker": "female", "text": "Analysis or insight"},
+  {"speaker": "male", "text": "Wrap-up comment"}
 ]`;
 
     const completion = await openai.chat.completions.create({
@@ -486,14 +469,14 @@ FORMAT: Return ONLY a JSON array with 8 lines alternating male-female:
       messages: [
         {
           role: "system",
-          content: "You are creating realistic, natural conversations between veteran hockey broadcast partners. They should sound like seasoned announcers who know each other well, can interrupt politely, agree/disagree, and build on each other's observations. Return ONLY valid JSON with exactly 8 alternating lines."
+          content: "You are creating realistic, natural conversations between veteran hockey broadcast partners. They should sound like seasoned announcers who know each other well. Return ONLY valid JSON with exactly 5 alternating lines."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      max_tokens: 600,
+      max_tokens: 400,
       temperature: 0.9,
     });
 
@@ -502,7 +485,7 @@ FORMAT: Return ONLY a JSON array with 8 lines alternating male-female:
     // Parse the JSON response
     try {
       const conversation = JSON.parse(conversationText);
-      if (Array.isArray(conversation) && conversation.length === 8) {
+      if (Array.isArray(conversation) && conversation.length === 5) {
         return conversation;
       } else {
         throw new Error('Invalid conversation format');
@@ -513,12 +496,9 @@ FORMAT: Return ONLY a JSON array with 8 lines alternating male-female:
       return [
         {"speaker": "male", "text": `GOAL! ${playerName} scores for ${teamName}!`},
         {"speaker": "female", "text": `What a shot! That's exactly what this team needed!`},
-        {"speaker": "male", "text": `You can see the confidence building with each goal.`},
-        {"speaker": "female", "text": `Absolutely, and the way he positioned himself there shows real hockey IQ.`},
         {"speaker": "male", "text": `The ${assistText.toLowerCase()} really set that up perfectly.`},
         {"speaker": "female", "text": `Great teamwork, and now it's ${scoreText}.`},
-        {"speaker": "male", "text": `This changes the whole complexion of the game.`},
-        {"speaker": "female", "text": `Hockey at its finest! What an exciting game!`}
+        {"speaker": "male", "text": `Hockey at its finest!`}
       ];
     }
   } catch (error) {
@@ -571,22 +551,17 @@ FEMALE ANNOUNCER (Linda Cohn style):
 CONVERSATION DYNAMICS:
 - Start with male announcer's penalty call (factual)
 - Female responds with immediate assessment
-- Continue with natural back-and-forth about:
-  * Whether it was a good call
-  * Impact on the game/team
-  * Player's track record or team's penalty situation
-  * Strategic implications (power play, momentum)
-- Sound like experienced broadcast partners who respect each other's opinions
-- Include natural transitions and conversational flow
+- Brief back-and-forth about impact and implications
+- Sound like experienced broadcast partners
+- Keep it concise but natural
 
-FORMAT: Return ONLY a JSON array with 6 lines alternating male-female:
+FORMAT: Return ONLY a JSON array with 5 lines alternating male-female-male-female-male:
 [
   {"speaker": "male", "text": "Penalty call here"},
   {"speaker": "female", "text": "Assessment of the call"},
   {"speaker": "male", "text": "Follow-up or context"},
   {"speaker": "female", "text": "Analysis or strategic impact"},
-  {"speaker": "male", "text": "Game flow or timing observation"},
-  {"speaker": "female", "text": "Final thought on impact"}
+  {"speaker": "male", "text": "Final observation"}
 ]`;
 
     const completion = await openai.chat.completions.create({
@@ -594,14 +569,14 @@ FORMAT: Return ONLY a JSON array with 6 lines alternating male-female:
       messages: [
         {
           role: "system",
-          content: "You are creating realistic, natural conversations between veteran hockey broadcast partners about penalties. They should discuss the call, its impact, and game flow naturally. Return ONLY valid JSON with exactly 6 alternating lines."
+          content: "You are creating realistic, natural conversations between veteran hockey broadcast partners about penalties. They should discuss the call, its impact, and game flow naturally. Return ONLY valid JSON with exactly 5 alternating lines."
         },
         {
           role: "user",
           content: prompt
         }
       ],
-      max_tokens: 400,
+      max_tokens: 350,
       temperature: 0.8,
     });
 
@@ -609,7 +584,7 @@ FORMAT: Return ONLY a JSON array with 6 lines alternating male-female:
     
     try {
       const conversation = JSON.parse(conversationText);
-      if (Array.isArray(conversation) && conversation.length === 6) {
+      if (Array.isArray(conversation) && conversation.length === 5) {
         return conversation;
       } else {
         throw new Error('Invalid conversation format');
@@ -622,8 +597,7 @@ FORMAT: Return ONLY a JSON array with 6 lines alternating male-female:
         {"speaker": "female", "text": `That's a textbook call by the official there.`},
         {"speaker": "male", "text": `Bad timing for ${teamName} - they were building momentum.`},
         {"speaker": "female", "text": `Now it's a power play opportunity for the other team.`},
-        {"speaker": "male", "text": `These penalty kills can really test a team's discipline.`},
-        {"speaker": "female", "text": `Great opportunity to see what their special teams can do!`}
+        {"speaker": "male", "text": `These penalty kills can really test a team's discipline.`}
       ];
     }
   } catch (error) {
@@ -678,8 +652,8 @@ Return just the opening line text, no JSON or formatting.`;
 
     const conversationStarter = starterCompletion.choices[0].message.content.trim();
 
-    // Now generate the full 12-line conversation starting with that opener
-    const conversationPrompt = `Continue this hockey announcer conversation for exactly 12 lines total (6 each, alternating male-female). These are veteran broadcast partners who naturally debate, agree, disagree, and build on each other's observations.
+    // Now generate the full 5-line conversation starting with that opener
+    const conversationPrompt = `Continue this hockey announcer conversation for exactly 5 lines total, alternating male-female-male-female-male. These are veteran broadcast partners who naturally build on each other's observations.
 
 OPENER: "${conversationStarter}"
 
@@ -689,41 +663,33 @@ MALE ANNOUNCER (Al Michaels style):
 - Experienced play-by-play with natural conversational ability
 - Can challenge or support his partner's views
 - Makes strategic observations about hockey
-- Uses understated humor when appropriate
-- Sets up his partner for deeper analysis
 
 FEMALE ANNOUNCER (Linda Cohn style):
 - Expert color commentator with deep hockey knowledge
 - Can agree/disagree with male announcer's points
 - Brings up player backgrounds and team dynamics
-- Adds strategic insights and historical context
-- Responds naturally and can redirect conversation
 
 CONVERSATION DYNAMICS:
-- Sound like seasoned broadcast partners who've worked together for years
-- Natural interruptions and conversational flow
-- Debate points respectfully when they disagree
-- Build on each other's observations
-- Include hockey analysis mixed with personality
+- Sound like seasoned broadcast partners
+- Natural conversational flow
 - Cover topics like strategy, player performance, team dynamics
-- Use natural transitions like "That's a great point, but..." or "You know what I noticed..."
-- Let their different perspectives show through
+- Keep it concise but engaging
 
-FORMAT: Return ONLY a JSON array with exactly 12 lines alternating male-female`;
+FORMAT: Return ONLY a JSON array with exactly 5 lines alternating male-female-male-female-male`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: "You are creating realistic, natural conversations between veteran hockey broadcast partners. They should sound like experienced announcers who know each other well, can interrupt politely, agree/disagree, and build on each other's observations. Return ONLY valid JSON with exactly 12 alternating lines."
+          content: "You are creating realistic, natural conversations between veteran hockey broadcast partners. They should sound like experienced announcers who know each other well. Return ONLY valid JSON with exactly 5 alternating lines."
         },
         {
           role: "user",
           content: conversationPrompt
         }
       ],
-      max_tokens: 700,
+      max_tokens: 400,
       temperature: 0.9,
     });
 
@@ -731,7 +697,7 @@ FORMAT: Return ONLY a JSON array with exactly 12 lines alternating male-female`;
     
     try {
       const conversation = JSON.parse(conversationText);
-      if (Array.isArray(conversation) && conversation.length === 12) {
+      if (Array.isArray(conversation) && conversation.length === 5) {
         return conversation;
       } else {
         throw new Error('Invalid conversation length');
@@ -741,17 +707,10 @@ FORMAT: Return ONLY a JSON array with exactly 12 lines alternating male-female`;
       // Enhanced fallback to a more natural conversation
       return [
         {"speaker": "male", "text": conversationStarter},
-        {"speaker": "female", "text": "You know what I love about that? The way these teams are adapting their strategies."},
-        {"speaker": "male", "text": "Exactly! And speaking of strategy, have you noticed how much faster this league has gotten?"},
-        {"speaker": "female", "text": "Oh absolutely! The conditioning these players have now is just incredible."},
-        {"speaker": "male", "text": "But here's what I'm wondering - are we losing some of the grit that made hockey special?"},
-        {"speaker": "female", "text": "That's interesting, but I think the skill level more than makes up for it."},
-        {"speaker": "male", "text": "Fair point. Though I still miss those good old-fashioned battles in the corners."},
-        {"speaker": "female", "text": "True, but look at the creativity we see now! These players are artists on wheels."},
-        {"speaker": "male", "text": "I'll give you that. The goalscoring is certainly more exciting."},
-        {"speaker": "female", "text": "And the saves! These goalies are absolutely phenomenal."},
-        {"speaker": "male", "text": "Now that we can definitely agree on. The athleticism is off the charts."},
-        {"speaker": "female", "text": "This is exactly why I love covering this sport - there's always something new to appreciate!"}
+        {"speaker": "female", "text": "You know what I love about that? The way these teams adapt their strategies."},
+        {"speaker": "male", "text": "Exactly! And the skill level in this league keeps getting better."},
+        {"speaker": "female", "text": "Oh absolutely! The conditioning these players have now is incredible."},
+        {"speaker": "male", "text": "This is exactly why I love covering this sport!"}
       ];
     }
   } catch (error) {

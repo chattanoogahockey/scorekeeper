@@ -1,5 +1,12 @@
 import { getGamesContainer, getGoalsContainer, getPenaltiesContainer, getRinkReportsContainer } from './cosmosClient.js';
 
+// Helper function to get day of year
+function getDayOfYear(date = new Date()) {
+  const start = new Date(date.getFullYear(), 0, 0);
+  const diff = date - start;
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
 /**
  * Generate a comprehensive rink report for a specific division (all submitted games)
  */
@@ -16,8 +23,8 @@ export async function generateRinkReport(division) {
       id: reportId,
       division,
       publishedAt: new Date().toISOString(),
-      author: 'AI Report Generator',
-      title: `${division} Division Roundup`,
+      author: 'Chattanooga Hockey League Sports Desk',
+      title: `${division} Division Weekly Roundup - The Drama Continues!`,
       html: reportContent.html,
       highlights: reportContent.highlights,
       standoutPlayers: reportContent.standoutPlayers,
@@ -252,13 +259,13 @@ function generateHighlights(games, goals, penalties, gameStats) {
   const highScoringGames = gameStats.gameResults.filter(g => g.totalGoals >= 8);
   highScoringGames.forEach(game => {
     const teamNames = game.teams.join(' vs ');
-    highlights.push(`High-scoring thriller: ${teamNames} combines for ${game.totalGoals} goals`);
+    highlights.push(`🔥 GOAL FEST ALERT: ${teamNames} turned it into a ${game.totalGoals}-goal barn burner!`);
   });
   
   // Hat tricks
   const hatTricks = Object.values(gameStats.players).filter(p => p.goals >= 3);
   hatTricks.forEach(player => {
-    highlights.push(`${player.name} records hat trick with ${player.goals} goals`);
+    highlights.push(`🎩 HAT TRICK HERO: ${player.name} lights the lamp ${player.goals} times—what a performance!`);
   });
   
   // Close games (1-goal difference)
@@ -270,22 +277,31 @@ function generateHighlights(games, goals, penalties, gameStats) {
     return false;
   });
   closeGames.forEach(game => {
-    highlights.push(`Nail-biter: ${game.teams.join(' edges ')} in one-goal thriller`);
+    highlights.push(`⚡ EDGE-OF-YOUR-SEAT THRILLER: ${game.teams.join(' squeaks past ')} in a heart-stopper!`);
   });
   
   // Penalty-heavy games
   const penaltyHeavyGames = gameStats.gameResults.filter(g => g.totalPenalties >= 8);
   penaltyHeavyGames.forEach(game => {
-    highlights.push(`Physical matchup: ${game.teams.join(' vs ')} accumulates ${game.totalPenalties} penalties`);
+    highlights.push(`🥊 BATTLE ROYALE: ${game.teams.join(' vs ')} threw down with ${game.totalPenalties} penalties—no backing down!`);
+  });
+  
+  // Shutout performances
+  const shutouts = gameStats.gameResults.filter(game => {
+    const scores = Object.values(game.scores);
+    return scores.includes(0) && game.totalGoals > 0;
+  });
+  shutouts.forEach(game => {
+    highlights.push(`🥅 GOALIE CLINIC: Someone got blanked in ${game.teams.join(' vs ')}—defensive masterpiece!`);
   });
   
   // Fallback highlights if no specific events
   if (highlights.length === 0) {
-    highlights.push(`${weekStats.totalGames} exciting games played this week`);
-    highlights.push(`Players combined for ${weekStats.totalGoals} goals across all matchups`);
-    if (weekStats.topScorers.length > 0) {
-      const topScorer = weekStats.topScorers[0];
-      highlights.push(`${topScorer.name} leads weekly scoring with ${topScorer.points} points`);
+    highlights.push(`🚨 SCOREBOARD WATCH: ${gameStats.totalGames} games delivered ${gameStats.totalGoals} goals worth of pure hockey drama!`);
+    highlights.push(`⚡ INTENSITY METER: ${gameStats.totalPenalties} penalties and ${gameStats.totalPIM} PIM—this league doesn't mess around!`);
+    if (gameStats.topScorers.length > 0) {
+      const topScorer = gameStats.topScorers[0];
+      highlights.push(`🌟 POINTS MACHINE: ${topScorer.name} is setting the pace with ${topScorer.points} points—automatic!`);
     }
   }
   
@@ -295,26 +311,33 @@ function generateHighlights(games, goals, penalties, gameStats) {
 /**
  * Generate standout players for the week
  */
-function generateStandoutPlayers(goals, penalties, weekStats) {
+function generateStandoutPlayers(goals, penalties, gameStats) {
   const players = [];
   
-  // Top 3 scorers
-  weekStats.topScorers.slice(0, 3).forEach(player => {
+  // Top 3 scorers with dramatic flair
+  gameStats.topScorers.slice(0, 3).forEach((player, index) => {
     let highlight = '';
+    let nickname = '';
+    
     if (player.goals >= 3) {
-      highlight = `Hat trick hero with ${player.goals} goals`;
+      highlight = `Hat trick specialist lighting up the scoreboard!`;
+      nickname = 'The Sniper';
     } else if (player.assists >= 3) {
-      highlight = `Playmaker extraordinaire with ${player.assists} assists`;
+      highlight = `Vision machine setting up teammates all game long!`;
+      nickname = 'The Playmaker';
     } else if (player.points >= 4) {
-      highlight = `Consistent performer with ${player.points} points`;
+      highlight = `Point-per-game pace and showing no signs of slowing down!`;
+      nickname = 'Mr. Clutch';
     } else {
-      highlight = `Solid contributor with ${player.goals}G, ${player.assists}A`;
+      highlight = `Balanced attack keeping opponents guessing!`;
+      nickname = index === 0 ? 'The Leader' : index === 1 ? 'The Threat' : 'The X-Factor';
     }
     
     players.push({
       name: player.name,
       team: player.team,
-      stats: `${player.goals} goals, ${player.assists} assists this week`,
+      nickname,
+      stats: `${player.goals}G, ${player.assists}A, ${player.points} points`,
       highlight
     });
   });
@@ -374,30 +397,76 @@ function generateArticleHTML(division, gameStats, highlights, standoutPlayers) {
     .filter(t => t.games > 0)
     .sort((a, b) => (b.goals / b.games) - (a.goals / a.games))[0];
   
+  const weekNumber = Math.ceil(getDayOfYear() / 7);
+  
   return `
-    <p>The ${division} Division has showcased exceptional hockey with ${gameStats.totalGames} thrilling matchups. Players combined for ${gameStats.totalGoals} goals, demonstrating the high level of skill and competition in our league.</p>
+    <div class="rink-report">
+      <h1>WEEK ${weekNumber} ROUNDUP: ${division.toUpperCase()} DIVISION DELIVERS THE DRAMA!</h1>
+      
+      <p>Hockey fans, buckle up! The ${division} Division just served up another week of roller hockey that had everything—precision shooting, defensive battles, and enough plot twists to keep us all guessing. With ${gameStats.totalGames} games in the books, players lit the lamp ${gameStats.totalGoals} times while racking up ${gameStats.totalPIM} penalty minutes. Translation? This league means business.</p>
+      
+      <h2>🚨 SCORESHEET SUPERSTARS</h2>
+      
+      ${topScorer ? `
+      <p><strong>${topScorer.name}</strong> continues their tear through the ${division} Division with ${topScorer.points} points (${topScorer.goals}G, ${topScorer.assists}A). This isn't just stat-stuffing—this is game-changing hockey from a player who's rewriting what it means to dominate on wheels. Every shift, every shot, every assist carries playoff implications.</p>
+      ` : `
+      <p>The scoring race is heating up, with multiple players battling for supremacy. Early season goals are already making statements about who's ready to carry their team when it matters most.</p>
+      `}
+      
+      ${topTeam ? `
+      <h2>⚡ TEAM SPOTLIGHT</h2>
+      <p><strong>${topTeam.name}</strong> is setting the pace with ${(topTeam.goals / topTeam.games).toFixed(1)} goals per game—but here's the thing about this division: nobody's running away with anything. These teams are trading punches game after game, and that offensive firepower means every matchup could explode into a barn burner.</p>
+      ` : ''}
+      
+      <h2>🥊 INTENSITY METER</h2>
+      <p>Think this league's gone soft? Think again. ${gameStats.totalPenalties} penalties and ${gameStats.totalPIM} minutes in the box tell the story of teams that refuse to back down. This isn't reckless hockey—it's competitive fire burning at exactly the right temperature. When playoff spots are on the line, every battle along the boards matters.</p>
+      
+      <h2>📈 WHAT'S AT STAKE</h2>
+      <p>Here's the reality check: every game from here on out is a playoff audition. Teams are fine-tuning their systems, finding their identity, and figuring out who steps up when the pressure cranks to eleven. The ${division} Division isn't just building toward something—it's arriving there fast.</p>
+      
+      <h2>🔮 CRYSTAL BALL TIME</h2>
+      <p>Next week's slate promises more fireworks. Teams are hitting their stride, rivalries are heating up, and with standings this tight, one hot streak could flip the entire division upside down. The question isn't whether we'll see drama—it's how much drama we can handle.</p>
+      
+      <p><strong>Bottom line:</strong> The ${division} Division is appointment viewing, and we're just getting started. Lace 'em up, because this ride's about to get wild.</p>
+    </div>
     
-    <h3>Season Highlights</h3>
-    <p>The action has been highlighted by outstanding individual performances and team efforts. The competition remains fierce as teams battle for playoff positioning with every game taking on added significance.</p>
-    
-    ${topScorer ? `
-    <h3>Scoring Leader</h3>
-    <p>${topScorer.name} leads all ${division} division players with ${topScorer.points} points (${topScorer.goals}G, ${topScorer.assists}A), establishing themselves as a key offensive threat. Their consistent performance has been instrumental in their team's success.</p>
-    ` : ''}
-    
-    
-    ${topTeam ? `
-    <h3>Team Performance</h3>
-    <p>${topTeam.name} has showcased strong offensive capabilities, averaging ${(topTeam.goals / topTeam.games).toFixed(1)} goals per game. Their balanced attack and solid team play have positioned them well in the division standings.</p>
-    ` : ''}
-    
-    <h3>Physical Play</h3>
-    <p>The intensity has been evident with ${gameStats.totalPenalties} penalties totaling ${gameStats.totalPIM} minutes. While teams compete hard, the focus remains on skillful, competitive hockey.</p>
-    
-    <h3>Looking Forward</h3>
-    <p>As the season progresses, every game becomes more crucial. Teams are fine-tuning their systems and building chemistry for what promises to be an exciting playoff race. The depth of talent in the ${division} division continues to make for unpredictable and entertaining hockey.</p>
-    
-    <p>Upcoming matchups will provide more opportunities for players to showcase their skills and for teams to build momentum heading into the final stretch of the regular season.</p>
+    <style>
+      .rink-report {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        line-height: 1.6;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      
+      .rink-report h1 {
+        color: #d32f2f;
+        font-size: 24px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+        border-bottom: 3px solid #d32f2f;
+        padding-bottom: 10px;
+      }
+      
+      .rink-report h2 {
+        color: #1976d2;
+        font-size: 18px;
+        font-weight: bold;
+        margin-top: 25px;
+        margin-bottom: 10px;
+      }
+      
+      .rink-report p {
+        margin-bottom: 15px;
+        font-size: 16px;
+      }
+      
+      .rink-report strong {
+        color: #d32f2f;
+        font-weight: bold;
+      }
+    </style>
   `;
 }
 

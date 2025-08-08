@@ -63,22 +63,6 @@ export default function InGameMenu() {
       
       // Set shots on goal
       setShotsOnGoal(shotsRes.data || { home: 0, away: 0 });
-      try {
-        const shotsUrl = import.meta.env.DEV 
-          ? '/api/shots-on-goal' 
-          : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal`;
-        const shotsRes = await axios.get(shotsUrl, { 
-          params: { gameId: selectedGame.id || selectedGame.gameId } 
-        });
-        const shots = shotsRes.data || [];
-        
-        const awayShots = shots.filter(s => s.teamName === (selectedGame.awayTeam || selectedGame.awayTeamId)).length;
-        const homeShots = shots.filter(s => s.teamName === (selectedGame.homeTeam || selectedGame.homeTeamId)).length;
-        setShotsOnGoal({ away: awayShots, home: homeShots });
-      } catch (shotsErr) {
-        console.log('Shots on goal endpoint not available yet');
-        setShotsOnGoal({ away: 0, home: 0 });
-      }
       
     } catch (err) {
       console.error('Failed to refresh game data', err);

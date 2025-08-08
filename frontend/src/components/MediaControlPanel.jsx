@@ -256,12 +256,14 @@ export default function MediaControlPanel({ gameId }) {
 
   // Announcer Functions
   const stopAudio = () => {
+    // Stop speech synthesis for dual announcer
     if ('speechSynthesis' in window) {
       speechSynthesis.cancel();
     }
     
     isDualAnnouncerPlayingRef.current = false;
     
+    // Stop single announcer audio
     if (announcerAudioRef.current) {
       announcerAudioRef.current.pause();
       announcerAudioRef.current.currentTime = 0;
@@ -300,6 +302,75 @@ export default function MediaControlPanel({ gameId }) {
         console.log('Error releasing wake lock:', err);
       }
     }
+  };
+
+  const displayDualConversation = (conversation) => {
+    if (!Array.isArray(conversation) || conversation.length === 0) {
+      console.error('Invalid conversation data for dual announcer');
+      setError('Invalid dual announcer conversation data');
+      return;
+    }
+
+    console.log('🎤 Starting dual announcer conversation:', conversation);
+    isDualAnnouncerPlayingRef.current = true;
+
+    let currentIndex = 0;
+    const speakNext = () => {
+      if (currentIndex >= conversation.length || !isDualAnnouncerPlayingRef.current) {
+        console.log('🎤 Dual announcer conversation completed');
+        isDualAnnouncerPlayingRef.current = false;
+        releaseWakeLock();
+        return;
+      }
+
+      const line = conversation[currentIndex];
+      if (!line || !line.text) {
+        currentIndex++;
+        speakNext();
+        return;
+      }
+
+      console.log(`🎤 Speaking line ${currentIndex + 1}/${conversation.length}: [${line.speaker}] ${line.text}`);
+      
+      const utterance = new SpeechSynthesisUtterance(line.text);
+      
+      // Set voice based on speaker
+      const voices = speechSynthesis.getVoices();
+      if (line.speaker === 'male') {
+        const maleVoice = voices.find(voice => 
+          voice.name.toLowerCase().includes('male') || 
+          voice.name.toLowerCase().includes('david') ||
+          voice.name.toLowerCase().includes('alex')
+        );
+        if (maleVoice) utterance.voice = maleVoice;
+      } else {
+        const femaleVoice = voices.find(voice => 
+          voice.name.toLowerCase().includes('female') || 
+          voice.name.toLowerCase().includes('samantha') ||
+          voice.name.toLowerCase().includes('victoria')
+        );
+        if (femaleVoice) utterance.voice = femaleVoice;
+      }
+
+      utterance.rate = 0.9;
+      utterance.pitch = line.speaker === 'male' ? 0.8 : 1.1;
+      
+      utterance.onend = () => {
+        currentIndex++;
+        setTimeout(speakNext, 500); // Small pause between speakers
+      };
+
+      utterance.onerror = (event) => {
+        console.error('Speech synthesis error:', event);
+        currentIndex++;
+        setTimeout(speakNext, 100);
+      };
+
+      speechSynthesis.speak(utterance);
+    };
+
+    // Start the conversation
+    speakNext();
   };
 
   const announceLatestGoal = async () => {

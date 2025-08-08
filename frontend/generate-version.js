@@ -25,19 +25,20 @@ try {
     };
   }
 
-  // Use GitHub Actions workflow time if available, otherwise current time
+  // Use deployment timestamp if available, otherwise use a fixed timestamp for local builds
   let deploymentTime;
   
-  // In GitHub Actions, use environment variables for deployment time
+  // In production/Azure, use environment variables for deployment time
   if (process.env.DEPLOYMENT_TIMESTAMP) {
-    // Use GitHub workflow deployment timestamp (already in EST from workflow)
+    // Use Azure deployment timestamp
     deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
     console.log('Using deployment timestamp from environment:', process.env.DEPLOYMENT_TIMESTAMP);
     console.log('Parsed deployment time:', deploymentTime.toString());
   } else {
-    // Fallback to current time for local builds
-    deploymentTime = new Date();
-    console.log('Using local build time');
+    // For local builds, use a fixed timestamp that represents the last deployment
+    // This will be updated by the Azure pipeline with the actual deployment time
+    deploymentTime = new Date('2025-08-08T11:32:00.000Z'); // Fixed timestamp for local development
+    console.log('Using fixed local build time for development');
   }
   
   // Format the time in Eastern timezone properly

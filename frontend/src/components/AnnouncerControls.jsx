@@ -731,7 +731,7 @@ export default function AnnouncerControls({ gameId }) {
     <div className="p-3">
       <h4 className="text-lg font-semibold mb-2">Announcer</h4>
       
-      {/* 2x3 Grid Layout matching DJ panel exactly */}
+      {/* 2x4 Grid Layout */}
       <div className="grid grid-cols-2 gap-1 mb-3">
         {/* Row 1 */}
         <button
@@ -807,6 +807,8 @@ export default function AnnouncerControls({ gameId }) {
         >
           {randomLoading ? 'Loading...' : 'Random'}
         </button>
+        <div></div> {/* Empty space to maintain grid layout */}
+        <div></div> {/* Empty space to maintain grid layout */}
       </div>
       
       {/* Conditional elements - only show when needed (matching DJ panel pattern) */}

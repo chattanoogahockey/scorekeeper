@@ -729,9 +729,7 @@ export default function AnnouncerControls({ gameId }) {
 
   return (
     <div className="p-3">
-      <h4 className="text-lg font-semibold mb-2">
-        Announcer
-      </h4>
+      <h4 className="text-lg font-semibold mb-2">Announcer</h4>
       
       {/* 2x3 Grid Layout matching DJ panel exactly */}
       <div className="grid grid-cols-2 gap-1 mb-3">

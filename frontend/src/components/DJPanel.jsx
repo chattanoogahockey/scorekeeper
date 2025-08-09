@@ -259,24 +259,8 @@ export default function DJPanel() {
   };
 
   return (
-    <div className="border rounded shadow p-3">
-      <div className="flex justify-between items-center mb-2">
-        <h4 className="text-lg font-semibold">DJ</h4>
-        {/* Fade Out Button - Only show when playing */}
-        {isPlaying && (
-          <button
-            onClick={fadeOut}
-            disabled={!isPlaying || isFading}
-            className={`px-3 py-1 rounded transition-colors text-xs ${
-              isPlaying && !isFading
-                ? 'bg-orange-500 hover:bg-orange-600 text-white'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            }`}
-          >
-            {isFading ? 'Fading...' : 'Fade Out'}
-          </button>
-        )}
-      </div>
+    <div className="p-3">
+      <h4 className="text-lg font-semibold mb-2">DJ</h4>
       
       {/* 2x4 Grid Layout */}
       <div className="grid grid-cols-2 gap-1 mb-3">

@@ -267,7 +267,7 @@ export default function MediaControlPanel({ gameId }) {
     <div>
       <div className="flex justify-between items-center mb-4">
         <h4 className="text-lg font-semibold flex items-center gap-2">
-          🎵 DJ
+          DJ
         </h4>
         {/* Fade Out Button - Only show when DJ sounds are playing */}
         {isPlaying && (
@@ -296,7 +296,7 @@ export default function MediaControlPanel({ gameId }) {
               : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
           }`}
         >
-          🥅 Goal Horn
+          Goal Horn
         </button>
         <button
           onClick={() => playSound('whistle', 'mp3')}
@@ -307,7 +307,7 @@ export default function MediaControlPanel({ gameId }) {
               : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
           }`}
         >
-          🔔 Whistle
+          Whistle
         </button>
         
         {/* Row 2 */}
@@ -320,7 +320,7 @@ export default function MediaControlPanel({ gameId }) {
               : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
           }`}
         >
-          📯 Air Horn
+          Air Horn
         </button>
         <button
           onClick={() => playSound('buzzer')}
@@ -331,7 +331,7 @@ export default function MediaControlPanel({ gameId }) {
               : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
           }`}
         >
-          ⏰ Buzzer
+          Buzzer
         </button>
         
         {/* Row 3 */}
@@ -344,7 +344,7 @@ export default function MediaControlPanel({ gameId }) {
               : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
           }`}
         >
-          🎹 Organs
+          Organs
         </button>
         <button
           onClick={playFanfareSound}
@@ -356,7 +356,7 @@ export default function MediaControlPanel({ gameId }) {
           }`}
           title={fanfareSounds.length === 0 ? 'Loading fanfare files...' : `Play fanfare (${fanfareSounds.length} files available)`}
         >
-          {fanfareSounds.length === 0 ? 'Loading...' : '🎺 Fanfare'}
+          {fanfareSounds.length === 0 ? 'Loading...' : 'Fanfare'}
         </button>
       </div>
       

@@ -724,7 +724,7 @@ export default function AnnouncerControls({ gameId }) {
   return (
     <div>
       <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
-        🎙️ Announcer
+        Announcer
       </h4>
       <div className="space-y-3">
         {/* Voice selection */}
@@ -765,7 +765,7 @@ export default function AnnouncerControls({ gameId }) {
             </button>
           </div>
           {!currentGameId && (
-            <p className="text-yellow-600 mb-2 text-xs">⚠️ No game selected</p>
+            <p className="text-yellow-600 mb-2 text-xs">No game selected</p>
           )}
           {error && <p className="text-red-500 mb-2 text-xs">{error}</p>}
         </div>
@@ -778,7 +778,7 @@ export default function AnnouncerControls({ gameId }) {
             className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
             title="Announce Latest Goal"
           >
-            {goalLoading ? 'Loading...' : '⚽ Goal'}
+            {goalLoading ? 'Loading...' : 'Goal'}
           </button>
           <button
             onClick={announceLatestPenalty}
@@ -786,7 +786,7 @@ export default function AnnouncerControls({ gameId }) {
             className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
             title="Announce Latest Penalty"
           >
-            {penaltyLoading ? 'Loading...' : '🚨 Penalty'}
+            {penaltyLoading ? 'Loading...' : 'Penalty'}
           </button>
           <button
             onClick={announceRandomCommentary}
@@ -794,7 +794,7 @@ export default function AnnouncerControls({ gameId }) {
             className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
             title="Random Commentary"
           >
-            {randomLoading ? 'Loading...' : '🎯 Random'}
+            {randomLoading ? 'Loading...' : 'Random'}
           </button>
         </div>
         
@@ -806,7 +806,7 @@ export default function AnnouncerControls({ gameId }) {
               className="w-full px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded text-sm font-medium transition-colors"
               title="Stop Audio"
             >
-              🛑 Stop
+              Stop
             </button>
           </div>
         )}

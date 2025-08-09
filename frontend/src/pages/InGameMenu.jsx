@@ -406,17 +406,17 @@ export default function InGameMenu() {
 
         {/* Integrated Dashboard Components */}
         <div className="space-y-4">
-          {/* Media Controls - Announcer and DJ side by side */}
+          {/* Media Controls - DJ and Announcer side by side */}
           <div className="bg-white rounded-lg shadow-md p-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Announcer Controls */}
-              <div>
-                <AnnouncerControls gameId={selectedGame.id || selectedGame.gameId} />
-              </div>
-              
               {/* DJ Controls */}
               <div>
                 <MediaControlPanel gameId={selectedGame.id || selectedGame.gameId} />
+              </div>
+              
+              {/* Announcer Controls */}
+              <div>
+                <AnnouncerControls gameId={selectedGame.id || selectedGame.gameId} />
               </div>
             </div>
           </div>

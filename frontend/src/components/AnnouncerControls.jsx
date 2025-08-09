@@ -733,6 +733,7 @@ export default function AnnouncerControls({ gameId }) {
       
       {/* 2x3 Grid Layout matching DJ panel exactly */}
       <div className="grid grid-cols-2 gap-1 mb-3">
+        {/* Row 1 */}
         <button
           onClick={() => handleVoiceSelection('male')}
           className={`min-w-20 h-8 px-2 py-1 rounded transition-all duration-200 text-xs border-2 ${
@@ -744,7 +745,6 @@ export default function AnnouncerControls({ gameId }) {
         >
           🧓
         </button>
-        
         <button
           onClick={announceLatestGoal}
           disabled={goalLoading || !currentGameId}
@@ -758,6 +758,7 @@ export default function AnnouncerControls({ gameId }) {
           {goalLoading ? 'Loading...' : 'Goal'}
         </button>
         
+        {/* Row 2 */}
         <button
           onClick={() => handleVoiceSelection('female')}
           className={`min-w-20 h-8 px-2 py-1 rounded transition-all duration-200 text-xs border-2 ${
@@ -769,7 +770,6 @@ export default function AnnouncerControls({ gameId }) {
         >
           👩‍🦰
         </button>
-        
         <button
           onClick={announceLatestPenalty}
           disabled={penaltyLoading || !currentGameId}
@@ -783,6 +783,7 @@ export default function AnnouncerControls({ gameId }) {
           {penaltyLoading ? 'Loading...' : 'Penalty'}
         </button>
         
+        {/* Row 3 */}
         <button
           onClick={() => handleVoiceSelection('dual')}
           className={`min-w-20 h-8 px-2 py-1 rounded transition-all duration-200 text-xs border-2 ${
@@ -794,7 +795,6 @@ export default function AnnouncerControls({ gameId }) {
         >
           <span>🧓</span><span>👩‍🦰</span>
         </button>
-        
         <button
           onClick={announceRandomCommentary}
           disabled={randomLoading || !currentGameId}

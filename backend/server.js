@@ -1721,8 +1721,10 @@ app.post('/api/randomCommentary', async (req, res) => {
     res.status(200).json({
       success: true,
       type: selectedType,
-      text: commentaryText,
-      audioPath: audioFilename
+      announcement: {
+        text: commentaryText,
+        audioPath: audioFilename
+      }
     });
   } catch (error) {
     console.error('❌ Error generating random commentary:', error.message);

@@ -91,10 +91,7 @@ export default function AdminPanel() {
 
   const fetchGames = async () => {
     try {
-      console.log('AdminPanel: Fetching submitted games from /api/games/submitted...');
-      // Add cache busting to prevent stale data
-      const response = await axios.get(`/api/games/submitted?t=${Date.now()}`);
-      console.log('AdminPanel: Received response:', response.data);
+
       setGames(response.data);
       setLoading(false);
     } catch (error) {

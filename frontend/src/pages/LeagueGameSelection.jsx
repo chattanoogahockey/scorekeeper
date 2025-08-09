@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useavigate } from 'react-router-dom';
 import { GameContext } from '../contexts/GameContext.jsx';
 
 export default function LeagueGameSelection() {
@@ -18,9 +18,7 @@ export default function LeagueGameSelection() {
     const abortController = new AbortController();
 
     const fetchGames = async () => {
-      console.log('🎮 Fetching games from API...');
-      console.log('📍 Current window location:', window.location.href);
-      console.log('🕐 Current timestamp:', new Date().toISOString());
+      // Fetch games with cache busting for real-time data
       
       setLoading(true);
       setError(null);
@@ -43,12 +41,12 @@ export default function LeagueGameSelection() {
           }
         });
 
-        console.log(`📊 SUCCESS: Received ${res.data.length} games from API (Request ID: ${requestId}):`, res.data);
+        // Process games and filter out submitted ones
 
         // Fetch submitted games to exclude them
         const submittedRes = await axios.get('/api/games/submitted');
         const submittedIds = new Set(submittedRes.data.map(g => g.id || g.gameId));
-        console.log(`📋 Found ${submittedIds.size} submitted games to exclude:`, Array.from(submittedIds));
+
 
         // Filter games - Gold division only, not submitted, with valid teams
         const availableGames = res.data.filter(game => {
@@ -61,12 +59,12 @@ export default function LeagueGameSelection() {
           
           const isValid = isGold && hasValidTeams && notSubmitted;
           
-          console.log(`Game ${game.awayTeam} vs ${game.homeTeam}: division=${game.division}, valid=${isValid}, submitted=${submittedIds.has(id)}, status=${game.status}`);
+          // Filter valid available games
           
           return isValid;
         });
 
-        console.log(`✅ Filtered to ${availableGames.length} available games`);
+
         setGames(availableGames);
         setError(null);
 
@@ -150,8 +148,7 @@ export default function LeagueGameSelection() {
   };
 
   const handleGameSelect = async (game) => {
-    console.log('🎯 Selected game:', game);
-    console.log('🕐 Build timestamp:', new Date().toISOString());
+
     
     try {
       const gameId = game.id || game.gameId;

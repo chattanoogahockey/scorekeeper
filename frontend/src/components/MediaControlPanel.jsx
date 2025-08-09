@@ -395,48 +395,49 @@ export default function MediaControlPanel({ gameId }) {
         announcerMode: selectedVoice === 'dual' ? 'dual' : 'single'
       });
       
-      if (response.data && response.data.success) {
-        // Handle dual announcer mode
-        if (response.data.conversation) {
-          setMessage('Dual announcer conversation generated');
-          // Dual announcer conversation is handled by the backend TTS
-        } 
-        // Handle single announcer mode with audio
-        else if (response.data.announcement && response.data.announcement.audioPath) {
-          const audioUrl = import.meta.env.DEV 
-            ? `http://localhost:3001/audio/${response.data.announcement.audioPath}`
-            : `${import.meta.env.VITE_API_BASE_URL}/audio/${response.data.announcement.audioPath}`;
-            
-          const audio = new Audio(audioUrl);
-          announcerAudioRef.current = audio;
+      // Handle dual announcer mode
+      if (selectedVoice === 'dual' && response.data.conversation) {
+        displayDualConversation(response.data.conversation);
+        setMessage('Dual goal announcement played');
+      } 
+      // Handle single announcer mode with audio
+      else if (response.data.announcement && response.data.announcement.audioPath) {
+        const audioUrl = import.meta.env.DEV 
+          ? `http://localhost:3001/audio/${response.data.announcement.audioPath.split('/').pop()}`
+          : `${import.meta.env.VITE_API_BASE_URL}/audio/${response.data.announcement.audioPath.split('/').pop()}`;
           
-          audio.addEventListener('loadedmetadata', () => {
-            setAnnouncerAudioProgress({ 
-              current: 0, 
-              duration: audio.duration, 
-              isPlaying: true 
-            });
+        const audio = new Audio(audioUrl);
+        announcerAudioRef.current = audio;
+        
+        audio.addEventListener('loadedmetadata', () => {
+          setAnnouncerAudioProgress({ 
+            current: 0, 
+            duration: audio.duration, 
+            isPlaying: true 
           });
-          
-          audio.addEventListener('timeupdate', () => {
-            setAnnouncerAudioProgress(prev => ({
-              ...prev,
-              current: audio.currentTime
-            }));
-          });
-          
-          audio.addEventListener('ended', () => {
-            setAnnouncerAudioProgress({ current: 0, duration: 0, isPlaying: false });
-            releaseWakeLock();
-          });
-          
-          await audio.play();
-          setMessage(response.data.announcement.text || 'Goal announcement played');
-        }
-        // Handle scoreless game
-        else if (response.data.scoreless) {
-          setMessage('No goals yet - scoreless commentary generated');
-        }
+        });
+        
+        audio.addEventListener('timeupdate', () => {
+          setAnnouncerAudioProgress(prev => ({
+            ...prev,
+            current: audio.currentTime
+          }));
+        });
+        
+        audio.addEventListener('ended', () => {
+          setAnnouncerAudioProgress({ current: 0, duration: 0, isPlaying: false });
+          releaseWakeLock();
+        });
+        
+        await audio.play();
+        setMessage(response.data.announcement.text || 'Goal announcement played');
+      }
+      // Handle scoreless game
+      else if (response.data.scoreless) {
+        setMessage('No goals yet - scoreless commentary generated');
+      }
+      else {
+        setMessage('No goal data available to announce');
       }
     } catch (error) {
       console.error('Error announcing goal:', error);
@@ -544,7 +545,39 @@ export default function MediaControlPanel({ gameId }) {
         displayDualConversation(response.data.conversation);
         setMessage('Dual random commentary played');
       }
-      // Handle single announcer mode
+      // Handle single announcer mode with structured response
+      else if (response.data.announcement && response.data.announcement.audioPath) {
+        const audioUrl = import.meta.env.DEV 
+          ? `http://localhost:3001/audio/${response.data.announcement.audioPath.split('/').pop()}`
+          : `${import.meta.env.VITE_API_BASE_URL}/audio/${response.data.announcement.audioPath.split('/').pop()}`;
+        
+        const audio = new Audio(audioUrl);
+        announcerAudioRef.current = audio;
+        
+        audio.addEventListener('loadedmetadata', () => {
+          setAnnouncerAudioProgress({ 
+            current: 0, 
+            duration: audio.duration, 
+            isPlaying: true 
+          });
+        });
+        
+        audio.addEventListener('timeupdate', () => {
+          setAnnouncerAudioProgress(prev => ({
+            ...prev,
+            current: audio.currentTime
+          }));
+        });
+        
+        audio.addEventListener('ended', () => {
+          setAnnouncerAudioProgress({ current: 0, duration: 0, isPlaying: false });
+          releaseWakeLock();
+        });
+        
+        await audio.play();
+        setMessage(response.data.announcement.text || 'Random commentary played');
+      }
+      // Handle single announcer mode with direct audioPath (backward compatibility)
       else if (response.data.audioPath) {
         const audioUrl = import.meta.env.DEV 
           ? `http://localhost:3001/audio/${response.data.audioPath.split('/').pop()}`

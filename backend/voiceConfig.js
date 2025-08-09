@@ -33,9 +33,9 @@ export async function getAnnouncerVoices() {
       const voiceConfig = configs[0];
       maleVoice = voiceConfig.maleVoice || DEFAULT_VOICES.male;
       femaleVoice = voiceConfig.femaleVoice || DEFAULT_VOICES.female;
-      console.log(`🎯 Found voice config in database: male=${maleVoice}, female=${femaleVoice}`);
+
     } else {
-      console.log(`🎯 No voice config found, using defaults: male=${maleVoice}, female=${femaleVoice}`);
+
     }
     
     return {
@@ -63,65 +63,9 @@ export async function getAnnouncerVoices() {
   }
 }
 
-/**
- * Get voice configuration from settings container (LEGACY - keeping for compatibility)
- */
-export async function getVoiceConfig() {
-  try {
-    const container = getSettingsContainer();
-    const { resources: configs } = await container.items
-      .query({
-        query: "SELECT * FROM c WHERE c.type = 'voice-config'",
-        parameters: []
-      })
-      .fetchAll();
-    
-    if (configs.length > 0) {
-      return configs[0];
-    }
-    
-    // Return default configuration if none exists
-    return {
-      id: 'voice-config',
-      type: 'voice-config',
-      maleVoice: DEFAULT_VOICES.male,
-      femaleVoice: DEFAULT_VOICES.female,
-      lastUpdated: new Date().toISOString()
-    };
-  } catch (error) {
-    console.warn('⚠️ Could not fetch voice config, using defaults:', error.message);
-    return {
-      id: 'voice-config',
-      type: 'voice-config',
-      maleVoice: DEFAULT_VOICES.male,
-      femaleVoice: DEFAULT_VOICES.female,
-      lastUpdated: new Date().toISOString()
-    };
-  }
-}
 
-/**
- * Update voice configuration in settings container
- */
-export async function updateVoiceConfig(maleVoice, femaleVoice) {
-  try {
-    const container = getSettingsContainer();
-    
-    const voiceConfig = {
-      id: 'voice-config',
-      type: 'voice-config',
-      maleVoice: maleVoice || DEFAULT_VOICES.male,
-      femaleVoice: femaleVoice || DEFAULT_VOICES.female,
-      lastUpdated: new Date().toISOString()
-    };
-    
-    await container.items.upsert(voiceConfig);
-    return voiceConfig;
-  } catch (error) {
-    console.error('❌ Failed to update voice config:', error);
-    throw error;
-  }
-}
+
+
 
 /**
  * Get voice for announcement based on gender preference

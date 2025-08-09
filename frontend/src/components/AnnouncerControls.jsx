@@ -477,8 +477,6 @@ export default function AnnouncerControls({ gameId }) {
           }
         } else {
           // No server audio available, use browser text-to-speech
-          console.log('⚠️ No Studio audio available, using browser TTS fallback');
-          console.log('AudioPath received:', announcement.audioPath);
           speakText(announcement.text);
         }
       }

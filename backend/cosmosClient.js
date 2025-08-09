@@ -11,21 +11,21 @@ const __dirname = dirname(__filename);
 dotenv.config({ path: './.env' });
 
 /**
- * Configurable Container Names
+ * Standardized Container Names (using hyphens consistently)
  * Can be overridden via environment variables for different environments
  */
 const containerNames = {
-  settings: process.env.COSMOS_DB_SETTINGS_CONTAINER || 'settings',
-  analytics: process.env.COSMOS_DB_ANALYTICS_CONTAINER || 'analytics',
-  rink_reports: process.env.COSMOS_DB_RINK_REPORTS_CONTAINER || 'rink_reports',
-  games: process.env.COSMOS_DB_GAMES_CONTAINER || 'games',
-  players: process.env.COSMOS_DB_PLAYERS_CONTAINER || 'players',
-  goals: process.env.COSMOS_DB_GOALS_CONTAINER || 'goals',
-  penalties: process.env.COSMOS_DB_PENALTIES_CONTAINER || 'penalties',
-  rosters: process.env.COSMOS_DB_ROSTERS_CONTAINER || 'rosters',
-  attendance: process.env.COSMOS_DB_ATTENDANCE_CONTAINER || 'attendance',
-  otshootout: process.env.COSMOS_DB_OTSHOOTOUT_CONTAINER || 'otshootout',
-  shotsongoal: process.env.COSMOS_DB_SHOTSONGOAL_CONTAINER || 'shotsongoal',
+  settings: process.env.COSMOS_CONTAINER_SETTINGS || 'settings',
+  analytics: process.env.COSMOS_CONTAINER_ANALYTICS || 'analytics',
+  'rink-reports': process.env.COSMOS_CONTAINER_RINK_REPORTS || 'rink-reports',
+  games: process.env.COSMOS_CONTAINER_GAMES || 'games',
+  players: process.env.COSMOS_CONTAINER_PLAYERS || 'players',
+  goals: process.env.COSMOS_CONTAINER_GOALS || 'goals',
+  penalties: process.env.COSMOS_CONTAINER_PENALTIES || 'penalties',
+  rosters: process.env.COSMOS_CONTAINER_ROSTERS || 'rosters',
+  attendance: process.env.COSMOS_CONTAINER_ATTENDANCE || 'attendance',
+  'ot-shootout': process.env.COSMOS_CONTAINER_OT_SHOOTOUT || 'ot-shootout',
+  'shots-on-goal': process.env.COSMOS_CONTAINER_SHOTS_ON_GOAL || 'shots-on-goal',
 };
 
 /**
@@ -74,8 +74,8 @@ const CONTAINER_DEFINITIONS = {
   },
   
   // Weekly rink reports and articles
-  rink_reports: {
-    name: containerNames.rink_reports,
+  'rink-reports': {
+    name: containerNames['rink-reports'],
     partitionKey: '/division',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -182,8 +182,8 @@ const CONTAINER_DEFINITIONS = {
   },
   
   // Overtime and shootout results
-  otshootout: {
-    name: containerNames.otshootout,
+  'ot-shootout': {
+    name: containerNames['ot-shootout'],
     partitionKey: '/gameId',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -197,8 +197,8 @@ const CONTAINER_DEFINITIONS = {
   },
   
   // Shots on goal tracking
-  shotsongoal: {
-    name: containerNames.shotsongoal,
+  'shots-on-goal': {
+    name: containerNames['shots-on-goal'],
     partitionKey: '/gameId',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -215,18 +215,14 @@ const CONTAINER_DEFINITIONS = {
 // Environment variable configuration
 const {
   COSMOS_DB_URI,
-  COSMOS_DB_ENDPOINT,
-  COSMOS_ENDPOINT,
   COSMOS_DB_KEY,
-  COSMOS_KEY,
-  COSMOS_DB_NAME,
-  COSMOS_DB_DATABASE_ID
+  COSMOS_DB_NAME
 } = process.env;
 
-// Support multiple environment variable naming conventions
-const cosmosUri = COSMOS_DB_URI || COSMOS_DB_ENDPOINT || COSMOS_ENDPOINT;
-const cosmosKey = COSMOS_DB_KEY || COSMOS_KEY;
-const cosmosDatabase = COSMOS_DB_NAME || COSMOS_DB_DATABASE_ID;
+// Use standardized environment variables only
+const cosmosUri = COSMOS_DB_URI;
+const cosmosKey = COSMOS_DB_KEY;
+const cosmosDatabase = COSMOS_DB_NAME;
 
 const cosmosConfigured = Boolean(cosmosUri && cosmosKey && cosmosDatabase);
 let client = null;
@@ -273,7 +269,7 @@ export function getAnalyticsContainer() {
 // Rink reports container - Weekly division summaries
 export function getRinkReportsContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS.rink_reports.name);
+  return database.container(CONTAINER_DEFINITIONS['rink-reports'].name);
 }
 
 // Games container - Game records and submissions
@@ -315,13 +311,13 @@ export function getAttendanceContainer() {
 // OT/Shootout container - Overtime and shootout results
 export function getOTShootoutContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS.otshootout.name);
+  return database.container(CONTAINER_DEFINITIONS['ot-shootout'].name);
 }
 
 // Shots on Goal container - Shots on goal tracking and analytics
 export function getShotsOnGoalContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS.shotsongoal.name);
+  return database.container(CONTAINER_DEFINITIONS['shots-on-goal'].name);
 }
 
 // Legacy aliases for backward compatibility (deprecated)

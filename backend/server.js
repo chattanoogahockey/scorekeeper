@@ -77,7 +77,7 @@ app.use((req, res, next) => {
   
   // Log all API requests in production
   if (req.path.startsWith('/api/')) {
-    console.log(`🌐 ${req.method} ${req.path} (ID: ${req.requestId})`);
+  // Request logging middleware
   }
   
   next();
@@ -105,9 +105,9 @@ console.log(`🔧 Node version: ${process.version}`);
 
 // Add startup safety check (aligned with cosmosClient.js expectations)
 const hasConnString = !!process.env.COSMOS_DB_CONNECTION_STRING;
-const hasSeparateCreds = !!(process.env.COSMOS_DB_URI || process.env.COSMOS_DB_ENDPOINT || process.env.COSMOS_ENDPOINT)
-  && !!(process.env.COSMOS_DB_KEY || process.env.COSMOS_KEY)
-  && !!(process.env.COSMOS_DB_NAME || process.env.COSMOS_DB_DATABASE_ID);
+const hasSeparateCreds = !!process.env.COSMOS_DB_URI
+  && !!process.env.COSMOS_DB_KEY
+  && !!process.env.COSMOS_DB_NAME;
 
 if (isProduction && !(hasConnString || hasSeparateCreds)) {
   console.error('❌ Missing Cosmos DB configuration (URI/Key/Name). Continuing startup; DB-dependent features may be unavailable.');
@@ -219,8 +219,7 @@ app.get('/api/version', (req, res) => {
     });
     
     console.log(`Final backend buildTime: ${buildTime} (source: ${buildTimeSource})`);
-    console.log('🔄 Version endpoint called at:', new Date().toISOString());
-    console.log('⚡ Server uptime:', process.uptime(), 'seconds');
+
     
     const responseData = {
       version: packageJson.version,
@@ -234,7 +233,7 @@ app.get('/api/version', (req, res) => {
       deploymentEnv: process.env.GITHUB_ACTIONS ? 'GitHub Actions' : 'Local'
     };
     
-    console.log('📤 Sending version response:', JSON.stringify(responseData, null, 2));
+
     res.json(responseData);
   } catch (error) {
     console.error('Error getting version info:', error);
@@ -375,7 +374,7 @@ app.get('/api/games', async (req, res) => {
   const division = (req.query.division || 'all').toLowerCase();
   const requestId = rid || Math.random().toString(36).substr(2, 9);
   
-  console.log(`🎮 Games API called with division: ${division}, timestamp: ${t}, version: ${v}, requestId: ${requestId}`);
+
   
   // Add aggressive cache-busting headers
   res.set({
@@ -388,7 +387,7 @@ app.get('/api/games', async (req, res) => {
 
   try {
     const container = getGamesContainer();
-    console.log('📦 Got games container');
+
     
     let querySpec;
     
@@ -398,7 +397,7 @@ app.get('/api/games', async (req, res) => {
         query: 'SELECT * FROM c',
         parameters: [],
       };
-      console.log('🔍 Querying for ALL games');
+      // Query for all games
     } else {
       // Return games for specific division only
       querySpec = {
@@ -407,14 +406,14 @@ app.get('/api/games', async (req, res) => {
           { name: '@division', value: division }
         ],
       };
-      console.log(`🔍 Querying for division: ${division}`);
+      // Query for specific division
     }
 
     const { resources: games } = await container.items.query(querySpec).fetchAll();
-    console.log(`✅ Games API: Found ${games.length} games for division: ${division} (requestId: ${requestId})`);
+
     
     if (games.length > 0) {
-      console.log(`📋 Sample game structure (requestId: ${requestId}):`, JSON.stringify(games[0], null, 2));
+
     }
     
     // Enhanced response with metadata for production
@@ -432,7 +431,7 @@ app.get('/api/games', async (req, res) => {
     };
     
     // Return games array directly for backward compatibility, but log structured response
-    console.log(`📤 Sending ${games.length} games for division ${division} (requestId: ${requestId})`);
+
     res.status(200).json(games);
   } catch (error) {
     handleError(res, error, 'Games API');

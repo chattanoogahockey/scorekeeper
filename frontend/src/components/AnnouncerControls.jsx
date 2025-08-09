@@ -775,7 +775,7 @@ export default function AnnouncerControls({ gameId }) {
           <button
             onClick={announceLatestGoal}
             disabled={goalLoading || !currentGameId}
-            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
+            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors text-center"
             title="Announce Latest Goal"
           >
             {goalLoading ? 'Loading...' : 'Goal'}
@@ -783,7 +783,7 @@ export default function AnnouncerControls({ gameId }) {
           <button
             onClick={announceLatestPenalty}
             disabled={penaltyLoading || !currentGameId}
-            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
+            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors text-center"
             title="Announce Latest Penalty"
           >
             {penaltyLoading ? 'Loading...' : 'Penalty'}
@@ -791,7 +791,7 @@ export default function AnnouncerControls({ gameId }) {
           <button
             onClick={announceRandomCommentary}
             disabled={randomLoading || !currentGameId}
-            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
+            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors text-center"
             title="Random Commentary"
           >
             {randomLoading ? 'Loading...' : 'Random'}
@@ -803,7 +803,7 @@ export default function AnnouncerControls({ gameId }) {
           <div>
             <button
               onClick={stopAudio}
-              className="w-full px-3 py-2 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded text-sm font-medium transition-colors"
+              className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors text-center"
               title="Stop Audio"
             >
               Stop

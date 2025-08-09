@@ -6,6 +6,70 @@ const openai = new OpenAI({
 });
 
 /**
+ * Hockey Time Understanding Utility
+ * In hockey, periods count DOWN to zero. There are 3 periods.
+ * Example: 00:26 in Period 1 is LATER in the game than 16:00 in Period 1
+ * Period 3 at 00:26 is MUCH later than Period 1 at 00:26
+ */
+function calculateGameProgression(period, timeRemaining) {
+  // Convert time string (MM:SS) to total seconds
+  const [minutes, seconds] = timeRemaining.split(':').map(Number);
+  const totalSecondsRemaining = (minutes * 60) + seconds;
+  
+  // Each period is 20 minutes (1200 seconds)
+  const secondsPerPeriod = 20 * 60; // 1200 seconds
+  
+  // Calculate how much time has elapsed in current period
+  const elapsedInCurrentPeriod = secondsPerPeriod - totalSecondsRemaining;
+  
+  // Calculate total elapsed time in game
+  const totalElapsedTime = ((period - 1) * secondsPerPeriod) + elapsedInCurrentPeriod;
+  
+  // Total game time is 3 periods of 20 minutes each (3600 seconds)
+  const totalGameTime = 3 * secondsPerPeriod; // 3600 seconds
+  
+  // Calculate progression percentage
+  const percentage = Math.round((totalElapsedTime / totalGameTime) * 100);
+  
+  // Determine context based on period and time remaining
+  let context, urgency;
+  
+  if (period === 1) {
+    if (totalSecondsRemaining > 600) { // More than 10 minutes left
+      context = "early in the first period";
+      urgency = "low";
+    } else {
+      context = "late in the first period";
+      urgency = "medium";
+    }
+  } else if (period === 2) {
+    if (totalSecondsRemaining > 600) {
+      context = "early in the second period";
+      urgency = "medium";
+    } else {
+      context = "late in the second period";
+      urgency = "medium-high";
+    }
+  } else if (period === 3) {
+    if (totalSecondsRemaining > 300) { // More than 5 minutes left
+      context = "third period";
+      urgency = "high";
+    } else {
+      context = "crunch time in the third period";
+      urgency = "very high";
+    }
+  }
+  
+  return {
+    percentage,
+    context,
+    urgency,
+    totalElapsedTime,
+    totalSecondsRemaining
+  };
+}
+
+/**
  * Generate professional roller hockey goal announcement using OpenAI
  */
 export async function generateGoalAnnouncement(goalData, playerStats = null, voiceGender = 'male') {
@@ -79,6 +143,17 @@ export async function generateGoalAnnouncement(goalData, playerStats = null, voi
 - "He fires—SCORES! ${playerName} gives them the lead with 19 seconds left! Can you believe this place?!"
 - "Shot on goal—HE SCORES! ${playerName} with the snipe! What a moment!"`;
 
+    // Calculate game timing context for hockey-aware announcements
+    const gameProgression = calculateGameProgression(period, timeRemaining);
+    const timingContext = `
+IMPORTANT HOCKEY TIMING CONTEXT: 
+- In hockey, time counts DOWN from 20:00 to 00:00 each period
+- This goal was scored at ${timeRemaining} in period ${period}
+- Game progression: ${gameProgression.percentage}% complete
+- Timing context: ${gameProgression.context}
+- Time urgency: ${gameProgression.urgency}
+- A goal at 00:26 happens LATER in the period than 16:00`;
+
     const prompt = `${personalityPrompt}
 
 Player: ${playerName}
@@ -90,9 +165,11 @@ ${assistText}
 Current Score: ${scoreText}
 ${statsText}
 
+${timingContext}
+
 ${styleGuidelines}
 
-Write this as ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'} would call it - be energetic, clear, and exciting. Include the player name prominently, mention assists if any, and build excitement around the goal. Keep it concise but impactful (1-2 sentences max). Do not include any stage directions or formatting - just the announcement text that would be spoken.
+Write this as ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'} would call it - be energetic, clear, and exciting. Include the player name prominently, mention assists if any, and build excitement around the goal. Consider the game timing context for appropriate urgency and excitement level. Keep it concise but impactful (1-2 sentences max). Do not include any stage directions or formatting - just the announcement text that would be spoken.
 
 ${examples}
 
@@ -357,6 +434,17 @@ export async function generatePenaltyAnnouncement(penaltyData, gameContext = nul
 - "Number 14, John Smith... two minutes for tripping"
 - "Interference on Jake Wilson, and that's two minutes"`;
 
+    // Calculate game timing context for hockey-aware announcements
+    const penaltyGameProgression = calculateGameProgression(period, timeRemaining);
+    const penaltyTimingContext = `
+IMPORTANT HOCKEY TIMING CONTEXT: 
+- In hockey, time counts DOWN from 20:00 to 00:00 each period
+- This penalty occurred at ${timeRemaining} in period ${period}
+- Game progression: ${penaltyGameProgression.percentage}% complete
+- Timing context: ${penaltyGameProgression.context}
+- Time urgency: ${penaltyGameProgression.urgency}
+- A penalty at 00:26 happens LATER in the period than 16:00`;
+
     const prompt = `${personalityPrompt}
 
 Player: ${playerName}
@@ -367,9 +455,11 @@ Time: ${timeRemaining}
 Penalty Length: ${length} minutes
 ${gameContext ? `Score: ${homeTeam} ${currentScore?.home || 0}, ${awayTeam} ${currentScore?.away || 0}` : ''}
 
+${penaltyTimingContext}
+
 ${styleGuidelines}
 
-Write this as ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'} would call it - be clear, authoritative, and professional with ${voiceGender === 'female' ? 'her warm but professional' : 'his natural'} touch. State the penalty clearly and include the time. Keep it concise and authoritative (1-2 sentences). Do not include any stage directions or formatting - just the announcement text that would be spoken.
+Write this as ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'} would call it - be clear, authoritative, and professional with ${voiceGender === 'female' ? 'her warm but professional' : 'his natural'} touch. State the penalty clearly and include the time. Consider the game timing context for appropriate urgency and tone. Keep it concise and authoritative (1-2 sentences). Do not include any stage directions or formatting - just the announcement text that would be spoken.
 
 ${examples}`;
 
@@ -427,6 +517,17 @@ export async function generateDualGoalAnnouncement(goalData, playerStats = null)
       `${homeTeam} ${homeScore}, ${awayTeam} ${awayScore}` :
       `${awayTeam} ${awayScore}, ${homeTeam} ${homeScore}`;
 
+    // Calculate game timing context for hockey-aware announcements
+    const dualGoalProgression = calculateGameProgression(period, timeRemaining);
+    const dualGoalTimingContext = `
+IMPORTANT HOCKEY TIMING CONTEXT: 
+- In hockey, time counts DOWN from 20:00 to 00:00 each period
+- This goal was scored at ${timeRemaining} in period ${period}
+- Game progression: ${dualGoalProgression.percentage}% complete
+- Timing context: ${dualGoalProgression.context}
+- Time urgency: ${dualGoalProgression.urgency}
+- A goal at 00:26 happens LATER in the period than 16:00`;
+
     const prompt = `Create a realistic 5-line conversation between two veteran hockey announcers about this goal. These are seasoned broadcast partners who know each other well and naturally build on each other's commentary. Keep it concise but natural.
 
 GOAL DETAILS:
@@ -437,6 +538,8 @@ GOAL DETAILS:
 - Goal Type: ${goalType}
 - ${assistText}
 - Score: ${scoreText}
+
+${dualGoalTimingContext}
 
 ANNOUNCER PERSONALITIES:
 
@@ -523,6 +626,17 @@ export async function generateDualPenaltyAnnouncement(penaltyData, gameContext =
 
     const { homeTeam, awayTeam, currentScore } = gameContext || {};
 
+    // Calculate game timing context for hockey-aware announcements
+    const dualPenaltyProgression = calculateGameProgression(period, timeRemaining);
+    const dualPenaltyTimingContext = `
+IMPORTANT HOCKEY TIMING CONTEXT: 
+- In hockey, time counts DOWN from 20:00 to 00:00 each period
+- This penalty occurred at ${timeRemaining} in period ${period}
+- Game progression: ${dualPenaltyProgression.percentage}% complete
+- Timing context: ${dualPenaltyProgression.context}
+- Time urgency: ${dualPenaltyProgression.urgency}
+- A penalty at 00:26 happens LATER in the period than 16:00`;
+
     const prompt = `Create a realistic 6-line conversation between two veteran hockey announcers about this penalty. These are seasoned broadcast partners who naturally discuss the call, its impact, and game flow.
 
 PENALTY DETAILS:
@@ -533,6 +647,8 @@ PENALTY DETAILS:
 - Time: ${timeRemaining}
 - Length: ${length} minutes
 ${gameContext ? `- Score: ${homeTeam} ${currentScore?.home || 0}, ${awayTeam} ${currentScore?.away || 0}` : ''}
+
+${dualPenaltyTimingContext}
 
 ANNOUNCER PERSONALITIES:
 

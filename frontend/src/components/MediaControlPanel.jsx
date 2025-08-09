@@ -290,10 +290,10 @@ export default function MediaControlPanel({ gameId }) {
         <button
           onClick={() => playSound('goal_horn', 'mp3')}
           disabled={isPlaying}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
           }`}
         >
           Goal Horn
@@ -301,10 +301,10 @@ export default function MediaControlPanel({ gameId }) {
         <button
           onClick={() => playSound('whistle', 'mp3')}
           disabled={isPlaying}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
           }`}
         >
           Whistle
@@ -314,10 +314,10 @@ export default function MediaControlPanel({ gameId }) {
         <button
           onClick={() => playSound('dj_air_horn', 'mp3')}
           disabled={isPlaying}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
           }`}
         >
           Air Horn
@@ -325,10 +325,10 @@ export default function MediaControlPanel({ gameId }) {
         <button
           onClick={() => playSound('buzzer')}
           disabled={isPlaying}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
           }`}
         >
           Buzzer
@@ -338,10 +338,10 @@ export default function MediaControlPanel({ gameId }) {
         <button
           onClick={playOrganSound}
           disabled={isPlaying}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
           }`}
         >
           Organs
@@ -349,10 +349,10 @@ export default function MediaControlPanel({ gameId }) {
         <button
           onClick={playFanfareSound}
           disabled={isPlaying || fanfareSounds.length === 0}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
             isPlaying || fanfareSounds.length === 0
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
           }`}
           title={fanfareSounds.length === 0 ? 'Loading fanfare files...' : `Play fanfare (${fanfareSounds.length} files available)`}
         >

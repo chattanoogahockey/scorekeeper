@@ -811,14 +811,33 @@ export default function AnnouncerControls({ gameId }) {
         </button>
       </div>
       
+      {/* Conditional elements - only show when needed (matching DJ panel pattern) */}
       {!currentGameId && (
         <p className="text-yellow-600 mb-2 text-xs">No game selected</p>
       )}
       {error && <p className="text-red-500 mb-2 text-xs">{error}</p>}
       
+      {/* Audio Progress Bar - Compact (matching DJ panel style) */}
+      {audioProgress.isPlaying && (
+        <div className="mt-2 p-2 bg-gray-50 rounded border">
+          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
+            <span>Audio Progress</span>
+            <span>{Math.round(audioProgress.current)}s / {Math.round(audioProgress.duration)}s</span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-1">
+            <div 
+              className="bg-blue-500 h-1 rounded-full transition-all duration-100"
+              style={{ 
+                width: `${Math.min((audioProgress.current / audioProgress.duration) * 100, 100)}%` 
+              }}
+            ></div>
+          </div>
+        </div>
+      )}
+      
       {/* Stop button - only show when audio is playing */}
       {audioProgress.isPlaying && (
-        <div>
+        <div className="mt-2">
           <button
             onClick={stopAudio}
             className="flex items-center justify-center w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors"
@@ -829,26 +848,11 @@ export default function AnnouncerControls({ gameId }) {
         </div>
       )}
       
-      {/* Audio Progress Bar */}
-      {audioProgress.isPlaying && (
-        <div className="mt-3 p-2 bg-gray-50 rounded border">
-          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-            <span>Audio Progress</span>
-            <span>{Math.round(audioProgress.current)}s / {Math.round(audioProgress.duration)}s</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div 
-              className="bg-blue-500 h-2 rounded-full transition-all duration-100"
-              style={{ 
-                width: `${Math.min((audioProgress.current / audioProgress.duration) * 100, 100)}%` 
-              }}
-            ></div>
-          </div>
-        </div>
-      )}
-      
-      {message && (
-        <p className="text-sm mt-3 italic text-gray-600">Latest announcement: {message}</p>
+      {/* Message display - only when there's a message AND not playing audio */}
+      {message && !audioProgress.isPlaying && (
+        <p className="text-sm mt-2 italic text-gray-600 text-center">
+          {message}
+        </p>
       )}
     </div>
   );

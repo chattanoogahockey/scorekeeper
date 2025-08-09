@@ -183,10 +183,16 @@ export default function AnnouncerControls({ gameId }) {
    * Play dual announcer conversation with alternating voices using backend TTS
    */
   const playDualAnnouncement = async (conversation) => {
+    console.log('🎤 playDualAnnouncement called with:', conversation);
+    console.log('🎤 Conversation type:', typeof conversation, 'Array?', Array.isArray(conversation));
+    
     if (!conversation || !Array.isArray(conversation) || conversation.length === 0) {
+      console.error('❌ Invalid conversation data:', { conversation, isArray: Array.isArray(conversation), length: conversation?.length });
       setError('No conversation data available');
       return;
     }
+
+    console.log('✅ Valid conversation data, starting playback...');
 
     setMessage('🎤 Playing dual announcer conversation...');
     await requestWakeLock();
@@ -610,16 +616,27 @@ export default function AnnouncerControls({ gameId }) {
       
       if (data.success) {
         const { text, audioPath, conversation } = data;
+        console.log('🎙️ Random commentary data received:', { text, audioPath, conversation });
         
         // Handle dual announcer mode
         const mode = selectedVoice === 'dual' ? 'dual' : 'single';
         if (mode === 'dual' && conversation) {
+          console.log('🎙️ Processing dual mode conversation:', conversation);
+          console.log('🎙️ Conversation type:', typeof conversation, 'Array?', Array.isArray(conversation));
+          if (Array.isArray(conversation)) {
+            console.log('🎙️ Conversation length:', conversation.length);
+            conversation.forEach((line, index) => {
+              console.log(`🎙️ Line ${index}:`, line);
+            });
+          }
+          
           try {
             await playDualAnnouncement(conversation);
             setMessage('Random commentary complete!');
             setTimeout(() => setMessage(''), 2000);
           } catch (dualError) {
-            console.error('Error in dual announcer playback:', dualError);
+            console.error('❌ Error in dual announcer playback:', dualError);
+            console.error('❌ Conversation data that failed:', conversation);
             setError('Failed to play dual announcer conversation');
           }
           return;

@@ -811,12 +811,6 @@ export default function AnnouncerControls({ gameId }) {
         <div></div> {/* Empty space to maintain grid layout */}
       </div>
       
-      {/* Conditional elements - only show when needed (matching DJ panel pattern) */}
-      {!currentGameId && (
-        <p className="text-yellow-600 mb-2 text-xs">No game selected</p>
-      )}
-      {error && <p className="text-red-500 mb-2 text-xs">{error}</p>}
-      
       {/* Audio Progress Bar - Compact (matching DJ panel style) */}
       {audioProgress.isPlaying && (
         <div className="mt-2 p-2 bg-gray-50 rounded border">

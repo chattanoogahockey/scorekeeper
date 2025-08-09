@@ -64,7 +64,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Weekly rink reports and articles
   'rink-reports': {
-    name: containerNames['rink-reports'],
+    name: containerNames.rinkReports,
     partitionKey: '/division',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -172,7 +172,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Overtime and shootout results
   'ot-shootout': {
-    name: containerNames['ot-shootout'],
+    name: containerNames.otShootout,
     partitionKey: '/gameId',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -187,7 +187,7 @@ const CONTAINER_DEFINITIONS = {
   
   // Shots on goal tracking
   'shots-on-goal': {
-    name: containerNames['shots-on-goal'],
+    name: containerNames.shotsOnGoal,
     partitionKey: '/gameId',
     indexingPolicy: {
       indexingMode: 'consistent',

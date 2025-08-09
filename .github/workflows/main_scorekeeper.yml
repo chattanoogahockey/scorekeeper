@@ -61,6 +61,8 @@ jobs:
         # Backend essentials (no bloat)
         cp backend/package*.json deploy/
         cp backend/server.js deploy/
+        cp backend/logger.js deploy/          # Logger module required by server.js
+        cp -r backend/config deploy/config    # Config directory required by server.js
         cp backend/cosmosClient.js deploy/
         cp backend/ttsService.js deploy/
         cp backend/rinkReportGenerator.js deploy/

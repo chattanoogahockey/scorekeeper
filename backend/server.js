@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import dotenv from 'dotenv';
 import { config } from './config/index.js';
+import logger from './logger.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -56,9 +57,16 @@ try {
   generateDualGoalAnnouncement = announcerModule.generateDualGoalAnnouncement;
   generateDualPenaltyAnnouncement = announcerModule.generateDualPenaltyAnnouncement;
   generateDualRandomCommentary = announcerModule.generateDualRandomCommentary;
-  console.log('✅ Announcer service loaded with dual announcer support');
+  
+  logger.logAnnouncerAvailability(true, [
+    'single-mode-announcements',
+    'dual-mode-conversations', 
+    'goal-announcements',
+    'penalty-announcements',
+    'scoreless-commentary'
+  ]);
 } catch (error) {
-  console.log('⚠️ Announcer service not available');
+  logger.logAnnouncerAvailability(false);
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -70,16 +78,38 @@ app.use(cors());
 
 // Production middleware for request tracking and logging
 app.use((req, res, next) => {
+  const startTime = Date.now();
+  
   // Generate request ID for tracking
-  req.requestId = req.headers['x-request-id'] || Math.random().toString(36).substr(2, 9);
+  req.requestId = req.headers['x-request-id'] || logger.generateRequestId();
   
   // Add request ID to response headers
   res.set('X-Request-ID', req.requestId);
   
-  // Log all API requests in production
-  if (req.path.startsWith('/api/')) {
-  // Request logging middleware
+  // Log API requests (exclude health checks to reduce noise)
+  if (req.path.startsWith('/api/') && !req.path.includes('/health')) {
+    logger.info('API Request', {
+      requestId: req.requestId,
+      method: req.method,
+      path: req.path,
+      userAgent: req.get('User-Agent'),
+      ip: req.ip
+    });
   }
+  
+  // Override res.json to track response time and log completion
+  const originalJson = res.json;
+  res.json = function(data) {
+    const duration = Date.now() - startTime;
+    
+    if (req.path.startsWith('/api/') && !req.path.includes('/health')) {
+      logger.logApiMetrics(req.path, req.method, res.statusCode, duration, {
+        requestId: req.requestId
+      });
+    }
+    
+    return originalJson.call(this, data);
+  };
   
   next();
 });
@@ -97,44 +127,77 @@ app.use((req, res, next) => {
 // Production startup
 const startTime = Date.now();
 
-console.log(`🚀 Starting Hockey Scorekeeper API v${pkg.version} (${config.isProduction ? 'PRODUCTION' : 'DEVELOPMENT'})`);
-console.log(`⏰ Server start time: ${new Date().toISOString()}`);
-console.log(`🌍 Environment: NODE_ENV=${config.env}`);
-console.log(`📦 Port: ${config.port}`);
-console.log(`🔧 Node version: ${process.version}`);
+logger.info('Starting Hockey Scorekeeper API', {
+  version: pkg.version,
+  environment: config.isProduction ? 'PRODUCTION' : 'DEVELOPMENT',
+  startTime: new Date().toISOString(),
+  nodeEnv: config.env,
+  port: config.port,
+  nodeVersion: process.version
+});
 
 // Add startup safety check using centralized config
 const cosmosConfigured = Boolean(config.cosmos.uri && config.cosmos.key && config.cosmos.database);
 
 if (config.isProduction && !cosmosConfigured) {
-  console.error('❌ Missing Cosmos DB configuration (URI/Key/Name). Continuing startup; DB-dependent features may be unavailable.');
+  logger.error('Missing Cosmos DB configuration', {
+    hasUri: !!config.cosmos.uri,
+    hasKey: !!config.cosmos.key,
+    hasDatabase: !!config.cosmos.database,
+    impact: 'DB-dependent features may be unavailable'
+  });
 } else {
-  console.log('✅ Cosmos DB configuration detected');
+  logger.success('Cosmos DB configuration detected');
 }
 
 // Initialize database containers synchronously on startup
 try {
-  console.log('🔄 Initializing database containers...');
+  logger.info('Initializing database containers...');
   await initializeContainers();
-  console.log('🗄️ Database containers initialized successfully');
+  logger.success('Database containers initialized successfully');
 } catch (error) {
-  console.error('💥 Database initialization failed:', error.message);
-  if (!isProduction) {
-    console.error('💥 Full error:', error);
-  }
-  console.log('⚠️ Continuing in degraded mode - some features may not work');
+  logger.error('Database initialization failed', {
+    error: error.message,
+    stack: config.isProduction ? undefined : error.stack
+  });
+  logger.warn('Continuing in degraded mode - some features may not work');
 }
 
 // HEALTH CHECK ENDPOINT for Azure - always available
 app.get('/health', (req, res) => {
+  // Check service availability
+  const services = {
+    database: {
+      available: config.cosmos.uri && config.cosmos.key && config.cosmos.databaseName,
+      status: config.cosmos.uri && config.cosmos.key && config.cosmos.databaseName ? 'connected' : 'unavailable'
+    },
+    announcer: {
+      available: !!generateGoalAnnouncement,
+      features: {
+        singleMode: !!generateGoalAnnouncement,
+        dualMode: !!generateDualGoalAnnouncement,
+        penalties: !!generatePenaltyAnnouncement,
+        commentary: !!generateScorelessCommentary
+      }
+    },
+    tts: {
+      available: !!ttsService,
+      provider: 'google-cloud'
+    }
+  };
+
+  const allServicesHealthy = services.database.available && services.announcer.available && services.tts.available;
+  const status = allServicesHealthy ? 'healthy' : 'degraded';
+
   res.json({ 
-    status: 'ok', 
-    message: 'Hockey Scorekeeper API is running',
+    status,
+    message: `Hockey Scorekeeper API is running in ${status} mode`,
     timestamp: new Date().toISOString(),
     port: config.port,
     uptime: Math.floor(process.uptime()),
     version: pkg.version,
-    environment: config.env
+    environment: config.env,
+    services
   });
 });
 
@@ -284,26 +347,38 @@ app.post('/api/admin/update-deployment-time', (req, res) => {
 });
 
 // Production-ready error handler with structured responses
-function handleError(res, error, context = 'API') {
-  console.error(`❌ ${context} Error:`, error.message);
+function handleError(res, error, context = 'API', requestId = null) {
+  const logData = {
+    error: error.message,
+    context,
+    requestId,
+    stack: config.isProduction ? undefined : error.stack
+  };
   
-  // Log full error in development
-  if (process.env.NODE_ENV !== 'production') {
-    console.error('Full error details:', error);
-  }
+  logger.error(`${context} Error`, logData);
   
   // Structured error response
   const errorResponse = {
     error: true,
     message: 'An error occurred',
     timestamp: new Date().toISOString(),
-    canRetry: true
+    canRetry: true,
+    requestId
   };
   
   // Specific error handling
   if (error.message?.includes('not configured') || error.message?.includes('Cosmos')) {
-    errorResponse.message = 'Database temporarily unavailable';
+    errorResponse.message = 'Database temporarily unavailable. Please try again later.';
     errorResponse.code = 'DB_UNAVAILABLE';
+    errorResponse.userMessage = 'The scorekeeper database is temporarily unavailable. Your data is safe - please try again in a moment.';
+    return res.status(503).json(errorResponse);
+  }
+  
+  if (error.message?.includes('Announcer service not available')) {
+    errorResponse.message = 'Voice announcements temporarily unavailable';
+    errorResponse.code = 'ANNOUNCER_UNAVAILABLE';
+    errorResponse.userMessage = 'Voice announcements are temporarily unavailable. Text updates and scoring still work normally.';
+    errorResponse.fallback = 'Text mode available';
     return res.status(503).json(errorResponse);
   }
   
@@ -1166,7 +1241,13 @@ app.delete('/api/goals/:id', async (req, res) => {
 
 // Announce last goal endpoint
 app.post('/api/goals/announce-last', async (req, res) => {
-  console.log('📢 Announcing last goal...');
+  const requestLogger = logger.withRequest(req);
+  requestLogger.info('Goal announcement request', { 
+    gameId: req.body.gameId, 
+    voiceGender: req.body.voiceGender, 
+    announcerMode: req.body.announcerMode 
+  });
+  
   const { gameId, voiceGender, announcerMode } = req.body;
 
   if (!gameId) {
@@ -1178,8 +1259,18 @@ app.post('/api/goals/announce-last', async (req, res) => {
   // Check if announcer service is available
   if (!generateGoalAnnouncement || (announcerMode === 'dual' && !generateDualGoalAnnouncement)) {
     return res.status(503).json({
-      error: 'Announcer service not available. This feature requires additional dependencies.',
-      fallback: true
+      error: true,
+      message: 'Voice announcements temporarily unavailable',
+      code: 'ANNOUNCER_UNAVAILABLE',
+      userMessage: 'Voice announcements are temporarily unavailable due to missing dependencies. Text updates and scoring still work normally.',
+      fallback: 'Text mode available',
+      details: {
+        singleModeAvailable: !!generateGoalAnnouncement,
+        dualModeAvailable: !!generateDualGoalAnnouncement,
+        requestedMode: announcerMode
+      },
+      canRetry: true,
+      timestamp: new Date().toISOString()
     });
   }
 
@@ -1189,18 +1280,21 @@ app.post('/api/goals/announce-last', async (req, res) => {
   
   let selectedVoice = voiceGender === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
   
-  // Log TTS usage for debugging
-  logTtsUse({ 
-    where: voiceGender === 'male' ? 'MaleButton' : 'FemaleButton', 
-    provider: voiceConfig.provider, 
-    voice: selectedVoice, 
-    rate: voiceConfig.settings.rate, 
-    pitch: voiceConfig.settings.pitch, 
-    style: 'none' 
+  // Log TTS usage for monitoring
+  logger.logTtsUsage(selectedVoice, voiceConfig.provider, gameId, {
+    where: voiceGender === 'male' ? 'MaleButton' : 'FemaleButton',
+    rate: voiceConfig.settings.rate,
+    pitch: voiceConfig.settings.pitch,
+    style: 'none',
+    mode: announcerMode
   });
   
-  console.log(`🎤 Using voice: ${selectedVoice} (requested: ${voiceGender}, mode: ${announcerMode})`);
-  console.log(`🎚️ Voice type: ${selectedVoice.includes('Studio') ? 'Studio (Professional)' : selectedVoice.includes('Neural2') ? 'Neural2 (Standard)' : 'Unknown'}`);
+  requestLogger.debug('Voice configuration selected', {
+    selectedVoice,
+    voiceType: selectedVoice.includes('Studio') ? 'Studio (Professional)' : 
+               selectedVoice.includes('Neural2') ? 'Neural2 (Standard)' : 'Unknown',
+    mode: announcerMode
+  });
   
   // For dual mode, we don't use TTS service - conversation is handled in frontend
   let originalVoice;
@@ -1351,7 +1445,7 @@ app.post('/api/goals/announce-last', async (req, res) => {
       const audioResult = await ttsService.generateGoalSpeech(announcementText, gameId);
       const audioFilename = audioResult?.success ? audioResult.filename : null;
       
-      console.log('✅ Goal announcement generated successfully');
+      requestLogger.success('Goal announcement generated successfully');
       
       res.status(200).json({
         success: true,
@@ -1365,8 +1459,8 @@ app.post('/api/goals/announce-last', async (req, res) => {
       });
     }
   } catch (error) {
-    console.error('❌ Error announcing last goal:', error.message);
-    handleError(res, error);
+    requestLogger.error('Error announcing last goal', { error: error.message });
+    handleError(res, error, 'Goal Announcement', req.requestId);
   } finally {
     // Restore original voice for single announcer mode
     if (announcerMode !== 'dual') {
@@ -1377,6 +1471,13 @@ app.post('/api/goals/announce-last', async (req, res) => {
 
 // Penalty announcement endpoint
 app.post('/api/penalties/announce-last', async (req, res) => {
+  const requestLogger = logger.withRequest(req);
+  requestLogger.info('Penalty announcement request', { 
+    gameId: req.body.gameId, 
+    voiceGender: req.body.voiceGender, 
+    announcerMode: req.body.announcerMode 
+  });
+  
   const { gameId, voiceGender, announcerMode } = req.body;
 
   if (!gameId) {
@@ -1388,8 +1489,18 @@ app.post('/api/penalties/announce-last', async (req, res) => {
   // Check if announcer service is available
   if (!generatePenaltyAnnouncement || (announcerMode === 'dual' && !generateDualPenaltyAnnouncement)) {
     return res.status(503).json({
-      error: 'Penalty announcer service not available. This feature requires additional dependencies.',
-      fallback: true
+      error: true,
+      message: 'Voice announcements temporarily unavailable',
+      code: 'ANNOUNCER_UNAVAILABLE',
+      userMessage: 'Voice announcements are temporarily unavailable due to missing dependencies. Text updates and scoring still work normally.',
+      fallback: 'Text mode available',
+      details: {
+        penaltyModeAvailable: !!generatePenaltyAnnouncement,
+        dualModeAvailable: !!generateDualPenaltyAnnouncement,
+        requestedMode: announcerMode
+      },
+      canRetry: true,
+      timestamp: new Date().toISOString()
     });
   }
 
@@ -1539,7 +1650,14 @@ app.post('/api/penalties/announce-last', async (req, res) => {
 // Random Commentary endpoint
 // Random Commentary endpoint
 app.post('/api/randomCommentary', async (req, res) => {
-  console.log('🎲 Generating random commentary...');
+  const requestLogger = logger.withRequest(req);
+  requestLogger.info('Random commentary request', { 
+    gameId: req.body.gameId, 
+    division: req.body.division,
+    voiceGender: req.body.voiceGender, 
+    announcerMode: req.body.announcerMode 
+  });
+  
   const { gameId, division, voiceGender, announcerMode } = req.body;
 
   if (!gameId && !division) {
@@ -1551,8 +1669,17 @@ app.post('/api/randomCommentary', async (req, res) => {
   // Check if dual announcer mode is requested and available
   if (announcerMode === 'dual' && !generateDualRandomCommentary) {
     return res.status(503).json({
-      error: 'Dual announcer service not available. This feature requires additional dependencies.',
-      fallback: true
+      error: true,
+      message: 'Voice announcements temporarily unavailable',
+      code: 'ANNOUNCER_UNAVAILABLE',
+      userMessage: 'Voice announcements are temporarily unavailable due to missing dependencies. Text updates and scoring still work normally.',
+      fallback: 'Text mode available',
+      details: {
+        dualModeAvailable: !!generateDualRandomCommentary,
+        requestedMode: announcerMode
+      },
+      canRetry: true,
+      timestamp: new Date().toISOString()
     });
   }
 
@@ -3719,13 +3846,25 @@ app.get('*', (req, res) => {
 const server = app.listen(config.port, () => {
   const memUsage = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
   
-  console.log(`🚀 Hockey Scorekeeper API running on port ${config.port}`);
-  console.log(`📡 Server listening on http://localhost:${config.port}`);
-  console.log('🏥 Health check available at /health');
-  console.log('🎯 API endpoints available at /api/*');
-  console.log(`📊 Memory usage: ${memUsage}MB`);
-  console.log(`⚡ Node.js: ${process.version}`);
-  console.log(`🎯 Environment: ${config.env}`);
+  logger.success('Hockey Scorekeeper API started successfully', {
+    port: config.port,
+    environment: config.env,
+    version: pkg.version,
+    nodeVersion: process.version,
+    memoryUsage: `${memUsage}MB`,
+    endpoints: {
+      server: `http://localhost:${config.port}`,
+      health: '/health',
+      version: '/api/version',
+      api: '/api/*'
+    },
+    features: {
+      database: !!cosmosConfigured,
+      announcer: !!generateGoalAnnouncement,
+      dualAnnouncer: !!generateDualGoalAnnouncement,
+      tts: !!ttsService
+    }
+  });
   console.log('⏱️  Server started in', Math.floor((Date.now() - startTime) / 1000), 'seconds');
   console.log('✅ Deployment completed successfully - Studio voice authentication enabled');
   

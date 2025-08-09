@@ -1,6 +1,7 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { GameContext } from '../contexts/GameContext.jsx';
+import { configureUtteranceWithFallbackVoice, configureGeneralUtterance } from '../utils/voiceConfig.js';
 
 /**
  * AnnouncerControls provides buttons for the scorekeeper to trigger Google
@@ -119,19 +120,10 @@ export default function AnnouncerControls({ gameId }) {
       // Wait a moment for cancel to take effect on iOS
       setTimeout(() => {
         const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.9; // Slightly slower for clarity
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0; // Full volume for mobile
         
-        // Use a voice that works well on iOS
+        // Configure voice using centralized voice config
         const voices = speechSynthesis.getVoices();
-        const preferredVoices = voices.filter(voice => 
-          voice.lang.startsWith('en') && 
-          (voice.name.includes('Samantha') || voice.name.includes('Daniel') || voice.default)
-        );
-        if (preferredVoices.length > 0) {
-          utterance.voice = preferredVoices[0];
-        }
+        configureGeneralUtterance(utterance, voices);
         
         // Estimate duration (rough calculation: ~150 words per minute)
         const wordCount = text.split(' ').length;
@@ -296,26 +288,9 @@ export default function AnnouncerControls({ gameId }) {
             if ('speechSynthesis' in window) {
               const utterance = new SpeechSynthesisUtterance(line.text);
               
-              // Configure voice based on speaker with improved settings
+              // Configure voice based on speaker using centralized voice config
               const voices = speechSynthesis.getVoices();
-              if (line.speaker === 'male') {
-                const maleVoices = voices.filter(voice => 
-                  voice.lang.startsWith('en') && 
-                  (voice.name.includes('Daniel') || voice.name.includes('David') || voice.name.includes('Alex'))
-                );
-                if (maleVoices.length > 0) utterance.voice = maleVoices[0];
-                utterance.rate = 0.95;
-                utterance.pitch = 0.65;
-              } else {
-                const femaleVoices = voices.filter(voice => 
-                  voice.lang.startsWith('en') && 
-                  (voice.name.includes('Samantha') || voice.name.includes('Karen') || voice.name.includes('Moira'))
-                );
-                if (femaleVoices.length > 0) utterance.voice = femaleVoices[0];
-                utterance.rate = 1.0;
-                utterance.pitch = 1.1;
-              }
-              utterance.volume = 1.0;
+              configureUtteranceWithFallbackVoice(utterance, line.speaker, voices);
               
               utterance.onend = () => {
                 currentTime += (line.text.split(' ').length / 150) * 60;

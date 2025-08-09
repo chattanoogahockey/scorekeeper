@@ -1,6 +1,7 @@
 import React, { useState, useRef, useContext, useEffect } from 'react';
 import axios from 'axios';
 import { GameContext } from '../contexts/GameContext.jsx';
+import { configureUtteranceWithFallbackVoice } from '../utils/voiceConfig.js';
 
 /**
  * MediaControlPanel combines DJ sound effects and Announcer TTS controls
@@ -334,26 +335,9 @@ export default function MediaControlPanel({ gameId }) {
       
       const utterance = new SpeechSynthesisUtterance(line.text);
       
-      // Set voice based on speaker
+      // Configure voice using centralized voice config
       const voices = speechSynthesis.getVoices();
-      if (line.speaker === 'male') {
-        const maleVoice = voices.find(voice => 
-          voice.name.toLowerCase().includes('male') || 
-          voice.name.toLowerCase().includes('david') ||
-          voice.name.toLowerCase().includes('alex')
-        );
-        if (maleVoice) utterance.voice = maleVoice;
-      } else {
-        const femaleVoice = voices.find(voice => 
-          voice.name.toLowerCase().includes('female') || 
-          voice.name.toLowerCase().includes('samantha') ||
-          voice.name.toLowerCase().includes('victoria')
-        );
-        if (femaleVoice) utterance.voice = femaleVoice;
-      }
-
-      utterance.rate = 0.9;
-      utterance.pitch = line.speaker === 'male' ? 0.8 : 1.1;
+      configureUtteranceWithFallbackVoice(utterance, line.speaker, voices);
       
       utterance.onend = () => {
         currentIndex++;

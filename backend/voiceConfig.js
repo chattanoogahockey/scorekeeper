@@ -90,6 +90,62 @@ export async function getVoiceForGender(voiceGender) {
 }
 
 /**
+ * Browser TTS fallback voice configuration for dual announcer mode
+ * Centralizes voice selection logic previously scattered in frontend components
+ */
+const FALLBACK_VOICE_CONFIG = {
+  male: {
+    preferredNames: ['Daniel', 'David', 'Alex'],
+    settings: {
+      rate: 0.95,
+      pitch: 0.65,
+      volume: 1.0
+    }
+  },
+  female: {
+    preferredNames: ['Samantha', 'Karen', 'Moira'],
+    settings: {
+      rate: 1.0,
+      pitch: 1.1,
+      volume: 1.0
+    }
+  }
+};
+
+/**
+ * Get fallback browser TTS voice configuration for dual announcer mode
+ * @param {string} speaker - 'male' or 'female'
+ * @param {SpeechSynthesisVoice[]} availableVoices - Available browser voices
+ * @returns {object} Voice configuration with selected voice and settings
+ */
+export function getFallbackVoice(speaker, availableVoices = []) {
+  const config = FALLBACK_VOICE_CONFIG[speaker];
+  if (!config) {
+    throw new Error(`Invalid speaker type: ${speaker}. Must be 'male' or 'female'.`);
+  }
+
+  let selectedVoice = null;
+
+  // Find preferred voice from available voices
+  if (availableVoices && availableVoices.length > 0) {
+    const matchingVoices = availableVoices.filter(voice => 
+      voice.lang.startsWith('en') && 
+      config.preferredNames.some(name => voice.name.includes(name))
+    );
+    
+    if (matchingVoices.length > 0) {
+      selectedVoice = matchingVoices[0];
+    }
+  }
+
+  return {
+    voice: selectedVoice,
+    settings: { ...config.settings },
+    preferredNames: [...config.preferredNames]
+  };
+}
+
+/**
  * Logging function for TTS usage tracking
  */
 export function logTtsUse({ where, provider, voice, rate, pitch, style }) {

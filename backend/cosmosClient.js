@@ -373,3 +373,10 @@ export async function initializeContainers() {
 export function getContainerDefinitions() {
   return CONTAINER_DEFINITIONS;
 }
+
+/**
+ * Get standardized container names
+ */
+export function getContainerNames() {
+  return containerNames;
+}

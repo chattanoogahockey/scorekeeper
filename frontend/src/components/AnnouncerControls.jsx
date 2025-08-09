@@ -728,8 +728,8 @@ export default function AnnouncerControls({ gameId }) {
   };
 
   return (
-    <div className="p-3">
-      <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+    <div className="border rounded shadow p-3">
+      <h4 className="text-lg font-semibold mb-2">
         Announcer
       </h4>
       

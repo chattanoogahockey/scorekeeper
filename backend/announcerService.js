@@ -734,13 +734,9 @@ export async function generateDualRandomCommentary(gameId, gameContext = {}) {
     // First, generate a conversation starter based on analytics/context
     const starterPrompt = `Create a conversation starter for two veteran hockey announcers during a break in the action. These are experienced broadcast partners who know each other well and can discuss hockey naturally.
 
-ANNOUNCER NAMES (MUST USE THESE EXACT NAMES):
-- MALE ANNOUNCER: Al (Al Michaels style)
-- FEMALE ANNOUNCER: Linda (Linda Cohn style)
-
 CONTEXT: ${JSON.stringify(gameContext, null, 2)}
 
-Generate a single opening line from AL (the male announcer) that could lead to interesting discussion. Al should address Linda by name when appropriate. Topics could include:
+Generate a single opening line from the MALE announcer that could lead to interesting discussion. Topics could include:
 - Player performance or recent hot streaks
 - Team strategy or coaching decisions
 - League standings or playoff implications
@@ -748,13 +744,12 @@ Generate a single opening line from AL (the male announcer) that could lead to i
 - Interesting hockey facts or observations
 - Game flow and momentum shifts
 
-AL (Al Michaels style):
+MALE ANNOUNCER (Al Michaels style):
 - Natural conversationalist with hockey knowledge
-- Can ask questions that set up Linda
+- Can ask questions that set up his partner
 - Makes observations about game patterns
 - Uses understated humor appropriately
 - Professional but engaging delivery
-- ALWAYS refers to his partner as "Linda" when using her name
 
 Return just the opening line text, no JSON or formatting.`;
 
@@ -765,7 +760,7 @@ Return just the opening line text, no JSON or formatting.`;
         messages: [
           {
             role: "system",
-            content: "You are Al, a veteran male hockey announcer with the style and personality of Al Michaels, adapted for roller hockey. Your broadcast partner is Linda. Generate natural conversation starters that experienced broadcast partners would use during hockey games. When referring to your partner, always call her 'Linda'."
+            content: "You are a veteran male hockey announcer with the style and personality of Al Michaels, adapted for roller hockey. Generate natural conversation starters that experienced broadcast partners would use during hockey games."
           },
           {
             role: "user",
@@ -784,32 +779,21 @@ Return just the opening line text, no JSON or formatting.`;
     console.log('🎙️ Generated conversation starter:', conversationStarter);
 
     // Now generate the full 5-line conversation starting with that opener
-    const conversationPrompt = `Continue this hockey announcer conversation for exactly 5 lines total, alternating Al-Linda-Al-Linda-Al. These are veteran broadcast partners who naturally build on each other's observations.
+    const conversationPrompt = `Continue this hockey announcer conversation for exactly 5 lines total, alternating male-female-male-female-male. These are veteran broadcast partners who naturally build on each other's observations.
 
 OPENER: "${conversationStarter}"
 
-ANNOUNCER NAMES (MUST USE THESE EXACT NAMES):
-- MALE ANNOUNCER: Al (Al Michaels style) 
-- FEMALE ANNOUNCER: Linda (Linda Cohn style)
-
 ANNOUNCER PERSONALITIES:
 
-AL (Al Michaels style):
+MALE ANNOUNCER (Al Michaels style):
 - Experienced play-by-play with natural conversational ability
-- Can challenge or support Linda's views
+- Can challenge or support his partner's views
 - Makes strategic observations about hockey
-- ALWAYS calls his partner "Linda" when using her name
 
-LINDA (Linda Cohn style):
+FEMALE ANNOUNCER (Linda Cohn style):
 - Expert color commentator with deep hockey knowledge
-- Can agree/disagree with Al's points
+- Can agree/disagree with male announcer's points
 - Brings up player backgrounds and team dynamics
-- ALWAYS calls her partner "Al" when using his name
-
-CRITICAL NAME RULES:
-- Al MUST ONLY refer to his partner as "Linda" (never any other name)
-- Linda MUST ONLY refer to her partner as "Al" (never any other name)
-- These are their only names - no variations allowed
 
 CONVERSATION DYNAMICS:
 - Sound like seasoned broadcast partners who enjoy working together
@@ -820,7 +804,7 @@ CONVERSATION DYNAMICS:
 - Make it engaging and unpredictable - surprise each other
 - Keep it concise but entertaining
 
-FORMAT: Return ONLY a JSON array with exactly 5 lines alternating Al-Linda-Al-Linda-Al`;
+FORMAT: Return ONLY a JSON array with exactly 5 lines alternating male-female-male-female-male`;
 
     console.log('🤖 Making OpenAI conversation call...');
     const completion = await Promise.race([
@@ -829,7 +813,7 @@ FORMAT: Return ONLY a JSON array with exactly 5 lines alternating Al-Linda-Al-Li
         messages: [
           {
             role: "system",
-            content: "You are creating realistic, natural conversations between veteran hockey broadcast partners Al and Linda. They should sound like experienced announcers who know each other well. Al MUST only refer to Linda as 'Linda' and Linda MUST only refer to Al as 'Al'. Return ONLY valid JSON with exactly 5 alternating lines."
+            content: "You are creating realistic, natural conversations between veteran hockey broadcast partners. They should sound like experienced announcers who know each other well. Return ONLY valid JSON with exactly 5 alternating lines."
           },
           {
             role: "user",
@@ -890,10 +874,10 @@ FORMAT: Return ONLY a JSON array with exactly 5 lines alternating Al-Linda-Al-Li
       // Enhanced fallback to a more natural conversation
       return [
         {"speaker": "male", "text": conversationStarter},
-        {"speaker": "female", "text": "You know what I love about that, Al? The way these teams adapt their strategies."},
-        {"speaker": "male", "text": "Exactly, Linda! And the skill level in this league keeps getting better."},
-        {"speaker": "female", "text": "Oh absolutely, Al! The conditioning these players have now is incredible."},
-        {"speaker": "male", "text": "This is exactly why I love covering this sport, Linda!"}
+        {"speaker": "female", "text": "You know what I love about that? The way these teams adapt their strategies."},
+        {"speaker": "male", "text": "Exactly! And the skill level in this league keeps getting better."},
+        {"speaker": "female", "text": "Oh absolutely! The conditioning these players have now is incredible."},
+        {"speaker": "male", "text": "This is exactly why I love covering this sport!"}
       ];
     }
   } catch (error) {

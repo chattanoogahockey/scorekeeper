@@ -728,25 +728,25 @@ export default function AnnouncerControls({ gameId }) {
   };
 
   return (
-    <div className="border rounded shadow p-3">
-      <div className="flex justify-between items-center mb-2">
-        <h4 className="text-lg font-semibold">Announcer</h4>
-      </div>
-      
-      {/* 2x3 Grid Layout matching DJ panel */}
-      <div className="grid grid-cols-2 gap-1 mb-3">
-        {/* Left Column - Voice Selection */}
-        <button
-          onClick={() => handleVoiceSelection('male')}
-          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
-            selectedVoice === 'male'
-              ? 'bg-gradient-to-r from-blue-700 to-blue-800'
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
-          }`}
-          title="Male Voice"
-        >
-          🧓
-        </button>
+    <div>
+      <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
+        Announcer
+      </h4>
+      <div className="space-y-3">
+        {/* 3x2 Grid Layout matching DJ panel */}
+        <div className="grid grid-cols-2 gap-1">
+          {/* Left Column - Voice Selection */}
+          <button
+            onClick={() => handleVoiceSelection('male')}
+            className={`px-2 py-1 rounded transition-all duration-200 text-xs flex items-center justify-center border-2 ${
+              selectedVoice === 'male'
+                ? 'border-blue-700 bg-white text-gray-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+            }`}
+            title="Male Voice"
+          >
+            🧓
+          </button>
           
           {/* Right Column - Action Buttons */}
           <button
@@ -764,10 +764,10 @@ export default function AnnouncerControls({ gameId }) {
           
           <button
             onClick={() => handleVoiceSelection('female')}
-            className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+            className={`px-2 py-1 rounded transition-all duration-200 text-xs flex items-center justify-center border-2 ${
               selectedVoice === 'female'
-                ? 'bg-gradient-to-r from-blue-700 to-blue-800'
-                : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+                ? 'border-blue-700 bg-white text-gray-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
             }`}
             title="Female Voice"
           >
@@ -789,10 +789,10 @@ export default function AnnouncerControls({ gameId }) {
           
           <button
             onClick={() => handleVoiceSelection('dual')}
-            className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+            className={`px-2 py-1 rounded transition-all duration-200 text-xs flex items-center justify-center gap-1 border-2 ${
               selectedVoice === 'dual'
-                ? 'bg-gradient-to-r from-blue-700 to-blue-800'
-                : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+                ? 'border-blue-700 bg-white text-gray-700'
+                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
             }`}
             title="Dual Announcer Mode"
           >
@@ -830,6 +830,7 @@ export default function AnnouncerControls({ gameId }) {
             </button>
           </div>
         )}
+      </div>
       
       {/* Audio Progress Bar */}
       {audioProgress.isPlaying && (

@@ -1800,55 +1800,76 @@ app.post('/api/randomCommentary', async (req, res) => {
   ttsService.selectedVoice = selectedVoice;
 
   try {
-    const goalsContainer = getGoalsContainer();
-    const penaltiesContainer = getPenaltiesContainer();
-    const gamesContainer = getGamesContainer();
-    
-    // Generate different types of commentary, prioritizing game-specific content when gameId is provided
-    let commentaryTypes = ['hot_player', 'leader', 'matchup', 'fact'];
-    
-    // If we have a gameId, add game-specific commentary types and prioritize them
-    if (gameId) {
-      commentaryTypes = ['game_specific', 'hot_player', 'game_specific', 'leader', 'game_specific', 'matchup', 'fact'];
-    }
-    
-    const selectedType = commentaryTypes[Math.floor(Math.random() * commentaryTypes.length)];
-    
     let commentaryText = '';
     
-    switch (selectedType) {
-      case 'game_specific':
-        commentaryText = await generateGameSpecificCommentary(goalsContainer, penaltiesContainer, gamesContainer, gameId);
-        break;
-      case 'hot_player':
-        commentaryText = await generateHotPlayerCommentary(goalsContainer, gameId, division);
-        break;
-      case 'leader':
-        commentaryText = await generateLeaderCommentary(goalsContainer, division);
-        break;
-      case 'matchup':
-        commentaryText = await generateMatchupCommentary(gamesContainer, division);
-        break;
-      case 'fact':
-        commentaryText = await generateFactCommentary(goalsContainer, penaltiesContainer, division);
-        break;
-      default:
-        commentaryText = 'Welcome to hockey night!';
+    // Try to access database containers for rich commentary
+    try {
+      const goalsContainer = getGoalsContainer();
+      const penaltiesContainer = getPenaltiesContainer();
+      const gamesContainer = getGamesContainer();
+      
+      // Generate different types of commentary, prioritizing game-specific content when gameId is provided
+      let commentaryTypes = ['hot_player', 'leader', 'matchup', 'fact'];
+      
+      // If we have a gameId, add game-specific commentary types and prioritize them
+      if (gameId) {
+        commentaryTypes = ['game_specific', 'hot_player', 'game_specific', 'leader', 'game_specific', 'matchup', 'fact'];
+      }
+      
+      const selectedType = commentaryTypes[Math.floor(Math.random() * commentaryTypes.length)];
+      
+      switch (selectedType) {
+        case 'game_specific':
+          commentaryText = await generateGameSpecificCommentary(goalsContainer, penaltiesContainer, gamesContainer, gameId);
+          break;
+        case 'hot_player':
+          commentaryText = await generateHotPlayerCommentary(goalsContainer, gameId, division);
+          break;
+        case 'leader':
+          commentaryText = await generateLeaderCommentary(goalsContainer, division);
+          break;
+        case 'matchup':
+          commentaryText = await generateMatchupCommentary(gamesContainer, division);
+          break;
+        case 'fact':
+          commentaryText = await generateFactCommentary(goalsContainer, penaltiesContainer, division);
+          break;
+        default:
+          commentaryText = 'Welcome to hockey night!';
+      }
+      
+      console.log(`✅ Generated ${selectedType} commentary from database`);
+      
+    } catch (dbError) {
+      // Fallback to simple commentary when database is not available (local development)
+      console.log('⚠️ Database not available, using fallback commentary:', dbError.message);
+      
+      const fallbackCommentaries = [
+        'The players are battling hard on the ice tonight! What an exciting game we have here!',
+        'Both teams are showing incredible determination! The energy in the arena is electric!',
+        'What a fantastic display of hockey skills! These players are giving it their all!',
+        'The pace of this game is incredible! Both teams are playing with such intensity!',
+        'This is why we love hockey! Fast-paced action and skilled players making great plays!',
+        'The competition is fierce tonight! Every shift matters in this exciting matchup!',
+        'Watch these athletes showcase their talent! Pure hockey excellence on display!'
+      ];
+      
+      commentaryText = fallbackCommentaries[Math.floor(Math.random() * fallbackCommentaries.length)];
+      console.log('✅ Using fallback commentary for local development');
     }
     
     // Generate TTS audio for random commentary
     const audioResult = await ttsService.generateSpeech(commentaryText, gameId || 'random', 'announcement');
     const audioFilename = audioResult?.success ? audioResult.filename : null;
     
+    console.log('🔊 TTS Result:', { audioResult, audioFilename });
     console.log('✅ Random commentary generated successfully');
     
     res.status(200).json({
       success: true,
-      type: selectedType,
-      announcement: {
-        text: commentaryText,
-        audioPath: audioFilename
-      }
+      type: 'random',
+      text: commentaryText,
+      audioPath: audioFilename
     });
   } catch (error) {
     console.error('❌ Error generating random commentary:', error.message);

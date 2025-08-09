@@ -606,6 +606,7 @@ export default function AnnouncerControls({ gameId }) {
     
     try {
       const data = await announce('random', currentGameId, selectedVoice);
+      console.log('Random commentary response:', data);
       
       if (data.success) {
         const { text, audioPath, conversation } = data;
@@ -624,95 +625,76 @@ export default function AnnouncerControls({ gameId }) {
           return;
         }
         
-        // Single announcer mode continues as before
-        // Play the generated audio if available, otherwise use browser TTS
+        // Single announcer mode - play the generated audio if available
         if (audioPath && typeof audioPath === 'string' && audioPath.trim() !== '') {
           try {
             const audioUrl = import.meta.env.DEV 
               ? `/api/audio/${audioPath}` 
               : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${audioPath}`;
             
-            console.log('Attempting to play random commentary audio:', audioUrl);
+            console.log('Playing random commentary audio:', audioUrl);
+            setMessage('Playing random commentary...');
             
             const audio = new Audio(audioUrl);
             audioElementRef.current = audio; // Store reference for stop functionality
-            let audioPlaybackStarted = false;
-            let fallbackTriggered = false;
             
-            // Pre-load the audio
-            audio.preload = 'auto';
+            // Set up event handlers
+            audio.onloadedmetadata = async () => {
+              setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
+              await requestWakeLock();
+            };
             
-            // Set up event handlers before attempting to play
-            const setupAudioHandlers = async () => {
-              audio.onloadedmetadata = async () => {
-                setMessage('Playing random commentary...');
-                setAudioProgress({ current: 0, duration: audio.duration, isPlaying: true });
-                // Request wake lock for long audio
-                await requestWakeLock();
-              };
-              
-              audio.ontimeupdate = () => {
-                setAudioProgress(prev => ({
-                  ...prev,
-                  current: audio.currentTime
-                }));
-              };
-              
-              audio.onended = async () => {
-                setMessage('');
-                setAudioProgress({ current: 0, duration: 0, isPlaying: false });
-                // Release wake lock when audio ends
-                await releaseWakeLock();
-              };
-              
-              audio.onerror = async (e) => {
-                console.error('Random commentary audio playback error:', e);
-                setAudioProgress({ current: 0, duration: 0, isPlaying: false });
-                // Release wake lock on error
-                await releaseWakeLock();
-                // Only fallback if Studio audio never started AND we haven't already triggered fallback
-                if (!audioPlaybackStarted && !fallbackTriggered) {
-                  fallbackTriggered = true;
-                  console.log('Falling back to browser TTS...');
-                  speakText(text);
-                }
-              };
+            audio.ontimeupdate = () => {
+              setAudioProgress(prev => ({
+                ...prev,
+                current: audio.currentTime
+              }));
+            };
+            
+            audio.onended = async () => {
+              setMessage('Random commentary complete!');
+              setTimeout(() => setMessage(''), 2000);
+              setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+              await releaseWakeLock();
+            };
+            
+            audio.onerror = async (e) => {
+              console.error('Random commentary audio error:', e);
+              setAudioProgress({ current: 0, duration: 0, isPlaying: false });
+              await releaseWakeLock();
+              // Fallback to browser TTS
+              console.log('Falling back to browser TTS...');
+              speakText(text);
             };
 
-            setupAudioHandlers();
-            
-            // Try to play audio - this should work on mobile if triggered by user interaction
+            // Try to play the audio
             try {
-              const playPromise = audio.play();
-              if (playPromise !== undefined) {
-                await playPromise;
-                audioPlaybackStarted = true; // Mark that Studio audio started successfully
-                console.log('✅ Random commentary audio playing successfully');
-              }
+              await audio.play();
+              console.log('✅ Random commentary audio playing successfully');
             } catch (playError) {
-              console.log('Random commentary autoplay blocked, using fallback:', playError);
-              // Only fallback if we haven't already triggered fallback
-              if (!fallbackTriggered) {
-                fallbackTriggered = true;
-                speakText(text);
-              }
+              console.log('Audio autoplay blocked, using browser TTS fallback:', playError);
+              speakText(text);
             }
           } catch (audioError) {
             console.error('Random commentary audio creation error:', audioError);
-            // Fallback to browser TTS if audio creation fails
             console.log('🔄 Falling back to browser TTS due to audio creation error');
             speakText(text);
           }
         } else {
           // No server audio available, use browser text-to-speech
-          console.log('⚠️ No Studio audio available for random commentary, using browser TTS fallback');
+          console.log('⚠️ No Studio audio available, using browser TTS fallback');
           console.log('AudioPath received:', audioPath);
           speakText(text);
         }
-      } else if (data.text) {
-        // API returned just text without audio processing
-        console.log('📢 Random commentary text received, using browser TTS');
-        speakText(data.text);
+      } else {
+        // Handle case where success is false but we might have text
+        console.log('API response without success flag:', data);
+        if (data.text) {
+          console.log('📢 Using text from response for browser TTS');
+          speakText(data.text);
+        } else {
+          throw new Error('No valid response data received');
+        }
       }
     } catch (err) {
       console.error('Error generating random commentary:', err);

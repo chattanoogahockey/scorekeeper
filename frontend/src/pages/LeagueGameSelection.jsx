@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from 'axios';
-import { useavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { GameContext } from '../contexts/GameContext.jsx';
 
 export default function LeagueGameSelection() {

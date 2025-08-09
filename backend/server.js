@@ -3815,33 +3815,38 @@ app.get('/api/admin/available-voices', (req, res) => {
   }
 });
 
-// Serve static frontend files (after all API routes)
-const frontendDist = path.resolve(__dirname, 'frontend');
-app.use(express.static(frontendDist, { 
-  maxAge: '0', // Force no cache for immediate deployment updates
-  setHeaders: (res, path) => {
-    if (path.endsWith('version.json')) {
-      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    } else if (path.endsWith('.js') || path.endsWith('.css')) {
-      // Force no cache for JS/CSS to ensure immediate updates
-      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.set('Pragma', 'no-cache');
-      res.set('Expires', '0');
-    } else if (path.endsWith('.html')) {
-      // No cache for HTML files
-      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+// Serve static frontend files only in production (after all API routes)
+if (config.isProduction) {
+  const frontendDist = path.resolve(__dirname, 'frontend');
+  app.use(express.static(frontendDist, { 
+    maxAge: '0', // Force no cache for immediate deployment updates
+    setHeaders: (res, path) => {
+      if (path.endsWith('version.json')) {
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      } else if (path.endsWith('.js') || path.endsWith('.css')) {
+        // Force no cache for JS/CSS to ensure immediate updates
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.set('Pragma', 'no-cache');
+        res.set('Expires', '0');
+      } else if (path.endsWith('.html')) {
+        // No cache for HTML files
+        res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
     }
-  }
-}));
+  }));
 
-// Catch-all route to serve index.html for SPA (MUST be last!)
-app.get('*', (req, res) => {
-  // Force no cache for index.html to ensure fresh app loads
-  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-  res.set('Pragma', 'no-cache');
-  res.set('Expires', '0');
-  res.sendFile(path.join(frontendDist, 'index.html'));
-});
+  // Catch-all route to serve index.html for SPA (production only, MUST be last!)
+  app.get('*', (req, res) => {
+    // Force no cache for index.html to ensure fresh app loads
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+} else {
+  // Development mode: log that frontend should be served separately
+  logger.info('Development mode: Frontend should be served by Vite dev server');
+}
 
 const server = app.listen(config.port, () => {
   const memUsage = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);

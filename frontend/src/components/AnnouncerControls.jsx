@@ -728,7 +728,7 @@ export default function AnnouncerControls({ gameId }) {
   };
 
   return (
-    <div className="border rounded shadow p-3">
+    <div className="p-3">
       <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
         Announcer
       </h4>
@@ -737,10 +737,10 @@ export default function AnnouncerControls({ gameId }) {
       <div className="grid grid-cols-2 gap-1 mb-3">
         <button
           onClick={() => handleVoiceSelection('male')}
-          className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+          className={`min-w-20 h-8 px-2 py-1 rounded transition-all duration-200 text-xs border-2 ${
             selectedVoice === 'male'
-              ? 'bg-gradient-to-r from-blue-700 to-blue-800'
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              ? 'bg-white text-blue-800 border-blue-800 font-semibold'
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white border-blue-700'
           }`}
           title="Male Voice"
         >
@@ -762,10 +762,10 @@ export default function AnnouncerControls({ gameId }) {
         
         <button
           onClick={() => handleVoiceSelection('female')}
-          className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+          className={`min-w-20 h-8 px-2 py-1 rounded transition-all duration-200 text-xs border-2 ${
             selectedVoice === 'female'
-              ? 'bg-gradient-to-r from-blue-700 to-blue-800'
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              ? 'bg-white text-blue-800 border-blue-800 font-semibold'
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white border-blue-700'
           }`}
           title="Female Voice"
         >
@@ -787,10 +787,10 @@ export default function AnnouncerControls({ gameId }) {
         
         <button
           onClick={() => handleVoiceSelection('dual')}
-          className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+          className={`min-w-20 h-8 px-2 py-1 rounded transition-all duration-200 text-xs border-2 ${
             selectedVoice === 'dual'
-              ? 'bg-gradient-to-r from-blue-700 to-blue-800'
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              ? 'bg-white text-blue-800 border-blue-800 font-semibold'
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white border-blue-700'
           }`}
           title="Dual Announcer Mode"
         >

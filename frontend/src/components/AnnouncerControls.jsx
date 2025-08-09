@@ -728,7 +728,7 @@ export default function AnnouncerControls({ gameId }) {
   };
 
   return (
-    <div>
+    <div className="border rounded shadow p-3">
       <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
         Announcer
       </h4>
@@ -737,7 +737,7 @@ export default function AnnouncerControls({ gameId }) {
       <div className="grid grid-cols-2 gap-1 mb-3">
         <button
           onClick={() => handleVoiceSelection('male')}
-          className={`w-20 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+          className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             selectedVoice === 'male'
               ? 'bg-gradient-to-r from-blue-700 to-blue-800'
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
@@ -750,7 +750,7 @@ export default function AnnouncerControls({ gameId }) {
         <button
           onClick={announceLatestGoal}
           disabled={goalLoading || !currentGameId}
-          className={`w-20 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+          className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             goalLoading || !currentGameId
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
@@ -762,7 +762,7 @@ export default function AnnouncerControls({ gameId }) {
         
         <button
           onClick={() => handleVoiceSelection('female')}
-          className={`w-20 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+          className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             selectedVoice === 'female'
               ? 'bg-gradient-to-r from-blue-700 to-blue-800'
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
@@ -775,7 +775,7 @@ export default function AnnouncerControls({ gameId }) {
         <button
           onClick={announceLatestPenalty}
           disabled={penaltyLoading || !currentGameId}
-          className={`w-20 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+          className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             penaltyLoading || !currentGameId
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
@@ -787,7 +787,7 @@ export default function AnnouncerControls({ gameId }) {
         
         <button
           onClick={() => handleVoiceSelection('dual')}
-          className={`w-20 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+          className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             selectedVoice === 'dual'
               ? 'bg-gradient-to-r from-blue-700 to-blue-800'
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
@@ -800,7 +800,7 @@ export default function AnnouncerControls({ gameId }) {
         <button
           onClick={announceRandomCommentary}
           disabled={randomLoading || !currentGameId}
-          className={`w-20 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+          className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             randomLoading || !currentGameId
               ? 'bg-gray-400 cursor-not-allowed'
               : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'

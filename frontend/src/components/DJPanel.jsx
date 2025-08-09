@@ -286,7 +286,7 @@ export default function DJPanel() {
           className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
           }`}
         >
           Goal Horn
@@ -297,7 +297,7 @@ export default function DJPanel() {
           className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
           }`}
         >
           Whistle
@@ -308,7 +308,7 @@ export default function DJPanel() {
           className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
           }`}
         >
           Air Horn
@@ -319,7 +319,7 @@ export default function DJPanel() {
           className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
           }`}
         >
           Buzzer
@@ -330,7 +330,7 @@ export default function DJPanel() {
           className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
           }`}
         >
           Organs
@@ -341,7 +341,7 @@ export default function DJPanel() {
           className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
               ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
           }`}
         >
           Fanfare

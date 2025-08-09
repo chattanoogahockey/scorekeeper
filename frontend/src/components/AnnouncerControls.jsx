@@ -728,7 +728,7 @@ export default function AnnouncerControls({ gameId }) {
   };
 
   return (
-    <div className="border rounded shadow p-3">
+    <div className="p-3">
       <h4 className="text-lg font-semibold mb-2">
         Announcer
       </h4>
@@ -740,7 +740,7 @@ export default function AnnouncerControls({ gameId }) {
           className={`min-w-20 h-8 px-2 py-1 rounded transition-all duration-200 text-xs border-2 ${
             selectedVoice === 'male'
               ? 'bg-white text-blue-800 border-blue-800 font-semibold'
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white border-blue-700'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-blue-600'
           }`}
           title="Male Voice"
         >
@@ -753,7 +753,7 @@ export default function AnnouncerControls({ gameId }) {
           className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             goalLoading || !currentGameId
               ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
           }`}
           title="Announce Latest Goal"
         >
@@ -765,7 +765,7 @@ export default function AnnouncerControls({ gameId }) {
           className={`min-w-20 h-8 px-2 py-1 rounded transition-all duration-200 text-xs border-2 ${
             selectedVoice === 'female'
               ? 'bg-white text-blue-800 border-blue-800 font-semibold'
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white border-blue-700'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-blue-600'
           }`}
           title="Female Voice"
         >
@@ -778,7 +778,7 @@ export default function AnnouncerControls({ gameId }) {
           className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             penaltyLoading || !currentGameId
               ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
           }`}
           title="Announce Latest Penalty"
         >
@@ -790,7 +790,7 @@ export default function AnnouncerControls({ gameId }) {
           className={`min-w-20 h-8 px-2 py-1 rounded transition-all duration-200 text-xs border-2 ${
             selectedVoice === 'dual'
               ? 'bg-white text-blue-800 border-blue-800 font-semibold'
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900 text-white border-blue-700'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-blue-600'
           }`}
           title="Dual Announcer Mode"
         >
@@ -803,7 +803,7 @@ export default function AnnouncerControls({ gameId }) {
           className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             randomLoading || !currentGameId
               ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
           }`}
           title="Random Commentary"
         >

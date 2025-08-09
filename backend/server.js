@@ -1753,7 +1753,9 @@ app.post('/api/randomCommentary', async (req, res) => {
       }
       
       // Generate the dual announcer conversation
+      console.log('🎙️ Calling generateDualRandomCommentary with context:', gameContext);
       const conversation = await generateDualRandomCommentary(gameId, gameContext);
+      console.log('🎙️ Received conversation from generateDualRandomCommentary:', conversation?.length, 'lines');
       
       console.log('✅ Dual random commentary conversation generated successfully');
       
@@ -1765,10 +1767,22 @@ app.post('/api/randomCommentary', async (req, res) => {
       });
       
     } catch (error) {
-      console.error('❌ Error generating dual random commentary:', error.message);
+      console.error('❌ Error generating dual random commentary:', {
+        message: error.message,
+        stack: error.stack,
+        gameId,
+        announcerMode,
+        voiceGender
+      });
       res.status(500).json({
         error: 'Failed to generate dual random conversation',
-        message: error.message
+        message: error.message,
+        details: {
+          gameId,
+          announcerMode,
+          voiceGender,
+          timestamp: new Date().toISOString()
+        }
       });
     }
     return;

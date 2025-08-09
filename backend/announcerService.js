@@ -727,6 +727,9 @@ FORMAT: Return ONLY a JSON array with 5 lines alternating male-female-male-femal
  * This is the main feature - an AI-driven conversation starter that leads to freeform dialogue
  */
 export async function generateDualRandomCommentary(gameId, gameContext = {}) {
+  console.log('🎙️ Starting generateDualRandomCommentary for gameId:', gameId);
+  console.log('🎙️ Game context:', gameContext);
+  
   try {
     // First, generate a conversation starter based on analytics/context
     const starterPrompt = `Create a conversation starter for two veteran hockey announcers during a break in the action. These are experienced broadcast partners who know each other well and can discuss hockey naturally.
@@ -750,23 +753,30 @@ MALE ANNOUNCER (Al Michaels style):
 
 Return just the opening line text, no JSON or formatting.`;
 
-    const starterCompletion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: "You are a veteran male hockey announcer with the style and personality of Al Michaels, adapted for roller hockey. Generate natural conversation starters that experienced broadcast partners would use during hockey games."
-        },
-        {
-          role: "user",
-          content: starterPrompt
-        }
-      ],
-      max_tokens: 100, // Reduced for faster responses
-      temperature: 0.9,
-    });
+    console.log('🤖 Making OpenAI starter call...');
+    const starterCompletion = await Promise.race([
+      openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are a veteran male hockey announcer with the style and personality of Al Michaels, adapted for roller hockey. Generate natural conversation starters that experienced broadcast partners would use during hockey games."
+          },
+          {
+            role: "user",
+            content: starterPrompt
+          }
+        ],
+        max_tokens: 100, // Reduced for faster responses
+        temperature: 0.9,
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('OpenAI starter call timeout after 15 seconds')), 15000)
+      )
+    ]);
 
     const conversationStarter = starterCompletion.choices[0].message.content.trim();
+    console.log('🎙️ Generated conversation starter:', conversationStarter);
 
     // Now generate the full 5-line conversation starting with that opener
     const conversationPrompt = `Continue this hockey announcer conversation for exactly 5 lines total, alternating male-female-male-female-male. These are veteran broadcast partners who naturally build on each other's observations.
@@ -796,23 +806,30 @@ CONVERSATION DYNAMICS:
 
 FORMAT: Return ONLY a JSON array with exactly 5 lines alternating male-female-male-female-male`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: "You are creating realistic, natural conversations between veteran hockey broadcast partners. They should sound like experienced announcers who know each other well. Return ONLY valid JSON with exactly 5 alternating lines."
-        },
-        {
-          role: "user",
-          content: conversationPrompt
-        }
-      ],
-      max_tokens: 350, // Reduced for faster responses
-      temperature: 0.9,
-    });
+    console.log('🤖 Making OpenAI conversation call...');
+    const completion = await Promise.race([
+      openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are creating realistic, natural conversations between veteran hockey broadcast partners. They should sound like experienced announcers who know each other well. Return ONLY valid JSON with exactly 5 alternating lines."
+          },
+          {
+            role: "user",
+            content: conversationPrompt
+          }
+        ],
+        max_tokens: 350, // Reduced for faster responses
+        temperature: 0.9,
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('OpenAI conversation call timeout after 20 seconds')), 20000)
+      )
+    ]);
 
     const conversationText = completion.choices[0].message.content.trim();
+    console.log('🎙️ Generated conversation text:', conversationText);
     
     try {
       const conversation = JSON.parse(conversationText);

@@ -738,10 +738,10 @@ export default function AnnouncerControls({ gameId }) {
           {/* Left Column - Voice Selection */}
           <button
             onClick={() => handleVoiceSelection('male')}
-            className={`px-2 py-1 rounded transition-all duration-200 text-xs flex items-center justify-center border-2 ${
+            className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
               selectedVoice === 'male'
-                ? 'border-blue-700 bg-white text-gray-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                ? 'bg-gradient-to-r from-blue-700 to-blue-800'
+                : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
             }`}
             title="Male Voice"
           >
@@ -764,10 +764,10 @@ export default function AnnouncerControls({ gameId }) {
           
           <button
             onClick={() => handleVoiceSelection('female')}
-            className={`px-2 py-1 rounded transition-all duration-200 text-xs flex items-center justify-center border-2 ${
+            className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
               selectedVoice === 'female'
-                ? 'border-blue-700 bg-white text-gray-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                ? 'bg-gradient-to-r from-blue-700 to-blue-800'
+                : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
             }`}
             title="Female Voice"
           >
@@ -789,10 +789,10 @@ export default function AnnouncerControls({ gameId }) {
           
           <button
             onClick={() => handleVoiceSelection('dual')}
-            className={`px-2 py-1 rounded transition-all duration-200 text-xs flex items-center justify-center gap-1 border-2 ${
+            className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
               selectedVoice === 'dual'
-                ? 'border-blue-700 bg-white text-gray-700'
-                : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
+                ? 'bg-gradient-to-r from-blue-700 to-blue-800'
+                : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
             }`}
             title="Dual Announcer Mode"
           >

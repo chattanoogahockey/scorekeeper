@@ -220,7 +220,7 @@ export default function AnnouncerControls({ gameId }) {
         
         const line = conversation[i];
         
-        setMessage(`${line.speaker === 'male' ? '👨' : '👩'} ${line.speaker.charAt(0).toUpperCase() + line.speaker.slice(1)} announcer speaking...`);
+        setMessage(`${line.speaker === 'male' ? '🧓' : '👩‍🦰'} ${line.speaker.charAt(0).toUpperCase() + line.speaker.slice(1)} announcer speaking...`);
         
         // Generate TTS for this line using backend with Studio voices
         try {
@@ -738,36 +738,36 @@ export default function AnnouncerControls({ gameId }) {
           <div className="flex gap-1 mb-2">
             <button
               onClick={() => handleVoiceSelection('male')}
-              className={`flex items-center justify-center px-3 py-2 rounded border-2 transition-colors text-xl ${
+              className={`flex items-center justify-center px-2 py-2 rounded border-2 transition-colors text-lg ${
                 selectedVoice === 'male'
                   ? 'border-blue-500 bg-blue-50 text-blue-700'
                   : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
               }`}
               title="Male Voice"
             >
-              👨
+              🧓
             </button>
             <button
               onClick={() => handleVoiceSelection('female')}
-              className={`flex items-center justify-center px-3 py-2 rounded border-2 transition-colors text-xl ${
+              className={`flex items-center justify-center px-2 py-2 rounded border-2 transition-colors text-lg ${
                 selectedVoice === 'female'
                   ? 'border-pink-500 bg-pink-50 text-pink-700'
                   : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
               }`}
               title="Female Voice"
             >
-              👩
+              👩‍🦰
             </button>
             <button
               onClick={() => handleVoiceSelection('dual')}
-              className={`flex items-center justify-center px-3 py-2 rounded border-2 transition-colors text-xl ${
+              className={`flex items-center justify-center px-2 py-2 rounded border-2 transition-colors text-sm gap-1 ${
                 selectedVoice === 'dual'
                   ? 'border-purple-500 bg-purple-50 text-purple-700'
                   : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400'
               }`}
               title="Dual Announcer Mode"
             >
-              👨👩
+              <span>🧓</span><span>👩‍🦰</span>
             </button>
           </div>
           {!currentGameId && (
@@ -781,7 +781,7 @@ export default function AnnouncerControls({ gameId }) {
           <button
             onClick={announceLatestGoal}
             disabled={goalLoading || !currentGameId}
-            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors text-center"
+            className="flex items-center justify-center px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
             title="Announce Latest Goal"
           >
             {goalLoading ? 'Loading...' : 'Goal'}
@@ -789,7 +789,7 @@ export default function AnnouncerControls({ gameId }) {
           <button
             onClick={announceLatestPenalty}
             disabled={penaltyLoading || !currentGameId}
-            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors text-center"
+            className="flex items-center justify-center px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
             title="Announce Latest Penalty"
           >
             {penaltyLoading ? 'Loading...' : 'Penalty'}
@@ -797,7 +797,7 @@ export default function AnnouncerControls({ gameId }) {
           <button
             onClick={announceRandomCommentary}
             disabled={randomLoading || !currentGameId}
-            className="px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors text-center"
+            className="flex items-center justify-center px-3 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-400 text-sm font-medium transition-colors"
             title="Random Commentary"
           >
             {randomLoading ? 'Loading...' : 'Random'}
@@ -809,7 +809,7 @@ export default function AnnouncerControls({ gameId }) {
           <div>
             <button
               onClick={stopAudio}
-              className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors text-center"
+              className="flex items-center justify-center w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors"
               title="Stop Audio"
             >
               Stop

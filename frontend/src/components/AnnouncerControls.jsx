@@ -732,105 +732,102 @@ export default function AnnouncerControls({ gameId }) {
       <h4 className="text-lg font-semibold mb-3 flex items-center gap-2">
         Announcer
       </h4>
-      <div className="space-y-3">
-        {/* 3x2 Grid Layout matching DJ panel */}
-        <div className="grid grid-cols-2 gap-1">
-          {/* Left Column - Voice Selection */}
+      
+      {/* 2x3 Grid Layout matching DJ panel exactly */}
+      <div className="grid grid-cols-2 gap-1 mb-3">
+        <button
+          onClick={() => handleVoiceSelection('male')}
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+            selectedVoice === 'male'
+              ? 'bg-gradient-to-r from-blue-700 to-blue-800'
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+          }`}
+          title="Male Voice"
+        >
+          🧓
+        </button>
+        
+        <button
+          onClick={announceLatestGoal}
+          disabled={goalLoading || !currentGameId}
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+            goalLoading || !currentGameId
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+          }`}
+          title="Announce Latest Goal"
+        >
+          {goalLoading ? 'Loading...' : 'Goal'}
+        </button>
+        
+        <button
+          onClick={() => handleVoiceSelection('female')}
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+            selectedVoice === 'female'
+              ? 'bg-gradient-to-r from-blue-700 to-blue-800'
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+          }`}
+          title="Female Voice"
+        >
+          👩‍🦰
+        </button>
+        
+        <button
+          onClick={announceLatestPenalty}
+          disabled={penaltyLoading || !currentGameId}
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+            penaltyLoading || !currentGameId
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+          }`}
+          title="Announce Latest Penalty"
+        >
+          {penaltyLoading ? 'Loading...' : 'Penalty'}
+        </button>
+        
+        <button
+          onClick={() => handleVoiceSelection('dual')}
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+            selectedVoice === 'dual'
+              ? 'bg-gradient-to-r from-blue-700 to-blue-800'
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+          }`}
+          title="Dual Announcer Mode"
+        >
+          <span>🧓</span><span>👩‍🦰</span>
+        </button>
+        
+        <button
+          onClick={announceRandomCommentary}
+          disabled={randomLoading || !currentGameId}
+          className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
+            randomLoading || !currentGameId
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
+          }`}
+          title="Random Commentary"
+        >
+          {randomLoading ? 'Loading...' : 'Random'}
+        </button>
+      </div>
+      
+      {!currentGameId && (
+        <p className="text-yellow-600 mb-2 text-xs">No game selected</p>
+      )}
+      {error && <p className="text-red-500 mb-2 text-xs">{error}</p>}
+      
+      {/* Stop button - only show when audio is playing */}
+      {audioProgress.isPlaying && (
+        <div>
           <button
-            onClick={() => handleVoiceSelection('male')}
-            className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
-              selectedVoice === 'male'
-                ? 'bg-gradient-to-r from-blue-700 to-blue-800'
-                : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
-            }`}
-            title="Male Voice"
+            onClick={stopAudio}
+            className="flex items-center justify-center w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors"
+            title="Stop Audio"
           >
-            🧓
-          </button>
-          
-          {/* Right Column - Action Buttons */}
-          <button
-            onClick={announceLatestGoal}
-            disabled={goalLoading || !currentGameId}
-            className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
-              goalLoading || !currentGameId
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
-            }`}
-            title="Announce Latest Goal"
-          >
-            {goalLoading ? 'Loading...' : 'Goal'}
-          </button>
-          
-          <button
-            onClick={() => handleVoiceSelection('female')}
-            className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
-              selectedVoice === 'female'
-                ? 'bg-gradient-to-r from-blue-700 to-blue-800'
-                : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
-            }`}
-            title="Female Voice"
-          >
-            👩‍🦰
-          </button>
-          
-          <button
-            onClick={announceLatestPenalty}
-            disabled={penaltyLoading || !currentGameId}
-            className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
-              penaltyLoading || !currentGameId
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
-            }`}
-            title="Announce Latest Penalty"
-          >
-            {penaltyLoading ? 'Loading...' : 'Penalty'}
-          </button>
-          
-          <button
-            onClick={() => handleVoiceSelection('dual')}
-            className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
-              selectedVoice === 'dual'
-                ? 'bg-gradient-to-r from-blue-700 to-blue-800'
-                : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
-            }`}
-            title="Dual Announcer Mode"
-          >
-            <span>🧓</span><span>👩‍🦰</span>
-          </button>
-          
-          <button
-            onClick={announceRandomCommentary}
-            disabled={randomLoading || !currentGameId}
-            className={`px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
-              randomLoading || !currentGameId
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-blue-700 to-blue-800 hover:from-blue-800 hover:to-blue-900'
-            }`}
-            title="Random Commentary"
-          >
-            {randomLoading ? 'Loading...' : 'Random'}
+            Stop
           </button>
         </div>
-        
-        {!currentGameId && (
-          <p className="text-yellow-600 mb-2 text-xs">No game selected</p>
-        )}
-        {error && <p className="text-red-500 mb-2 text-xs">{error}</p>}
-        
-        {/* Stop button - only show when audio is playing */}
-        {audioProgress.isPlaying && (
-          <div>
-            <button
-              onClick={stopAudio}
-              className="flex items-center justify-center w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded text-sm font-medium transition-colors"
-              title="Stop Audio"
-            >
-              Stop
-            </button>
-          </div>
-        )}
-      </div>
+      )}
       
       {/* Audio Progress Bar */}
       {audioProgress.isPlaying && (

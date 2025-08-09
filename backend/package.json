@@ -4,6 +4,11 @@
   "type": "module",
   "description": "Backend API for real-time hockey scorekeeping application.",
   "main": "server.js",
+  "files": [
+    "*.js",
+    "config/",
+    "audio-cache/"
+  ],
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",

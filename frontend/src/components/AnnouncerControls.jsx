@@ -613,7 +613,14 @@ export default function AnnouncerControls({ gameId }) {
         // Handle dual announcer mode
         const mode = selectedVoice === 'dual' ? 'dual' : 'single';
         if (mode === 'dual' && conversation) {
-          await playDualAnnouncement(conversation);
+          try {
+            await playDualAnnouncement(conversation);
+            setMessage('Random commentary complete!');
+            setTimeout(() => setMessage(''), 2000);
+          } catch (dualError) {
+            console.error('Error in dual announcer playback:', dualError);
+            setError('Failed to play dual announcer conversation');
+          }
           return;
         }
         

@@ -1,6 +1,7 @@
 /**
  * Centralized configuration for Hockey Scorekeeper 2.0
  * This file consolidates environment-specific settings
+ * Updated: 2025-08-09 to ensure deployment includes this file
  */
 
 const isProduction = process.env.NODE_ENV === 'production';

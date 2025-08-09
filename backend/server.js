@@ -6,36 +6,7 @@ import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import dotenv from 'dotenv';
-
-// Load environment variables from .env file
-dotenv.config();
-
-// Import config with fallback for Azure deployment
-let config;
-try {
-  const configModule = await import('./config/index.js');
-  config = configModule.config || configModule.default;
-} catch (error) {
-  console.log('⚠️ Config file not found, using fallback configuration');
-  // Fallback configuration for Azure deployment issues
-  const isProduction = process.env.NODE_ENV === 'production';
-  config = {
-    env: process.env.NODE_ENV || 'development',
-    isProduction,
-    isDevelopment: !isProduction,
-    port: process.env.PORT || 3001,
-    cosmos: {
-      uri: process.env.COSMOS_DB_URI,
-      key: process.env.COSMOS_DB_KEY,
-      database: process.env.COSMOS_DB_NAME
-    },
-    googleTts: {
-      credentialsPath: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-      credentialsJson: process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON
-    }
-  };
-}
-
+import { config } from './config/index.js';
 import logger from './logger.js';
 
 // Load environment variables from .env file
@@ -166,13 +137,13 @@ logger.info('Starting Hockey Scorekeeper API', {
 });
 
 // Add startup safety check using centralized config
-const cosmosConfigured = Boolean(config.cosmos?.uri && config.cosmos?.key && config.cosmos?.database);
+const cosmosConfigured = Boolean(config.cosmos.uri && config.cosmos.key && config.cosmos.database);
 
 if (config.isProduction && !cosmosConfigured) {
   logger.error('Missing Cosmos DB configuration', {
-    hasUri: !!config.cosmos?.uri,
-    hasKey: !!config.cosmos?.key,
-    hasDatabase: !!config.cosmos?.database,
+    hasUri: !!config.cosmos.uri,
+    hasKey: !!config.cosmos.key,
+    hasDatabase: !!config.cosmos.database,
     impact: 'DB-dependent features may be unavailable'
   });
 } else {
@@ -197,8 +168,8 @@ app.get('/health', (req, res) => {
   // Check service availability
   const services = {
     database: {
-      available: config.cosmos?.uri && config.cosmos?.key && config.cosmos?.database,
-      status: config.cosmos?.uri && config.cosmos?.key && config.cosmos?.database ? 'connected' : 'unavailable'
+      available: config.cosmos.uri && config.cosmos.key && config.cosmos.databaseName,
+      status: config.cosmos.uri && config.cosmos.key && config.cosmos.databaseName ? 'connected' : 'unavailable'
     },
     announcer: {
       available: !!generateGoalAnnouncement,

@@ -6,6 +6,7 @@ import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import dotenv from 'dotenv';
+import { config } from './config/index.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -95,21 +96,17 @@ app.use((req, res, next) => {
 
 // Production startup
 const startTime = Date.now();
-const isProduction = process.env.NODE_ENV === 'production';
 
-console.log(`🚀 Starting Hockey Scorekeeper API v${pkg.version} (${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'})`);
+console.log(`🚀 Starting Hockey Scorekeeper API v${pkg.version} (${config.isProduction ? 'PRODUCTION' : 'DEVELOPMENT'})`);
 console.log(`⏰ Server start time: ${new Date().toISOString()}`);
-console.log(`🌍 Environment: NODE_ENV=${process.env.NODE_ENV}`);
-console.log(`📦 Port: ${process.env.PORT || 8080}`);
+console.log(`🌍 Environment: NODE_ENV=${config.env}`);
+console.log(`📦 Port: ${config.port}`);
 console.log(`🔧 Node version: ${process.version}`);
 
-// Add startup safety check (aligned with cosmosClient.js expectations)
-const hasConnString = !!process.env.COSMOS_DB_CONNECTION_STRING;
-const hasSeparateCreds = !!process.env.COSMOS_DB_URI
-  && !!process.env.COSMOS_DB_KEY
-  && !!process.env.COSMOS_DB_NAME;
+// Add startup safety check using centralized config
+const cosmosConfigured = Boolean(config.cosmos.uri && config.cosmos.key && config.cosmos.database);
 
-if (isProduction && !(hasConnString || hasSeparateCreds)) {
+if (config.isProduction && !cosmosConfigured) {
   console.error('❌ Missing Cosmos DB configuration (URI/Key/Name). Continuing startup; DB-dependent features may be unavailable.');
 } else {
   console.log('✅ Cosmos DB configuration detected');
@@ -134,10 +131,10 @@ app.get('/health', (req, res) => {
     status: 'ok', 
     message: 'Hockey Scorekeeper API is running',
     timestamp: new Date().toISOString(),
-    port: process.env.PORT || 8080,
+    port: config.port,
     uptime: Math.floor(process.uptime()),
     version: pkg.version,
-    environment: process.env.NODE_ENV || 'development'
+    environment: config.env
   });
 });
 
@@ -2690,13 +2687,13 @@ app.get('/api/health', (req, res) => {
   // Check TTS service status
   const ttsStatus = {
     available: ttsService.client !== null,
-    credentialsSource: process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ? 'Azure Environment JSON' : 
-                      process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'File Path' : 'None',
-    studioVoicesExpected: !!process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
-    googleCloudProject: process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ? 
+    credentialsSource: config.googleTts.credentialsJson ? 'Azure Environment JSON' : 
+                      config.googleTts.credentialsPath ? 'File Path' : 'None',
+    studioVoicesExpected: !!config.googleTts.credentialsJson,
+    googleCloudProject: config.googleTts.credentialsJson ? 
       (() => {
         try {
-          const creds = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+          const creds = JSON.parse(config.googleTts.credentialsJson);
           return creds.project_id;
         } catch {
           return 'Invalid JSON';
@@ -3522,7 +3519,7 @@ app.post('/api/tts/dual-line', async (req, res) => {
     console.log(`🎙️ Using ${speaker} studio voice: ${selectedVoice}`);
     console.log(`🎯 Voice mapping - male: ${voiceConfig.maleVoice}, female: ${voiceConfig.femaleVoice}`);
     console.log(`🔧 TTS client status: ${ttsService.client ? 'Connected' : 'Not connected'}`);
-    console.log(`🌍 Google credentials: ${process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'File path set' : 'Using JSON env var'}`);
+    console.log(`🌍 Google credentials: ${config.googleTts.credentialsPath ? 'File path set' : 'Using JSON env var'}`);
     console.log(`🎚️ Expected voice type: ${selectedVoice.includes('Studio') ? 'Studio (Professional)' : selectedVoice.includes('Neural2') ? 'Neural2 (Standard)' : 'Unknown'}`);
     
     // Temporarily set the voice in TTS service for this request
@@ -3719,17 +3716,16 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(frontendDist, 'index.html'));
 });
 
-const server = app.listen(process.env.PORT || 8080, () => {
-  const port = process.env.PORT || 8080;
+const server = app.listen(config.port, () => {
   const memUsage = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
   
-  console.log(`🚀 Hockey Scorekeeper API running on port ${port}`);
-  console.log(`📡 Server listening on http://localhost:${port}`);
+  console.log(`🚀 Hockey Scorekeeper API running on port ${config.port}`);
+  console.log(`📡 Server listening on http://localhost:${config.port}`);
   console.log('🏥 Health check available at /health');
   console.log('🎯 API endpoints available at /api/*');
   console.log(`📊 Memory usage: ${memUsage}MB`);
   console.log(`⚡ Node.js: ${process.version}`);
-  console.log(`🎯 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🎯 Environment: ${config.env}`);
   console.log('⏱️  Server started in', Math.floor((Date.now() - startTime) / 1000), 'seconds');
   console.log('✅ Deployment completed successfully - Studio voice authentication enabled');
   

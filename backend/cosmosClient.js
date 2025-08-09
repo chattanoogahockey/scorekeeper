@@ -3,6 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import dotenv from 'dotenv';
 import { CosmosClient } from '@azure/cosmos';
+import { config } from './config/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,19 +15,7 @@ dotenv.config({ path: './.env' });
  * Standardized Container Names (using hyphens consistently)
  * Can be overridden via environment variables for different environments
  */
-const containerNames = {
-  settings: process.env.COSMOS_CONTAINER_SETTINGS || 'settings',
-  analytics: process.env.COSMOS_CONTAINER_ANALYTICS || 'analytics',
-  'rink-reports': process.env.COSMOS_CONTAINER_RINK_REPORTS || 'rink-reports',
-  games: process.env.COSMOS_CONTAINER_GAMES || 'games',
-  players: process.env.COSMOS_CONTAINER_PLAYERS || 'players',
-  goals: process.env.COSMOS_CONTAINER_GOALS || 'goals',
-  penalties: process.env.COSMOS_CONTAINER_PENALTIES || 'penalties',
-  rosters: process.env.COSMOS_CONTAINER_ROSTERS || 'rosters',
-  attendance: process.env.COSMOS_CONTAINER_ATTENDANCE || 'attendance',
-  'ot-shootout': process.env.COSMOS_CONTAINER_OT_SHOOTOUT || 'ot-shootout',
-  'shots-on-goal': process.env.COSMOS_CONTAINER_SHOTS_ON_GOAL || 'shots-on-goal',
-};
+const containerNames = config.cosmos.containers;
 
 /**
  * Production Cosmos DB Container Definitions
@@ -213,16 +202,9 @@ const CONTAINER_DEFINITIONS = {
 };
 
 // Environment variable configuration
-const {
-  COSMOS_DB_URI,
-  COSMOS_DB_KEY,
-  COSMOS_DB_NAME
-} = process.env;
-
-// Use standardized environment variables only
-const cosmosUri = COSMOS_DB_URI;
-const cosmosKey = COSMOS_DB_KEY;
-const cosmosDatabase = COSMOS_DB_NAME;
+const cosmosUri = config.cosmos.uri;
+const cosmosKey = config.cosmos.key;
+const cosmosDatabase = config.cosmos.database;
 
 const cosmosConfigured = Boolean(cosmosUri && cosmosKey && cosmosDatabase);
 let client = null;

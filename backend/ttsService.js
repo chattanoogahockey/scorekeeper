@@ -2,6 +2,7 @@ import textToSpeech from '@google-cloud/text-to-speech';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { config } from './config/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -201,9 +202,9 @@ class TTSService {
     try {
       console.log('🔑 Initializing Google Cloud TTS with credential file approach');
       
-      if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-        console.log(`✅ GOOGLE_APPLICATION_CREDENTIALS found: ${process.env.GOOGLE_APPLICATION_CREDENTIALS}`);
-      } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+      if (config.googleTts.credentialsPath) {
+        console.log(`✅ GOOGLE_APPLICATION_CREDENTIALS found: ${config.googleTts.credentialsPath}`);
+      } else if (config.googleTts.credentialsJson) {
         console.log('✅ GOOGLE_APPLICATION_CREDENTIALS_JSON found (Azure environment)');
       } else {
         console.log('⚠️  No Google credentials found, TTS will be disabled');
@@ -215,9 +216,9 @@ class TTSService {
       const clientConfig = {};
       
       // If using JSON credentials from environment, parse and set project
-      if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+      if (config.googleTts.credentialsJson) {
         try {
-          const credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+          const credentials = JSON.parse(config.googleTts.credentialsJson);
           clientConfig.projectId = credentials.project_id;
           clientConfig.keyFilename = undefined; // Don't use file path
           clientConfig.credentials = credentials;

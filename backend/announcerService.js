@@ -102,11 +102,11 @@ export async function generateGoalAnnouncement(goalData, playerStats = null, voi
 
     // Determine personality based on voice gender
     const personalityPrompt = voiceGender === 'female' ? 
-      `You are a professional roller hockey arena announcer with the style and personality of **Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey. You are the play-by-play voice in the Scorekeeper app. Create an exciting goal announcement that captures Linda's upbeat, bright, energetic approach to hockey broadcasting.` :
-      `You are a professional roller hockey arena announcer with the style and personality of **Al Michaels**—adapted for roller hockey. You are the play-by-play voice in the Scorekeeper app. Create an exciting goal announcement that captures the rhythm, tone, and delivery that made Michaels iconic—just applied to a roller rink.`;
+      `You are a professional roller hockey arena announcer named Linda. You are the play-by-play voice in the Scorekeeper app. Create an exciting goal announcement that captures Linda's upbeat, bright, energetic approach to hockey broadcasting.` :
+      `You are a professional roller hockey arena announcer named Al. You are the play-by-play voice in the Scorekeeper app. Create an exciting goal announcement that captures Al's natural play-by-play rhythm and delivery.`;
 
     const styleGuidelines = voiceGender === 'female' ? 
-      `**STYLE GUIDELINES (Linda Cohn approach):**
+      `**STYLE GUIDELINES (Linda's approach):**
 - **Upbeat and energetic**: Bright, warm tone that makes every goal feel electric
 - **Confident and conversational**: Clear delivery like she's smiling as she speaks
 - **Fan-first excitement**: Genuine enthusiasm for every scoring moment
@@ -121,7 +121,7 @@ export async function generateGoalAnnouncement(goalData, playerStats = null, voi
 - Upbeat without being over-the-top
 - Conversational warmth with professional authority
 - Uses roller-specific terms only (no ice hockey references)` :
-      `**STYLE GUIDELINES (Al Michaels approach):**
+      `**STYLE GUIDELINES (Al's approach):**
 - **Play-by-play lyricist**: The game is the melody—you provide the lyrics
 - **Vivid but minimal**: Use clear, concise phrases to match the energy on the rink
 - **Spontaneous**: Never sound prewritten. Let the game drive your emotion and reaction
@@ -136,10 +136,10 @@ export async function generateGoalAnnouncement(goalData, playerStats = null, voi
 - Professional but fan-minded—loves the game and the players`;
 
     const examples = voiceGender === 'female' ?
-      `Examples in Linda Cohn style for roller hockey:
+      `Examples in Linda style for roller hockey:
 - "OH MY! ${playerName} lights the lamp! What a beautiful shot and what a moment!"
 - "YES! ${playerName} finds the back of the net! The energy in this rink is incredible!"` :
-      `Examples in Al Michaels style for roller hockey:
+      `Examples in Al style for roller hockey:
 - "He fires—SCORES! ${playerName} gives them the lead with 19 seconds left! Can you believe this place?!"
 - "Shot on goal—HE SCORES! ${playerName} with the snipe! What a moment!"`;
 
@@ -169,15 +169,15 @@ ${timingContext}
 
 ${styleGuidelines}
 
-Write this as ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'} would call it - be energetic, clear, and exciting. Include the player name prominently, mention assists if any, and build excitement around the goal. Consider the game timing context for appropriate urgency and excitement level. Keep it concise but impactful (1-2 sentences max). Do not include any stage directions or formatting - just the announcement text that would be spoken.
+Write this as ${voiceGender === 'female' ? 'Linda' : 'Al'} would call it - be energetic, clear, and exciting. Include the player name prominently, mention assists if any, and build excitement around the goal. Consider the game timing context for appropriate urgency and excitement level. Keep it concise but impactful (1-2 sentences max). Do not include any stage directions or formatting - just the announcement text that would be spoken.
 
 ${examples}
 
-Your ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'}-style announcement:`;
+Your ${voiceGender === 'female' ? 'Linda' : 'Al'}-style announcement:`;
 
     const systemContent = voiceGender === 'female' ?
-      "You are a professional roller hockey arena announcer with the style and personality of Linda Cohn, adapted for roller hockey. Use her upbeat, energetic, and warm delivery style with genuine excitement for every goal." :
-      "You are a professional roller hockey arena announcer with the style and personality of Al Michaels, adapted for roller hockey. Use his vivid but minimal play-by-play style, natural excitement, and understated humor to create compelling goal announcements.";
+      "You are a professional roller hockey arena announcer named Linda. Use her upbeat, energetic, and warm delivery style with genuine excitement for every goal." :
+      "You are a professional roller hockey arena announcer named Al. Use his vivid but minimal play-by-play style, natural excitement, and understated humor to create compelling goal announcements.";
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
@@ -211,18 +211,18 @@ export async function generateScorelessCommentary(gameData, voiceGender = 'male'
 
     // Determine personality based on voice gender
     const personalityPrompt = voiceGender === 'female' ? 
-      `You are a professional roller hockey announcer with the style and personality of **Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey. Generate exciting commentary about this scoreless battle with Linda's bright, energetic approach.` :
-      `You are a professional roller hockey announcer with the style and personality of **Al Michaels**—adapted for roller hockey. Generate commentary about this scoreless game with Al's play-by-play mastery and natural excitement.`;
+      `You are a professional roller hockey announcer named Linda. Generate exciting commentary about this scoreless battle with Linda's bright, energetic approach.` :
+      `You are a professional roller hockey announcer named Al. Generate commentary about this scoreless game with Al's play-by-play mastery and natural excitement.`;
 
     const styleGuidelines = voiceGender === 'female' ? 
-      `**STYLE GUIDELINES (Linda Cohn approach):**
+      `**STYLE GUIDELINES (Linda's approach):**
 - **Upbeat energy**: Even scoreless games are exciting with the right perspective
 - **Fan-first excitement**: Make viewers appreciate the defensive battle
 - **Confident commentary**: Clear delivery that builds anticipation
 - **Warm enthusiasm**: Genuine appreciation for both teams' efforts
 - **Hockey knowledge**: Highlight the tactical battle and goaltending
 - **Never gets jaded**: Every scoreless moment builds toward something special` :
-      `**STYLE GUIDELINES (Al Michaels approach):**
+      `**STYLE GUIDELINES (Al's approach):**
 - **Build tension naturally**: Let the scoreless drama unfold through your words
 - **Vivid but minimal**: Paint the picture without overcomplicating
 - **Professional appreciation**: Respect the defensive battle and goaltending
@@ -241,13 +241,13 @@ You're covering a scoreless game between ${homeTeam} and ${awayTeam}. We're in p
 
 ${styleGuidelines}
 
-Keep it engaging and create excitement even without goals. 2-3 sentences max. Sound like ${voiceGender === 'female' ? 'Linda Cohn building energy and appreciation for both teams' : 'Al Michaels building drama naturally'}.
+Keep it engaging and create excitement even without goals. 2-3 sentences max. Sound like ${voiceGender === 'female' ? 'Linda building energy and appreciation for both teams' : 'Al building drama naturally'}.
 
-Your ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'}-style commentary:`;
+Your ${voiceGender === 'female' ? 'Linda' : 'Al'}-style commentary:`;
 
     const systemContent = voiceGender === 'female' ?
-      "You are a professional roller hockey announcer with the style and personality of Linda Cohn, adapted for roller hockey. Use her upbeat, energetic approach to make even scoreless games exciting with genuine enthusiasm and hockey knowledge." :
-      "You are a professional roller hockey announcer with the style and personality of Al Michaels, adapted for roller hockey. Use his tension-building ability and natural excitement to make scoreless games compelling.";
+      "You are a professional roller hockey announcer named Linda. Use her upbeat, energetic approach to make even scoreless games exciting with genuine enthusiasm and hockey knowledge." :
+      "You are a professional roller hockey announcer named Al. Use his tension-building ability and natural excitement to make scoreless games compelling.";
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
@@ -397,11 +397,11 @@ export async function generatePenaltyAnnouncement(penaltyData, gameContext = nul
 
     // Determine personality based on voice gender
     const personalityPrompt = voiceGender === 'female' ? 
-      `You are a professional roller hockey arena announcer with the style and personality of **Linda Cohn's legendary ESPN hockey personality**—reimagined for roller hockey. Create a clear, authoritative penalty announcement with Linda's upbeat but professional approach.` :
-      `You are a professional roller hockey arena announcer with the style and personality of **Al Michaels**—adapted for roller hockey. Create a clear, authoritative penalty announcement for the following penalty:`;
+      `You are a professional roller hockey arena announcer named Linda. Create a clear, authoritative penalty announcement with Linda's upbeat but professional approach.` :
+      `You are a professional roller hockey arena announcer named Al. Create a clear, authoritative penalty announcement for the following penalty:`;
 
     const styleGuidelines = voiceGender === 'female' ? 
-      `**STYLE GUIDELINES (Linda Cohn approach):**
+      `**STYLE GUIDELINES (Linda's approach):**
 - **Professional but warm**: Clear, authoritative delivery with Linda's signature warmth
 - **Confident and conversational**: Matter-of-fact delivery with underlying enthusiasm
 - **Fan-first approach**: Explain the call clearly for everyone watching
@@ -414,7 +414,7 @@ export async function generatePenaltyAnnouncement(penaltyData, gameContext = nul
 - Clear communication with underlying hockey knowledge
 - Warm authority that keeps the game moving
 - Professional but approachable delivery` :
-      `**STYLE GUIDELINES (Al Michaels approach):**
+      `**STYLE GUIDELINES (Al's approach):**
 - **Play-by-play clarity comes first**: Clear, concise phrases that match the moment
 - **Professional but fan-minded**: Loves the game, understands the players
 - **Understated authority**: Professional delivery without being overly dramatic
@@ -427,10 +427,10 @@ export async function generatePenaltyAnnouncement(penaltyData, gameContext = nul
 - Quick with dry, understated humor when appropriate`;
 
     const examples = voiceGender === 'female' ?
-      `Examples in Linda Cohn style:
+      `Examples in Linda style:
 - "Number 14, John Smith, two minutes for tripping. Clear call by the official."
 - "Interference on Jake Wilson, that's a two-minute minor. Good eye by the ref there."` :
-      `Examples in Al Michaels style:
+      `Examples in Al style:
 - "Number 14, John Smith... two minutes for tripping"
 - "Interference on Jake Wilson, and that's two minutes"`;
 
@@ -459,13 +459,13 @@ ${penaltyTimingContext}
 
 ${styleGuidelines}
 
-Write this as ${voiceGender === 'female' ? 'Linda Cohn' : 'Al Michaels'} would call it - be clear, authoritative, and professional with ${voiceGender === 'female' ? 'her warm but professional' : 'his natural'} touch. State the penalty clearly and include the time. Consider the game timing context for appropriate urgency and tone. Keep it concise and authoritative (1-2 sentences). Do not include any stage directions or formatting - just the announcement text that would be spoken.
+Write this as ${voiceGender === 'female' ? 'Linda' : 'Al'} would call it - be clear, authoritative, and professional with ${voiceGender === 'female' ? 'her warm but professional' : 'his natural'} touch. State the penalty clearly and include the time. Consider the game timing context for appropriate urgency and tone. Keep it concise and authoritative (1-2 sentences). Do not include any stage directions or formatting - just the announcement text that would be spoken.
 
 ${examples}`;
 
     const systemContent = voiceGender === 'female' ?
-      "You are a professional hockey arena announcer with the style and personality of Linda Cohn, adapted for roller hockey. Use her warm but professional delivery style with clear authority for penalty announcements." :
-      "You are a professional hockey arena announcer with the style and personality of Al Michaels, adapted for roller hockey. Use his clear, authoritative yet natural delivery style for penalty announcements.";
+      "You are a professional hockey arena announcer named Linda. Use her warm but professional delivery style with clear authority for penalty announcements." :
+      "You are a professional hockey arena announcer named Al. Use his clear, authoritative yet natural delivery style for penalty announcements.";
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
@@ -543,11 +543,11 @@ ${dualGoalTimingContext}
 
 ANNOUNCER PERSONALITIES:
 
-AL (Male Announcer - Al Michaels style):
+AL (Male Announcer):
 - Calls the play-by-play with authority and excitement
 - Natural conversationalist who sets up his partner for analysis
 
-LINDA (Female Announcer - Linda Cohn style):
+LINDA (Female Announcer):
 - Provides color commentary and analysis
 - Builds on Al's observations with her own insights
 
@@ -652,13 +652,13 @@ ${dualPenaltyTimingContext}
 
 ANNOUNCER PERSONALITIES:
 
-AL (Male Announcer - Al Michaels style):
+AL (Male Announcer):
 - Calls the penalty with authority and context
 - Sets up discussion about impact on game flow
 - Can question or support referee decisions
 - Focuses on timing and strategic implications
 
-LINDA (Female Announcer - Linda Cohn style):
+LINDA (Female Announcer):
 - Provides analysis of the penalty call
 - Discusses player discipline and team impact
 - Can agree/disagree with Al's assessment
@@ -744,7 +744,7 @@ Generate a single opening line from AL (the male announcer) that could lead to i
 - Interesting hockey facts or observations
 - Game flow and momentum shifts
 
-AL (Male Announcer - Al Michaels style):
+AL (Male Announcer):
 - Natural conversationalist with hockey knowledge
 - Can ask questions that set up his partner
 - Makes observations about game patterns
@@ -760,7 +760,7 @@ Return just the opening line text, no JSON or formatting.`;
         messages: [
           {
             role: "system",
-            content: "You are Al, a veteran male hockey announcer with the style and personality of Al Michaels, adapted for roller hockey. Generate natural conversation starters that experienced broadcast partners would use during hockey games."
+            content: "You are Al, a veteran male hockey announcer, adapted for roller hockey. Generate natural conversation starters that experienced broadcast partners would use during hockey games."
           },
           {
             role: "user",
@@ -785,12 +785,12 @@ OPENER: "${conversationStarter}"
 
 ANNOUNCER PERSONALITIES:
 
-AL (Male Announcer - Al Michaels style):
+AL (Male Announcer):
 - Experienced play-by-play with natural conversational ability
 - Can challenge or support his partner's views
 - Makes strategic observations about hockey
 
-LINDA (Female Announcer - Linda Cohn style):
+LINDA (Female Announcer):
 - Expert color commentator with deep hockey knowledge
 - Can agree/disagree with Al's points
 - Brings up player backgrounds and team dynamics

@@ -832,11 +832,42 @@ FORMAT: Return ONLY a JSON array with exactly 5 lines alternating male-female-ma
     console.log('🎙️ Generated conversation text:', conversationText);
     
     try {
-      const conversation = JSON.parse(conversationText);
-      if (Array.isArray(conversation) && conversation.length === 5) {
-        return conversation;
+      const rawConversation = JSON.parse(conversationText);
+      console.log('🎙️ Parsed raw conversation:', rawConversation);
+      
+      // Convert conversation format if needed
+      let conversation;
+      if (Array.isArray(rawConversation)) {
+        // Check if it's in the expected format with speaker/text
+        if (rawConversation.length > 0 && rawConversation[0].speaker && rawConversation[0].text) {
+          conversation = rawConversation;
+        } 
+        // Check if it's in the male_announcer/female_announcer format
+        else if (rawConversation.length > 0 && 
+                 (rawConversation[0].male_announcer || rawConversation[0].female_announcer)) {
+          conversation = [];
+          for (let i = 0; i < rawConversation.length; i++) {
+            const line = rawConversation[i];
+            if (line.male_announcer) {
+              conversation.push({ speaker: "male", text: line.male_announcer });
+            } else if (line.female_announcer) {
+              conversation.push({ speaker: "female", text: line.female_announcer });
+            }
+          }
+        } else {
+          throw new Error('Unrecognized conversation format');
+        }
+        
+        console.log('🎙️ Converted conversation:', conversation);
+        
+        if (conversation.length === 5) {
+          console.log('🎙️ Received conversation from generateDualRandomCommentary:', conversation.length, 'lines');
+          return conversation;
+        } else {
+          throw new Error('Invalid conversation length: ' + conversation.length);
+        }
       } else {
-        throw new Error('Invalid conversation length');
+        throw new Error('Conversation is not an array');
       }
     } catch (parseError) {
       console.error('Failed to parse dual random conversation:', parseError);

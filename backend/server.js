@@ -1686,51 +1686,69 @@ app.post('/api/randomCommentary', async (req, res) => {
   // Handle dual announcer mode
   if (announcerMode === 'dual') {
     try {
-      const goalsContainer = getGoalsContainer();
-      const penaltiesContainer = getPenaltiesContainer();
-      const gamesContainer = getGamesContainer();
-      
-      // Gather game context for the conversation
       let gameContext = { gameId, division };
       
-      if (gameId) {
-        // Get game details
-        const { resources: gameDetails } = await gamesContainer.items
-          .query({
-            query: "SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId",
-            parameters: [{ name: '@gameId', value: gameId }]
-          })
-          .fetchAll();
+      // Try to get database context, but provide fallback if database is not available
+      try {
+        const goalsContainer = getGoalsContainer();
+        const penaltiesContainer = getPenaltiesContainer();
+        const gamesContainer = getGamesContainer();
         
-        if (gameDetails.length > 0) {
-          const game = gameDetails[0];
-          gameContext.homeTeam = game.homeTeam;
-          gameContext.awayTeam = game.awayTeam;
-          gameContext.division = game.division || game.league;
+        if (gameId) {
+          // Get game details
+          const { resources: gameDetails } = await gamesContainer.items
+            .query({
+              query: "SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId",
+              parameters: [{ name: '@gameId', value: gameId }]
+            })
+            .fetchAll();
+          
+          if (gameDetails.length > 0) {
+            const game = gameDetails[0];
+            gameContext.homeTeam = game.homeTeam;
+            gameContext.awayTeam = game.awayTeam;
+            gameContext.division = game.division || game.league;
+          }
+          
+          // Get recent goals and penalties for context
+          const { resources: goals } = await goalsContainer.items
+            .query({
+              query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
+              parameters: [{ name: '@gameId', value: gameId }]
+            })
+            .fetchAll();
+          
+          const { resources: penalties } = await penaltiesContainer.items
+            .query({
+              query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
+              parameters: [{ name: '@gameId', value: gameId }]
+            })
+            .fetchAll();
+          
+          gameContext.goalsCount = goals.length;
+          gameContext.penaltiesCount = penalties.length;
+          
+          if (goals.length > 0) {
+            const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === gameContext.homeTeam).length;
+            const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === gameContext.awayTeam).length;
+            gameContext.currentScore = { home: homeGoals, away: awayGoals };
+          }
         }
         
-        // Get recent goals and penalties for context
-        const { resources: goals } = await goalsContainer.items
-          .query({
-            query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
-            parameters: [{ name: '@gameId', value: gameId }]
-          })
-          .fetchAll();
+        console.log('✅ Retrieved database context for dual random commentary');
         
-        const { resources: penalties } = await penaltiesContainer.items
-          .query({
-            query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
-            parameters: [{ name: '@gameId', value: gameId }]
-          })
-          .fetchAll();
+      } catch (dbError) {
+        // Fallback to simple game context when database is not available (local development)
+        console.log('⚠️ Database not available for dual mode, using fallback context:', dbError.message);
         
-        gameContext.goalsCount = goals.length;
-        gameContext.penaltiesCount = penalties.length;
-        
-        if (goals.length > 0) {
-          const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === gameContext.homeTeam).length;
-          const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === gameContext.awayTeam).length;
-          gameContext.currentScore = { home: homeGoals, away: awayGoals };
+        // Provide minimal context for dual announcer conversation
+        if (gameId) {
+          gameContext.homeTeam = 'Home Team';
+          gameContext.awayTeam = 'Away Team';
+          gameContext.division = division || 'Hockey League';
+          gameContext.goalsCount = 0;
+          gameContext.penaltiesCount = 0;
+          gameContext.currentScore = { home: 0, away: 0 };
         }
       }
       

@@ -842,10 +842,10 @@ export default function AnnouncerControls({ gameId }) {
         </div>
       )}
       
-      {/* Message display - only when there's a message AND not playing audio */}
-      {message && !audioProgress.isPlaying && (
-        <p className="text-sm mt-2 italic text-gray-600 text-center">
-          {message}
+      {/* Message display - only when audio is playing but not showing progress bar (matching DJ panel) */}
+      {audioProgress.isPlaying === false && message && (goalLoading || penaltyLoading || randomLoading) && (
+        <p className="text-sm text-gray-500 mt-2 text-center">
+          Audio playing...
         </p>
       )}
     </div>

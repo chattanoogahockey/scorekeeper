@@ -264,8 +264,11 @@ export default function MediaControlPanel({ gameId }) {
   };
 
   return (
-    <div className="border rounded-lg shadow-lg p-4 bg-gradient-to-br from-gray-50 to-gray-100">
+    <div>
       <div className="flex justify-between items-center mb-4">
+        <h4 className="text-lg font-semibold flex items-center gap-2">
+          🎵 DJ
+        </h4>
         {/* Fade Out Button - Only show when DJ sounds are playing */}
         {isPlaying && (
           <button
@@ -282,105 +285,98 @@ export default function MediaControlPanel({ gameId }) {
         )}
       </div>
       
-      <div className="grid grid-cols-2 gap-6">
-        {/* Left Side - DJ Panel */}
-        <div className="bg-white rounded-lg p-3 shadow-inner border border-gray-200">
-          <h4 className="text-lg font-bold mb-3 text-center text-black">DJ</h4>
-          
-          <div className="grid grid-cols-2 gap-2">
-            {/* Row 1 */}
-            <button
-              onClick={() => playSound('goal_horn', 'mp3')}
-              disabled={isPlaying}
-              className={`px-2 py-3 text-white rounded-lg transition-all duration-200 text-xs font-medium ${
-                isPlaying 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
-              }`}
-            >
-              Goal Horn
-            </button>
-            <button
-              onClick={() => playSound('whistle', 'mp3')}
-              disabled={isPlaying}
-              className={`px-2 py-3 text-white rounded-lg transition-all duration-200 text-xs font-medium ${
-                isPlaying 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
-              }`}
-            >
-              Whistle
-            </button>
-            
-            {/* Row 2 */}
-            <button
-              onClick={() => playSound('dj_air_horn', 'mp3')}
-              disabled={isPlaying}
-              className={`px-2 py-3 text-white rounded-lg transition-all duration-200 text-xs font-medium ${
-                isPlaying 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
-              }`}
-            >
-              Air Horn
-            </button>
-            <button
-              onClick={() => playSound('buzzer')}
-              disabled={isPlaying}
-              className={`px-2 py-3 text-white rounded-lg transition-all duration-200 text-xs font-medium ${
-                isPlaying 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
-              }`}
-            >
-              Buzzer
-            </button>
-            
-            {/* Row 3 */}
-            <button
-              onClick={playOrganSound}
-              disabled={isPlaying}
-              className={`px-2 py-3 text-white rounded-lg transition-all duration-200 text-xs font-medium ${
-                isPlaying 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
-              }`}
-            >
-              Organs
-            </button>
-            <button
-              onClick={playFanfareSound}
-              disabled={isPlaying || fanfareSounds.length === 0}
-              className={`px-2 py-3 text-white rounded-lg transition-all duration-200 text-xs font-medium ${
-                isPlaying || fanfareSounds.length === 0
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
-              }`}
-              title={fanfareSounds.length === 0 ? 'Loading fanfare files...' : `Play fanfare (${fanfareSounds.length} files available)`}
-            >
-              {fanfareSounds.length === 0 ? 'Loading...' : 'Fanfare'}
-            </button>
-          </div>
-          
-          {/* DJ Audio Progress */}
-          {djAudioProgress.isPlaying && (
-            <div className="mt-3 p-2 bg-blue-50 rounded-lg border">
-              <div className="flex items-center justify-between text-xs text-blue-600 mb-1">
-                <span className="font-medium">{djAudioProgress.fileName}</span>
-                <span>{Math.round(djAudioProgress.current)}s / {Math.round(djAudioProgress.duration)}s</span>
-              </div>
-              <div className="w-full bg-blue-200 rounded-full h-2">
-                <div 
-                  className="bg-blue-500 h-2 rounded-full transition-all duration-100"
-                  style={{ 
-                    width: `${Math.min((djAudioProgress.current / djAudioProgress.duration) * 100, 100)}%` 
-                  }}
-                ></div>
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="grid grid-cols-2 gap-2">
+        {/* Row 1 */}
+        <button
+          onClick={() => playSound('goal_horn', 'mp3')}
+          disabled={isPlaying}
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+            isPlaying 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+          }`}
+        >
+          🥅 Goal Horn
+        </button>
+        <button
+          onClick={() => playSound('whistle', 'mp3')}
+          disabled={isPlaying}
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+            isPlaying 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+          }`}
+        >
+          🔔 Whistle
+        </button>
+        
+        {/* Row 2 */}
+        <button
+          onClick={() => playSound('dj_air_horn', 'mp3')}
+          disabled={isPlaying}
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+            isPlaying 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+          }`}
+        >
+          📯 Air Horn
+        </button>
+        <button
+          onClick={() => playSound('buzzer')}
+          disabled={isPlaying}
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+            isPlaying 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+          }`}
+        >
+          ⏰ Buzzer
+        </button>
+        
+        {/* Row 3 */}
+        <button
+          onClick={playOrganSound}
+          disabled={isPlaying}
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+            isPlaying 
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+          }`}
+        >
+          🎹 Organs
+        </button>
+        <button
+          onClick={playFanfareSound}
+          disabled={isPlaying || fanfareSounds.length === 0}
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium ${
+            isPlaying || fanfareSounds.length === 0
+              ? 'bg-gray-400 cursor-not-allowed' 
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
+          }`}
+          title={fanfareSounds.length === 0 ? 'Loading fanfare files...' : `Play fanfare (${fanfareSounds.length} files available)`}
+        >
+          {fanfareSounds.length === 0 ? 'Loading...' : '🎺 Fanfare'}
+        </button>
       </div>
+      
+      {/* DJ Audio Progress */}
+      {djAudioProgress.isPlaying && (
+        <div className="mt-3 p-2 bg-blue-50 rounded-lg border">
+          <div className="flex items-center justify-between text-xs text-blue-600 mb-1">
+            <span className="font-medium">{djAudioProgress.fileName}</span>
+            <span>{Math.round(djAudioProgress.current)}s / {Math.round(djAudioProgress.duration)}s</span>
+          </div>
+          <div className="w-full bg-blue-200 rounded-full h-2">
+            <div 
+              className="bg-blue-500 h-2 rounded-full transition-all duration-100"
+              style={{ 
+                width: `${Math.min((djAudioProgress.current / djAudioProgress.duration) * 100, 100)}%` 
+              }}
+            ></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

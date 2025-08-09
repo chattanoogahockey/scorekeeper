@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { GameContext } from '../contexts/GameContext.jsx';
+import AnnouncerControls from '../components/AnnouncerControls.jsx';
 import MediaControlPanel from '../components/MediaControlPanel.jsx';
 import OTShootoutButton from '../components/OTShootoutButton.jsx';
 import axios from 'axios';
@@ -406,7 +407,11 @@ export default function InGameMenu() {
         {/* Integrated Dashboard Components */}
         <div className="space-y-4">
           {/* Announcer Controls */}
-          {/* Media Control Panel - Combined DJ and Announcer */}
+          <div className="bg-white rounded-lg shadow-md">
+            <AnnouncerControls gameId={selectedGame.id || selectedGame.gameId} />
+          </div>
+
+          {/* Media Control Panel - DJ Controls */}
           <div className="bg-white rounded-lg shadow-md">
             <MediaControlPanel gameId={selectedGame.id || selectedGame.gameId} />
           </div>

@@ -2,6 +2,7 @@ import React, { useState, useContext, useRef, useEffect } from 'react';
 import axios from 'axios';
 import { GameContext } from '../contexts/GameContext.jsx';
 import { configureUtteranceWithFallbackVoice, configureGeneralUtterance } from '../utils/voiceConfig.js';
+import { announce, handleAnnouncerError } from '../services/announcerApi.js';
 
 /**
  * AnnouncerControls provides buttons for the scorekeeper to trigger Google
@@ -349,23 +350,13 @@ export default function AnnouncerControls({ gameId }) {
     setMessage('Generating goal announcement...');
     
     try {
-      const apiUrl = import.meta.env.DEV 
-        ? '/api/goals/announce-last' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/goals/announce-last`;
+      const data = await announce('goal', currentGameId, selectedVoice);
       
-      // Correctly map selectedVoice to announcer mode
-      const mode = selectedVoice === 'dual' ? 'dual' : 'single';
-      
-      const response = await axios.post(apiUrl, { 
-        gameId: currentGameId,
-        voiceGender: selectedVoice, // Include selected voice
-        announcerMode: mode // Add announcer mode for backend
-      });
-      
-      if (response.data.success) {
-        const { announcement, scoreless, conversation } = response.data;
+      if (data.success) {
+        const { announcement, scoreless, conversation } = data;
         
         // Handle dual announcer mode
+        const mode = selectedVoice === 'dual' ? 'dual' : 'single';
         if (mode === 'dual' && conversation) {
           await playDualAnnouncement(conversation);
           return;
@@ -461,12 +452,10 @@ export default function AnnouncerControls({ gameId }) {
     } catch (err) {
       console.error('Error announcing latest goal:', err);
       
-      // Handle fallback when announcer service isn't available
-      if (err.response?.status === 503 && err.response?.data?.fallback) {
-        setError('AI announcer not available in current deployment');
-        setMessage('Using fallback: Goal announcement service temporarily unavailable');
-      } else {
-        setError(err.response?.data?.error || 'Failed to generate announcement');
+      try {
+        handleAnnouncerError(err, 'goal announcement');
+      } catch (handledError) {
+        setError(handledError.message);
       }
       setMessage('');
     } finally {
@@ -488,23 +477,13 @@ export default function AnnouncerControls({ gameId }) {
     setMessage('Generating penalty announcement...');
     
     try {
-      const apiUrl = import.meta.env.DEV 
-        ? '/api/penalties/announce-last' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/penalties/announce-last`;
+      const data = await announce('penalty', currentGameId, selectedVoice);
       
-      // Correctly map selectedVoice to announcer mode
-      const mode = selectedVoice === 'dual' ? 'dual' : 'single';
-      
-      const response = await axios.post(apiUrl, { 
-        gameId: currentGameId,
-        voiceGender: selectedVoice, // Include selected voice
-        announcerMode: mode // Add announcer mode for backend
-      });
-      
-      if (response.data.success) {
-        const { announcement, conversation } = response.data;
+      if (data.success) {
+        const { announcement, conversation } = data;
         
         // Handle dual announcer mode
+        const mode = selectedVoice === 'dual' ? 'dual' : 'single';
         if (mode === 'dual' && conversation) {
           await playDualAnnouncement(conversation);
           return;
@@ -596,14 +575,15 @@ export default function AnnouncerControls({ gameId }) {
     } catch (err) {
       console.error('Error announcing latest penalty:', err);
       
-      // Handle fallback when announcer service isn't available
-      if (err.response?.status === 503 && err.response?.data?.fallback) {
-        setError('AI penalty announcer not available in current deployment');
-        setMessage('Using fallback: Penalty announcement service temporarily unavailable');
-      } else if (err.response?.status === 404) {
-        setError('No penalties recorded yet for this game');
-      } else {
-        setError(err.response?.data?.error || 'Failed to generate penalty announcement');
+      try {
+        handleAnnouncerError(err, 'penalty announcement');
+      } catch (handledError) {
+        // Handle special case for no penalties
+        if (err.response?.status === 404) {
+          setError('No penalties recorded yet for this game');
+        } else {
+          setError(handledError.message);
+        }
       }
       setMessage('');
     } finally {
@@ -625,23 +605,13 @@ export default function AnnouncerControls({ gameId }) {
     setMessage('Generating random commentary...');
     
     try {
-      const apiUrl = import.meta.env.DEV 
-        ? '/api/randomCommentary' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/randomCommentary`;
+      const data = await announce('random', currentGameId, selectedVoice);
       
-      // Correctly map selectedVoice to announcer mode
-      const mode = selectedVoice === 'dual' ? 'dual' : 'single';
-      
-      const response = await axios.post(apiUrl, { 
-        gameId: currentGameId,
-        voiceGender: selectedVoice, // Include selected voice
-        announcerMode: mode // Proper announcer mode
-      });
-      
-      if (response.data.success) {
-        const { text, audioPath, conversation } = response.data;
+      if (data.success) {
+        const { text, audioPath, conversation } = data;
         
         // Handle dual announcer mode
+        const mode = selectedVoice === 'dual' ? 'dual' : 'single';
         if (mode === 'dual' && conversation) {
           await playDualAnnouncement(conversation);
           return;
@@ -732,22 +702,18 @@ export default function AnnouncerControls({ gameId }) {
           console.log('AudioPath received:', audioPath);
           speakText(text);
         }
-      } else if (response.data.text) {
+      } else if (data.text) {
         // API returned just text without audio processing
         console.log('📢 Random commentary text received, using browser TTS');
-        speakText(response.data.text);
+        speakText(data.text);
       }
     } catch (err) {
       console.error('Error generating random commentary:', err);
       
-      // Handle fallback when random commentary service isn't available
-      if (err.response?.status === 503) {
-        setError('Random commentary service not available in current deployment');
-        setMessage('Random commentary feature temporarily unavailable');
-      } else if (err.response?.status === 404) {
-        setError('Random commentary endpoint not found');
-      } else {
-        setError(err.response?.data?.error || 'Failed to generate random commentary');
+      try {
+        handleAnnouncerError(err, 'random commentary');
+      } catch (handledError) {
+        setError(handledError.message);
       }
       setMessage('');
     } finally {

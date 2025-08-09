@@ -23,10 +23,10 @@ export default function AnnouncerControls({ gameId }) {
   const currentAudioRef = useRef(null); // For tracking dual announcer audio
   const isDualAnnouncerPlayingRef = useRef(false); // Flag to stop dual announcer loop
 
-  // Voice selection state - default to 'female' every time
+  // Voice selection state - default to 'female' (Linda) every time
   const [selectedVoice, setSelectedVoice] = useState('female');
 
-  // Force female announcer as default on component mount
+  // Force Linda (female announcer) as default on component mount
   useEffect(() => {
     setSelectedVoice('female');
   }, []);
@@ -78,7 +78,7 @@ export default function AnnouncerControls({ gameId }) {
   const handleVoiceSelection = (voice) => {
     setSelectedVoice(voice);
     localStorage.setItem('selectedVoice', voice);
-    console.log(`🎤 Voice selection changed to: ${voice}`);
+    console.log(`🎤 Voice selection changed to: ${voice === 'male' ? 'Al' : voice === 'female' ? 'Linda' : voice}`);
   };
 
   // Request wake lock to keep screen active
@@ -194,7 +194,7 @@ export default function AnnouncerControls({ gameId }) {
 
     console.log('✅ Valid conversation data, starting playback...');
 
-    setMessage('🎤 Playing dual announcer conversation...');
+    setMessage('🎤 Playing Al & Linda conversation...');
     await requestWakeLock();
     
     // Set flag to indicate dual announcer is playing
@@ -214,13 +214,13 @@ export default function AnnouncerControls({ gameId }) {
       for (let i = 0; i < conversation.length; i++) {
         // Check if stop was requested
         if (!isDualAnnouncerPlayingRef.current) {
-          console.log('Dual announcer stopped by user');
+          console.log('Al & Linda conversation stopped by user');
           break;
         }
         
         const line = conversation[i];
         
-        setMessage(`${line.speaker === 'male' ? '🧓' : '👩‍🦰'} ${line.speaker.charAt(0).toUpperCase() + line.speaker.slice(1)} announcer speaking...`);
+        setMessage(`${line.speaker === 'male' ? '🧓' : '👩‍🦰'} ${line.speaker === 'male' ? 'Al' : 'Linda'} speaking...`);
         
         // Generate TTS for this line using backend with Studio voices
         try {
@@ -323,10 +323,10 @@ export default function AnnouncerControls({ gameId }) {
       
       // Check if completed naturally or was stopped
       if (isDualAnnouncerPlayingRef.current) {
-        setMessage('Dual announcer conversation complete');
+        setMessage('Al & Linda conversation complete');
         setTimeout(() => setMessage(''), 2000);
       } else {
-        setMessage('Dual announcer stopped');
+        setMessage('Al & Linda conversation stopped');
         setTimeout(() => setMessage(''), 1000);
       }
       
@@ -741,7 +741,7 @@ export default function AnnouncerControls({ gameId }) {
               ? 'bg-white text-blue-800 border-blue-800 font-semibold'
               : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-blue-600'
           }`}
-          title="Male Voice"
+          title="Al (Male Voice)"
         >
           🧓
         </button>
@@ -766,7 +766,7 @@ export default function AnnouncerControls({ gameId }) {
               ? 'bg-white text-blue-800 border-blue-800 font-semibold'
               : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-blue-600'
           }`}
-          title="Female Voice"
+          title="Linda (Female Voice)"
         >
           👩‍🦰
         </button>
@@ -791,7 +791,7 @@ export default function AnnouncerControls({ gameId }) {
               ? 'bg-white text-blue-800 border-blue-800 font-semibold'
               : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white border-blue-600'
           }`}
-          title="Dual Announcer Mode"
+          title="Al & Linda (Dual Announcers)"
         >
           <span>🧓</span><span>👩‍🦰</span>
         </button>

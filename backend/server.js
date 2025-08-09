@@ -1811,16 +1811,16 @@ app.post('/api/randomCommentary', async (req, res) => {
     } else {
       // Use defaults based on corrected gender mapping
       const defaultMapping = {
-        'male': 'en-US-Studio-Q',    // Studio-Q is male
-        'female': 'en-US-Studio-O'   // Studio-O is female  
+        'male': 'en-US-Studio-Q',    // Studio-Q is Al (male)
+        'female': 'en-US-Studio-O'   // Studio-O is Linda (female)  
       };
       selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
     }
   } catch (configError) {
     console.warn('⚠️ Could not fetch voice config, using defaults:', configError.message);
     const defaultMapping = {
-      'male': 'en-US-Studio-Q',    // Studio-Q is male
-      'female': 'en-US-Studio-O'   // Studio-O is female
+      'male': 'en-US-Studio-Q',    // Studio-Q is Al (male)
+      'female': 'en-US-Studio-O'   // Studio-O is Linda (female)
     };
     selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
   }
@@ -3677,7 +3677,7 @@ app.post('/api/tts/dual-line', async (req, res) => {
       });
     }
     
-    console.log(`🎤 Generating dual announcer TTS for ${speaker}: "${text.substring(0, 50)}..."`);
+    console.log(`🎤 Generating ${speaker === 'male' ? 'Al' : 'Linda'} TTS: "${text.substring(0, 50)}..."`);
     
     // Use the UNIFIED voice configuration system - same as individual buttons
     const { getAnnouncerVoices, logTtsUse } = await import('./voiceConfig.js');
@@ -3711,7 +3711,7 @@ app.post('/api/tts/dual-line', async (req, res) => {
       const audioResult = await ttsService.generateSpeech(text, gameId || 'dual', 'announcement');
       
       if (audioResult.success) {
-        console.log(`✅ Generated dual announcer TTS for ${speaker} using ${selectedVoice}`);
+        console.log(`✅ Generated ${speaker === 'male' ? 'Al' : 'Linda'} TTS using ${selectedVoice}`);
         console.log(`📊 Audio stats: ${audioResult.size} bytes, settings: ${JSON.stringify(audioResult.settings)}`);
         res.json({
           success: true,
@@ -3769,7 +3769,7 @@ app.get('/api/admin/voice-config', async (req, res) => {
           config: {
             id: 'voiceConfig',
             maleVoice: 'en-US-Studio-Q', // Studio-Q is male 
-            femaleVoice: 'en-US-Studio-O' // Studio-O is female
+            femaleVoice: 'en-US-Studio-O' // Studio-O is Linda (female)
           }
         });
       }
@@ -3836,8 +3836,8 @@ app.get('/api/admin/available-voices', (req, res) => {
   try {
     // Provide a list of Google TTS Studio and Neural voices for the dropdowns
     const studioVoices = [
-      { id: 'en-US-Studio-Q', name: 'Studio Q (Male - Authoritative Sports Announcer)', gender: 'male', type: 'Studio' },
-      { id: 'en-US-Studio-O', name: 'Studio O (Female - Professional Broadcaster)', gender: 'female', type: 'Studio' },
+      { id: 'en-US-Studio-Q', name: 'Studio Q (Al - Authoritative Sports Announcer)', gender: 'male', type: 'Studio' },
+      { id: 'en-US-Studio-O', name: 'Studio O (Linda - Professional Broadcaster)', gender: 'female', type: 'Studio' },
       { id: 'en-US-Studio-M', name: 'Studio M (Male - Dynamic Play-by-Play)', gender: 'male', type: 'Studio' },
       { id: 'en-US-Studio-F', name: 'Studio F (Female - Energetic Commentator)', gender: 'female', type: 'Studio' }
     ];

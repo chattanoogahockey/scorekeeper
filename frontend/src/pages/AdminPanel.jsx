@@ -130,7 +130,7 @@ export default function AdminPanel() {
     try {
       const response = await axios.post('/api/admin/voice-config', voiceConfig);
       if (response.data.success) {
-        setMessage(`Voice configuration saved! Male: ${voiceConfig.maleVoice}, Female: ${voiceConfig.femaleVoice}`);
+        setMessage(`Voice configuration saved! Al: ${voiceConfig.maleVoice}, Linda: ${voiceConfig.femaleVoice}`);
       }
     } catch (error) {
       console.error('Error saving voice config:', error);
@@ -227,13 +227,13 @@ export default function AdminPanel() {
         {/* Voice Configuration Section */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-2xl font-bold mb-4">Announcer Voice Configuration</h2>
-          <p className="text-gray-600 mb-4">Configure which Studio or Neural voices to use for male and female announcements. Studio voices are premium quality, Neural voices are more natural. Players can switch between these during games.</p>
+          <p className="text-gray-600 mb-4">Configure which Studio or Neural voices to use for Al (male) and Linda (female) announcements. Studio voices are premium quality, Neural voices are more natural. Players can switch between these during games.</p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Male Voice Dropdown */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <span className="text-xl mr-2">👨</span>Male Voice
+                <span className="text-xl mr-2">👨</span>Al (Male Voice)
               </label>
               <select 
                 value={voiceConfig.maleVoice} 
@@ -251,7 +251,7 @@ export default function AdminPanel() {
             {/* Female Voice Dropdown */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                <span className="text-xl mr-2">👩</span>Female Voice
+                <span className="text-xl mr-2">👩</span>Linda (Female Voice)
               </label>
               <select 
                 value={voiceConfig.femaleVoice} 
@@ -281,11 +281,11 @@ export default function AdminPanel() {
           <div className="mt-4 p-4 bg-gray-50 rounded border">
             <p className="text-sm text-gray-600">
               <strong>Current Configuration:</strong><br/>
-              👨 Male: {voiceConfig.maleVoice}<br/>
-              👩 Female: {voiceConfig.femaleVoice}
+              👨 Al: {voiceConfig.maleVoice}<br/>
+              👩 Linda: {voiceConfig.femaleVoice}
             </p>
             <p className="text-xs text-gray-500 mt-2">
-              💡 Players can switch between male and female voices using the buttons in the game interface.
+              💡 Players can switch between Al and Linda using the buttons in the game interface.
             </p>
           </div>
         </div>

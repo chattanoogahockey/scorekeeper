@@ -492,7 +492,7 @@ ${examples}`;
 
 /**
  * Generate dual announcer conversation for goal announcements
- * Features snarky male announcer from NY and optimistic female announcer
+ * Features Al (snarky male announcer from NY) and Linda (optimistic female announcer)
  */
 export async function generateDualGoalAnnouncement(goalData, playerStats = null) {
   try {
@@ -543,17 +543,17 @@ ${dualGoalTimingContext}
 
 ANNOUNCER PERSONALITIES:
 
-MALE ANNOUNCER (Al Michaels style):
+AL (Male Announcer - Al Michaels style):
 - Calls the play-by-play with authority and excitement
 - Natural conversationalist who sets up his partner for analysis
 
-FEMALE ANNOUNCER (Linda Cohn style):
+LINDA (Female Announcer - Linda Cohn style):
 - Provides color commentary and analysis
-- Builds on male's observations with her own insights
+- Builds on Al's observations with her own insights
 
 CONVERSATION DYNAMICS:
-- Start with male announcer's goal call (scripted)
-- Female responds with immediate reaction
+- Start with Al's goal call (scripted)
+- Linda responds with immediate reaction
 - Brief back-and-forth with natural flow
 - Sound like broadcast partners who've worked together for years
 - Keep it concise but engaging
@@ -652,21 +652,21 @@ ${dualPenaltyTimingContext}
 
 ANNOUNCER PERSONALITIES:
 
-MALE ANNOUNCER (Al Michaels style):
+AL (Male Announcer - Al Michaels style):
 - Calls the penalty with authority and context
 - Sets up discussion about impact on game flow
 - Can question or support referee decisions
 - Focuses on timing and strategic implications
 
-FEMALE ANNOUNCER (Linda Cohn style):
+LINDA (Female Announcer - Linda Cohn style):
 - Provides analysis of the penalty call
 - Discusses player discipline and team impact
-- Can agree/disagree with male's assessment
+- Can agree/disagree with Al's assessment
 - Brings up power play opportunities or defensive strategies
 
 CONVERSATION DYNAMICS:
-- Start with male announcer's penalty call (factual)
-- Female responds with immediate assessment
+- Start with Al's penalty call (factual)
+- Linda responds with immediate assessment
 - Brief back-and-forth about impact and implications
 - Sound like experienced broadcast partners
 - Keep it concise but natural
@@ -736,7 +736,7 @@ export async function generateDualRandomCommentary(gameId, gameContext = {}) {
 
 CONTEXT: ${JSON.stringify(gameContext, null, 2)}
 
-Generate a single opening line from the MALE announcer that could lead to interesting discussion. Topics could include:
+Generate a single opening line from AL (the male announcer) that could lead to interesting discussion. Topics could include:
 - Player performance or recent hot streaks
 - Team strategy or coaching decisions
 - League standings or playoff implications
@@ -744,7 +744,7 @@ Generate a single opening line from the MALE announcer that could lead to intere
 - Interesting hockey facts or observations
 - Game flow and momentum shifts
 
-MALE ANNOUNCER (Al Michaels style):
+AL (Male Announcer - Al Michaels style):
 - Natural conversationalist with hockey knowledge
 - Can ask questions that set up his partner
 - Makes observations about game patterns
@@ -760,7 +760,7 @@ Return just the opening line text, no JSON or formatting.`;
         messages: [
           {
             role: "system",
-            content: "You are a veteran male hockey announcer with the style and personality of Al Michaels, adapted for roller hockey. Generate natural conversation starters that experienced broadcast partners would use during hockey games."
+            content: "You are Al, a veteran male hockey announcer with the style and personality of Al Michaels, adapted for roller hockey. Generate natural conversation starters that experienced broadcast partners would use during hockey games."
           },
           {
             role: "user",
@@ -785,14 +785,14 @@ OPENER: "${conversationStarter}"
 
 ANNOUNCER PERSONALITIES:
 
-MALE ANNOUNCER (Al Michaels style):
+AL (Male Announcer - Al Michaels style):
 - Experienced play-by-play with natural conversational ability
 - Can challenge or support his partner's views
 - Makes strategic observations about hockey
 
-FEMALE ANNOUNCER (Linda Cohn style):
+LINDA (Female Announcer - Linda Cohn style):
 - Expert color commentator with deep hockey knowledge
-- Can agree/disagree with male announcer's points
+- Can agree/disagree with Al's points
 - Brings up player backgrounds and team dynamics
 
 CONVERSATION DYNAMICS:

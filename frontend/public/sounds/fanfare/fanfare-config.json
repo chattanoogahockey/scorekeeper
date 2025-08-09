@@ -1,0 +1,24 @@
+{
+  "fanfareFiles": [
+    {
+      "filename": "fanfare_organ.mp3",
+      "displayName": "Organ Fanfare",
+      "description": "Classic organ charge fanfare"
+    },
+    {
+      "filename": "fanfare_bugle.mp3", 
+      "displayName": "Bugle Call",
+      "description": "Military-style bugle fanfare"
+    },
+    {
+      "filename": "fanfare_trumpet.mp3",
+      "displayName": "Trumpet Fanfare", 
+      "description": "Brass trumpet announcement"
+    },
+    {
+      "filename": "fanfare_piano.mp3",
+      "displayName": "Piano Flourish",
+      "description": "Grand piano fanfare"
+    }
+  ]
+}

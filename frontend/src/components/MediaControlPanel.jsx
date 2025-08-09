@@ -1,4 +1,4 @@
-import React, { useState, useRef, useContext } from 'react';
+import React, { useState, useRef, useContext, useEffect } from 'react';
 import { GameContext } from '../contexts/GameContext.jsx';
 
 /**
@@ -16,6 +16,9 @@ export default function MediaControlPanel({ gameId }) {
   const [volume, setVolume] = useState(1.0);
   const [isFading, setIsFading] = useState(false);
   const [audioElement, setAudioElement] = useState(null);
+  
+  // Fanfare files loaded dynamically
+  const [fanfareSounds, setFanfareSounds] = useState([]);
   
   // DJ Audio progress state
   const [djAudioProgress, setDjAudioProgress] = useState({ 
@@ -42,12 +45,29 @@ export default function MediaControlPanel({ gameId }) {
     'organ_7.mp3'
   ];
 
-  const fanfareSounds = [
-    'organ_charge.mp3',
-    'bugle_call.mp3',
-    'trumpet_fanfare.mp3',
-    'piano_flourish.mp3'
-  ];
+  // Load fanfare configuration on component mount
+  useEffect(() => {
+    const loadFanfareConfig = async () => {
+      try {
+        const response = await fetch('/sounds/fanfare/fanfare-config.json');
+        const config = await response.json();
+        const fanfareFilenames = config.fanfareFiles.map(file => `fanfare/${file.filename}`);
+        setFanfareSounds(fanfareFilenames);
+        console.log('🎺 Loaded fanfare configuration:', fanfareFilenames);
+      } catch (error) {
+        console.warn('⚠️ Failed to load fanfare config, using fallback:', error);
+        // Fallback to default fanfare files
+        setFanfareSounds([
+          'fanfare/fanfare_organ.mp3',
+          'fanfare/fanfare_bugle.mp3', 
+          'fanfare/fanfare_trumpet.mp3',
+          'fanfare/fanfare_piano.mp3'
+        ]);
+      }
+    };
+
+    loadFanfareConfig();
+  }, []);
 
   // DJ Functions
   const fadeOut = () => {
@@ -180,7 +200,7 @@ export default function MediaControlPanel({ gameId }) {
   };
 
   const playFanfareSound = () => {
-    if (isPlaying) return;
+    if (isPlaying || fanfareSounds.length === 0) return;
 
     const currentFanfareFile = fanfareSounds[currentFanfareIndex];
     
@@ -330,14 +350,15 @@ export default function MediaControlPanel({ gameId }) {
             </button>
             <button
               onClick={playFanfareSound}
-              disabled={isPlaying}
+              disabled={isPlaying || fanfareSounds.length === 0}
               className={`px-2 py-3 text-white rounded-lg transition-all duration-200 text-xs font-medium ${
-                isPlaying 
+                isPlaying || fanfareSounds.length === 0
                   ? 'bg-gray-400 cursor-not-allowed' 
                   : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-sm'
               }`}
+              title={fanfareSounds.length === 0 ? 'Loading fanfare files...' : `Play fanfare (${fanfareSounds.length} files available)`}
             >
-              Fanfare
+              {fanfareSounds.length === 0 ? 'Loading...' : 'Fanfare'}
             </button>
           </div>
           

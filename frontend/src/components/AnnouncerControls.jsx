@@ -378,17 +378,20 @@ export default function AnnouncerControls({ gameId }) {
         ? '/api/goals/announce-last' 
         : `${import.meta.env.VITE_API_BASE_URL}/api/goals/announce-last`;
       
+      // Correctly map selectedVoice to announcer mode
+      const mode = selectedVoice === 'dual' ? 'dual' : 'single';
+      
       const response = await axios.post(apiUrl, { 
         gameId: currentGameId,
         voiceGender: selectedVoice, // Include selected voice
-        announcerMode: selectedVoice // Add announcer mode for backend
+        announcerMode: mode // Add announcer mode for backend
       });
       
       if (response.data.success) {
         const { announcement, scoreless, conversation } = response.data;
         
         // Handle dual announcer mode
-        if (selectedVoice === 'dual' && conversation) {
+        if (mode === 'dual' && conversation) {
           await playDualAnnouncement(conversation);
           return;
         }
@@ -514,17 +517,20 @@ export default function AnnouncerControls({ gameId }) {
         ? '/api/penalties/announce-last' 
         : `${import.meta.env.VITE_API_BASE_URL}/api/penalties/announce-last`;
       
+      // Correctly map selectedVoice to announcer mode
+      const mode = selectedVoice === 'dual' ? 'dual' : 'single';
+      
       const response = await axios.post(apiUrl, { 
         gameId: currentGameId,
         voiceGender: selectedVoice, // Include selected voice
-        announcerMode: selectedVoice // Add announcer mode for backend
+        announcerMode: mode // Add announcer mode for backend
       });
       
       if (response.data.success) {
         const { announcement, conversation } = response.data;
         
         // Handle dual announcer mode
-        if (selectedVoice === 'dual' && conversation) {
+        if (mode === 'dual' && conversation) {
           await playDualAnnouncement(conversation);
           return;
         }
@@ -648,17 +654,20 @@ export default function AnnouncerControls({ gameId }) {
         ? '/api/randomCommentary' 
         : `${import.meta.env.VITE_API_BASE_URL}/api/randomCommentary`;
       
+      // Correctly map selectedVoice to announcer mode
+      const mode = selectedVoice === 'dual' ? 'dual' : 'single';
+      
       const response = await axios.post(apiUrl, { 
         gameId: currentGameId,
         voiceGender: selectedVoice, // Include selected voice
-        announcerMode: selectedVoice === 'dual' ? 'dual' : 'single' // Proper announcer mode
+        announcerMode: mode // Proper announcer mode
       });
       
       if (response.data.success) {
         const { text, audioPath, conversation } = response.data;
         
         // Handle dual announcer mode
-        if (selectedVoice === 'dual' && conversation) {
+        if (mode === 'dual' && conversation) {
           await playDualAnnouncement(conversation);
           return;
         }

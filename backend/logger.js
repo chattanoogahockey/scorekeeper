@@ -1,4 +1,15 @@
-import { config } from './config/index.js';
+// Import config with fallback
+let config;
+try {
+  const configModule = await import('./config/index.js');
+  config = configModule.config || configModule.default;
+} catch (error) {
+  // Fallback for missing config
+  config = {
+    isProduction: process.env.NODE_ENV === 'production',
+    env: process.env.NODE_ENV || 'development'
+  };
+}
 
 /**
  * Structured logger for Hockey Scorekeeper API

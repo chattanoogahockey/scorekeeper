@@ -298,7 +298,7 @@ export default function DJPanel() {
           Air Horn
         </button>
         <button
-          onClick={() => playSound('buzzer')}
+          onClick={() => playSound('hockey-horn', 'mp3')}
           disabled={isPlaying}
           className={`min-w-20 h-8 px-2 py-1 text-white rounded transition-all duration-200 text-xs ${
             isPlaying 
@@ -306,7 +306,7 @@ export default function DJPanel() {
               : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
           }`}
         >
-          Buzzer
+          Goal Horn
         </button>
         <button
           onClick={playOrganSound}

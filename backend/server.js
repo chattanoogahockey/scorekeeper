@@ -3330,104 +3330,96 @@ app.delete('/api/shots-on-goal/:id', async (req, res) => {
   }
 });
 
-// Undo Last Action API endpoint
+// Undo Last Action API endpoint (robust, PK-safe)
 app.post('/api/undo-last-action', async (req, res) => {
   console.log('↩️ Undoing last action...');
   const { gameId } = req.body;
-  
+
   try {
     const goalsContainer = getGoalsContainer();
     const penaltiesContainer = getPenaltiesContainer();
     const shotsContainer = getShotsOnGoalContainer();
-    
-    // Find the most recent goal, penalty, or shot for this game
+
+    // Prefer recordedAt; fall back to legacy timeRecorded
     const goalsQuery = {
-      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.timeRecorded DESC',
+      query: 'SELECT TOP 1 * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt DESC',
       parameters: [{ name: '@gameId', value: gameId }]
     };
-    
     const penaltiesQuery = {
-      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.timeRecorded DESC',
+      query: 'SELECT TOP 1 * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt DESC',
       parameters: [{ name: '@gameId', value: gameId }]
     };
-    
     const shotsQuery = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
-    
+
     const [goalsResult, penaltiesResult, shotsResult] = await Promise.all([
       goalsContainer.items.query(goalsQuery).fetchAll(),
       penaltiesContainer.items.query(penaltiesQuery).fetchAll(),
       shotsContainer.items.query(shotsQuery).fetchAll()
     ]);
-    
-    // For shots on goal, we need to handle them differently since they're accumulated
-    // We'll check if there are any shots and if so, we'll need special handling
-    const shotRecord = lastShot;
-    let canUndoShot = false;
-    if (shotRecord && (shotRecord.home > 0 || shotRecord.away > 0)) {
-      // We have shots that can be undone, but we need to determine which team had the most recent shot
-      // For now, we'll assume the team with more shots had the most recent one
-      // TODO: In future, consider tracking last shot team/timestamp
-      canUndoShot = true;
-    }
-    
-    // Determine which action was most recent
+
+    const lastGoal = goalsResult.resources?.[0] || null;
+    const lastPenalty = penaltiesResult.resources?.[0] || null;
+    const shotRecord = shotsResult.resources?.[0] || null;
+
     const candidates = [];
-    if (lastGoal) candidates.push({ item: lastGoal, container: goalsContainer, type: 'goal', timestamp: new Date(lastGoal.timeRecorded || lastGoal.recordedAt) });
-    if (lastPenalty) candidates.push({ item: lastPenalty, container: penaltiesContainer, type: 'penalty', timestamp: new Date(lastPenalty.timeRecorded || lastPenalty.recordedAt) });
-    
-    // Only add shots if we have a record with actual shots and no other actions are more recent
-    if (canUndoShot && shotRecord.lastUpdated) {
-      candidates.push({ item: shotRecord, container: shotsContainer, type: 'shot on goal', timestamp: new Date(shotRecord.lastUpdated) });
+    if (lastGoal) {
+      const ts = new Date(lastGoal.recordedAt || lastGoal.timeRecorded || lastGoal._ts * 1000);
+      candidates.push({ type: 'goal', ts, item: lastGoal, container: goalsContainer, pk: lastGoal.gameId });
     }
-    
+    if (lastPenalty) {
+      const ts = new Date(lastPenalty.recordedAt || lastPenalty.timeRecorded || lastPenalty._ts * 1000);
+      candidates.push({ type: 'penalty', ts, item: lastPenalty, container: penaltiesContainer, pk: lastPenalty.gameId });
+    }
+    if (shotRecord && ((shotRecord.home || 0) > 0 || (shotRecord.away || 0) > 0)) {
+      const ts = new Date(shotRecord.lastUpdated || shotRecord._ts * 1000 || Date.now());
+      candidates.push({ type: 'shot', ts, item: shotRecord, container: shotsContainer, pk: shotRecord.gameId });
+    }
+
     if (candidates.length === 0) {
       return res.status(404).json({ error: 'No actions found to undo for this game' });
     }
-    
-    // Find the most recent action by timestamp
-    const mostRecent = candidates.reduce((latest, current) => {
-      return current.timestamp > latest.timestamp ? current : latest;
-    });
-    
-    itemToDelete = mostRecent.item;
-    containerToUse = mostRecent.container;
-    actionType = mostRecent.type;
-    
-    // Handle different types of undo operations
-    if (actionType === 'shot on goal') {
-      // For shots, we decrement the count instead of deleting
-      if (shotRecord.home > shotRecord.away) {
-        shotRecord.home = Math.max(0, shotRecord.home - 1);
-      } else if (shotRecord.away > 0) {
-        shotRecord.away = Math.max(0, shotRecord.away - 1);
-      } else if (shotRecord.home > 0) {
-        shotRecord.home = Math.max(0, shotRecord.home - 1);
-      }
-      
-      shotRecord.lastUpdated = new Date().toISOString();
-      
-      if (shotRecord.home === 0 && shotRecord.away === 0) {
-        // If no shots left, delete the record
-        await containerToUse.item(itemToDelete.id).delete();
+
+    candidates.sort((a, b) => b.ts - a.ts);
+    const mostRecent = candidates[0];
+
+    if (mostRecent.type === 'shot') {
+      const rec = { ...mostRecent.item };
+      if ((rec.home || 0) >= (rec.away || 0)) {
+        rec.home = Math.max(0, (rec.home || 0) - 1);
       } else {
-        // Update the record with decremented count
-        await containerToUse.item(itemToDelete.id).replace(shotRecord);
+        rec.away = Math.max(0, (rec.away || 0) - 1);
       }
-    } else {
-      // For goals and penalties, delete the record as before
-      await containerToUse.item(itemToDelete.id).delete();
+      rec.lastUpdated = new Date().toISOString();
+
+      if ((rec.home || 0) === 0 && (rec.away || 0) === 0) {
+        await mostRecent.container.item(rec.id, mostRecent.pk).delete();
+      } else {
+        await mostRecent.container.item(rec.id, mostRecent.pk).replace(rec);
+      }
+
+      console.log(`✅ Undid last shot for game ${gameId}`);
+      return res.status(200).json({
+        message: 'Successfully undid last shot on goal',
+        gameId,
+        home: rec.home || 0,
+        away: rec.away || 0,
+        lastUpdated: rec.lastUpdated
+      });
     }
-    
-    console.log(`✅ Undid last ${actionType} action for game ${gameId}`);
-    res.status(200).json({ 
-      message: `Successfully undid last ${actionType}`,
+
+    // Goal or penalty: delete record with correct PK
+    await mostRecent.container.item(mostRecent.item.id, mostRecent.pk).delete();
+    console.log(`✅ Undid last ${mostRecent.type} for game ${gameId}`);
+
+    return res.status(200).json({
+      message: `Successfully undid last ${mostRecent.type}`,
       deletedAction: {
-        type: actionType,
-        id: itemToDelete.id,
-        timeRecorded: itemToDelete.timeRecorded || itemToDelete.recordedAt
+        type: mostRecent.type,
+        id: mostRecent.item.id,
+        timeRecorded: mostRecent.item.recordedAt || mostRecent.item.timeRecorded
       }
     });
   } catch (error) {
@@ -3467,13 +3459,13 @@ app.post('/api/undo-shot-on-goal', async (req, res) => {
     shotRecord[team] = currentCount - 1;
     shotRecord.lastUpdated = new Date().toISOString();
     
-    if (shotRecord.home === 0 && shotRecord.away === 0) {
+    if ((shotRecord.home || 0) === 0 && (shotRecord.away || 0) === 0) {
       // If no shots left, delete the record
-      await container.item(shotRecord.id).delete();
+      await container.item(shotRecord.id, shotRecord.gameId).delete();
       console.log(`✅ Deleted empty shot record for game ${gameId}`);
     } else {
       // Update the record with decremented count
-      await container.item(shotRecord.id).replace(shotRecord);
+      await container.item(shotRecord.id, shotRecord.gameId).replace(shotRecord);
       console.log(`✅ Undid shot for ${team} in game ${gameId}: ${shotRecord[team]}`);
     }
     
@@ -3564,6 +3556,27 @@ app.post('/api/rink-reports/generate', async (req, res) => {
 
 // Serve audio files generated by announcer
 app.use('/api/audio', express.static(path.join(__dirname, 'audio-cache')));
+
+// Explicit sounds mapping in production to ensure reliable asset delivery
+if (config.isProduction) {
+  const frontendDistForSounds = path.resolve(__dirname, 'frontend');
+  const soundsDir = path.join(frontendDistForSounds, 'sounds');
+
+  if (!fs.existsSync(soundsDir)) {
+    console.warn('⚠️  Sounds directory not found in production dist:', soundsDir);
+  }
+
+  app.use('/sounds', (req, _res, next) => {
+    // Minimal tracing for sound fetches
+    console.log(`🔊 SOUND request: /sounds${req.path}`);
+    next();
+  });
+
+  app.use('/sounds', express.static(soundsDir, {
+    maxAge: '30d',
+    etag: true
+  }));
+}
 
 // Voice management endpoints for admin panel
 app.get('/api/admin/voices', (req, res) => {

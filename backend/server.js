@@ -3578,6 +3578,35 @@ if (config.isProduction) {
   }));
 }
 
+// Dynamic listing of organ sounds for the frontend DJ panels
+app.get('/api/sounds/organs', (req, res) => {
+  try {
+    // In production, the built assets live under backend/frontend/sounds
+    const prodDir = path.join(__dirname, 'frontend', 'sounds', 'organs');
+    // In development, they live under frontend/public/sounds
+    const devDir = path.join(__dirname, '..', 'frontend', 'public', 'sounds', 'organs');
+    const baseDir = config.isProduction ? prodDir : devDir;
+
+    if (!fs.existsSync(baseDir)) {
+      return res.json({ files: [], urls: [] });
+    }
+
+    const files = fs
+      .readdirSync(baseDir)
+      .filter(f => /\.(mp3|wav|ogg)$/i.test(f))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    // Return both filenames and absolute URLs (from site root)
+    return res.json({
+      files,
+      urls: files.map(f => `/sounds/organs/${f}`)
+    });
+  } catch (error) {
+    console.error('❌ Error listing organ sounds:', error);
+    return res.status(500).json({ error: 'Failed to list organ sounds' });
+  }
+});
+
 // Voice management endpoints for admin panel
 app.get('/api/admin/voices', (req, res) => {
   try {

@@ -31,19 +31,36 @@ export default function MediaControlPanel({ gameId }) {
   // Use gameId prop if provided, otherwise use context
   const currentGameId = gameId || selectedGameId;
 
-  // DJ Sound files
-  const organSounds = [
-    'organ_charge.mp3',
-    'organ_lets_go_uppity.mp3', 
-    'organ_mexican_hat_dance.mp3',
-    'organ_bull_fight_rally.mp3',
-    'organ_build_up.mp3',
-    'organ_happy_know_it.mp3',
-    'organ_toro.mp3',
-    'circus_organ_grinder.mp3',
-    'organ_10.mp3',
-    'organ_7.mp3'
-  ];
+  // Dynamic organ sound URLs
+  const [organUrls, setOrganUrls] = useState([]);
+
+  const shuffle = (arr) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  // Load organ list on mount and shuffle for random cycling each app open
+  useEffect(() => {
+    let cancelled = false;
+    const loadOrgans = async () => {
+      try {
+        const resp = await fetch('/api/sounds/organs');
+        const data = await resp.json();
+        if (!cancelled && Array.isArray(data.urls)) {
+          setOrganUrls(shuffle(data.urls));
+          setCurrentOrganIndex(0);
+        }
+      } catch (e) {
+        console.warn('⚠️ Failed to load organ list:', e);
+      }
+    };
+    loadOrgans();
+    return () => { cancelled = true; };
+  }, []);
 
   // Load fanfare configuration on component mount
   useEffect(() => {
@@ -150,15 +167,18 @@ export default function MediaControlPanel({ gameId }) {
 
   const playOrganSound = () => {
     if (isPlaying) return;
-
-    const currentOrganFile = organSounds[currentOrganIndex];
+    if (!organUrls || organUrls.length === 0) {
+      console.warn('No organ sounds available');
+      return;
+    }
+    const currentOrganUrl = organUrls[currentOrganIndex];
     
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current.currentTime = 0;
     }
 
-    const audio = new Audio(`/sounds/${currentOrganFile}`);
+  const audio = new Audio(currentOrganUrl);
     currentAudioRef.current = audio;
     setAudioElement(audio);
     
@@ -196,7 +216,7 @@ export default function MediaControlPanel({ gameId }) {
       resetPlaying();
     });
 
-    setCurrentOrganIndex((prevIndex) => (prevIndex + 1) % organSounds.length);
+  setCurrentOrganIndex((prevIndex) => (prevIndex + 1) % organUrls.length);
   };
 
   const playFanfareSound = () => {

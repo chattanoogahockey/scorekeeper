@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 
 /**
  * DJPanel provides simple sound effect controls. When the user presses a
@@ -50,19 +50,37 @@ export default function DJPanel() {
     }, stepTime);
   };
   
-  // Array of organ sound files
-  const organSounds = [
-    'organ_toro.mp3',
-    'organ_mexican_hat_dance.mp3', 
-    'organ_lets_go_uppity.mp3',
-    'organ_happy_know_it.mp3',
-    'organ_charge.mp3',
-    'organ_bull_fight_rally.mp3',
-    'organ_build_up.mp3',
-    'circus_organ_grinder.mp3',
-    'organ_10.mp3',
-    'organ_7.mp3'
-  ];
+  // Dynamically loaded organ sounds (full URLs from /sounds/...)
+  const [organUrls, setOrganUrls] = useState([]);
+
+  // Shuffle helper
+  const shuffle = (arr) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
+
+  // Load organ list on mount and shuffle so each app open has a new order
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const resp = await fetch('/api/sounds/organs');
+        const data = await resp.json();
+        if (!cancelled && Array.isArray(data.urls)) {
+          setOrganUrls(shuffle(data.urls));
+          setCurrentOrganIndex(0);
+        }
+      } catch (e) {
+        console.warn('Failed to load organ sounds list', e);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
 
   // Array of fanfare sound files
   const fanfareSounds = [
@@ -139,8 +157,12 @@ export default function DJPanel() {
       return;
     }
 
-    // Get the current organ sound file
-    const currentOrganFile = organSounds[currentOrganIndex];
+    if (!organUrls || organUrls.length === 0) {
+      console.warn('No organ sounds available');
+      return;
+    }
+    // Get the current organ sound URL (already includes /sounds/organs/...)
+    const currentOrganUrl = organUrls[currentOrganIndex];
     
     // Stop any currently playing audio
     if (currentAudioRef.current) {
@@ -148,7 +170,7 @@ export default function DJPanel() {
       currentAudioRef.current.currentTime = 0;
     }
 
-    const audio = new Audio(`/sounds/${currentOrganFile}`);
+  const audio = new Audio(currentOrganUrl);
     currentAudioRef.current = audio;
     setAudioElement(audio); // Store audio element in state to prevent garbage collection
     
@@ -191,8 +213,8 @@ export default function DJPanel() {
       resetPlaying();
     });
 
-    // Move to next organ sound, loop back to 0 after the last one
-    setCurrentOrganIndex((prevIndex) => (prevIndex + 1) % organSounds.length);
+  // Move to next organ sound, loop back to 0 after the last one
+  setCurrentOrganIndex((prevIndex) => (prevIndex + 1) % organUrls.length);
   };
 
   const playFanfareSound = () => {

@@ -82,13 +82,27 @@ export default function DJPanel() {
     return () => { cancelled = true; };
   }, []);
 
-  // Array of fanfare sound files
-  const fanfareSounds = [
-    'fanfare_organ.mp3',
-    'fanfare_bugle.mp3',
-    'fanfare_trumpet.mp3',
-    'fanfare_piano.mp3'
-  ];
+  // Dynamically loaded fanfare sounds
+  const [fanfareUrls, setFanfareUrls] = useState([]);
+
+  // Load fanfare list on mount and shuffle so each app open has a new order
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const resp = await fetch('/api/sounds/fanfare');
+        const data = await resp.json();
+        if (!cancelled && Array.isArray(data.urls)) {
+          setFanfareUrls(shuffle(data.urls));
+          setCurrentFanfareIndex(0);
+        }
+      } catch (e) {
+        console.warn('Failed to load fanfare sounds list', e);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, []);
 
   // Prevent audio from stopping during re-renders
   const [audioElement, setAudioElement] = useState(null);
@@ -224,8 +238,12 @@ export default function DJPanel() {
       return;
     }
 
-    // Get the current fanfare sound file
-    const currentFanfareFile = fanfareSounds[currentFanfareIndex];
+    if (!fanfareUrls || fanfareUrls.length === 0) {
+      console.warn('No fanfare sounds available');
+      return;
+    }
+    // Get the current fanfare sound URL
+    const currentFanfareUrl = fanfareUrls[currentFanfareIndex];
     
     // Stop any currently playing audio
     if (currentAudioRef.current) {
@@ -233,7 +251,7 @@ export default function DJPanel() {
       currentAudioRef.current.currentTime = 0;
     }
 
-    const audio = new Audio(`/sounds/${currentFanfareFile}`);
+  const audio = new Audio(currentFanfareUrl);
     currentAudioRef.current = audio;
     setAudioElement(audio); // Store audio element in state to prevent garbage collection
     
@@ -276,8 +294,8 @@ export default function DJPanel() {
       resetPlaying();
     });
 
-    // Move to next fanfare sound, loop back to 0 after the last one
-    setCurrentFanfareIndex((prevIndex) => (prevIndex + 1) % fanfareSounds.length);
+  // Move to next fanfare sound, loop back to 0 after the last one
+  setCurrentFanfareIndex((prevIndex) => (prevIndex + 1) % fanfareUrls.length);
   };
 
   return (

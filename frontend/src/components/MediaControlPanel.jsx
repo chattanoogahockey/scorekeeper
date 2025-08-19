@@ -17,7 +17,7 @@ export default function MediaControlPanel({ gameId }) {
   const [isFading, setIsFading] = useState(false);
   const [audioElement, setAudioElement] = useState(null);
   
-  // Fanfare files loaded dynamically
+  // Fanfare sound URLs loaded dynamically
   const [fanfareSounds, setFanfareSounds] = useState([]);
   
   // DJ Audio progress state
@@ -62,28 +62,32 @@ export default function MediaControlPanel({ gameId }) {
     return () => { cancelled = true; };
   }, []);
 
-  // Load fanfare configuration on component mount
+  // Load dynamic fanfare list on mount and shuffle for random cycling
   useEffect(() => {
-    const loadFanfareConfig = async () => {
+    let cancelled = false;
+    const shuffle = (arr) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+    const loadFanfare = async () => {
       try {
-        const response = await fetch('/sounds/fanfare/fanfare-config.json');
-        const config = await response.json();
-        const fanfareFilenames = config.fanfareFiles.map(file => `fanfare/${file.filename}`);
-        setFanfareSounds(fanfareFilenames);
-        console.log('🎺 Loaded fanfare configuration:', fanfareFilenames);
-      } catch (error) {
-        console.warn('⚠️ Failed to load fanfare config, using fallback:', error);
-        // Fallback to default fanfare files
-        setFanfareSounds([
-          'fanfare/fanfare_organ.mp3',
-          'fanfare/fanfare_bugle.mp3', 
-          'fanfare/fanfare_trumpet.mp3',
-          'fanfare/fanfare_piano.mp3'
-        ]);
+        const resp = await fetch('/api/sounds/fanfare');
+        const data = await resp.json();
+        if (!cancelled && Array.isArray(data.urls)) {
+          setFanfareSounds(shuffle(data.urls));
+          setCurrentFanfareIndex(0);
+        }
+      } catch (e) {
+        console.warn('⚠️ Failed to load fanfare list:', e);
+        setFanfareSounds([]);
       }
     };
-
-    loadFanfareConfig();
+    loadFanfare();
+    return () => { cancelled = true; };
   }, []);
 
   // DJ Functions
@@ -222,14 +226,14 @@ export default function MediaControlPanel({ gameId }) {
   const playFanfareSound = () => {
     if (isPlaying || fanfareSounds.length === 0) return;
 
-    const currentFanfareFile = fanfareSounds[currentFanfareIndex];
+  const currentFanfareUrl = fanfareSounds[currentFanfareIndex];
     
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
       currentAudioRef.current.currentTime = 0;
     }
 
-    const audio = new Audio(`/sounds/${currentFanfareFile}`);
+  const audio = new Audio(currentFanfareUrl);
     currentAudioRef.current = audio;
     setAudioElement(audio);
     

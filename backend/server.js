@@ -3607,6 +3607,32 @@ app.get('/api/sounds/organs', (req, res) => {
   }
 });
 
+// Dynamic listing of fanfare sounds for the frontend DJ panels
+app.get('/api/sounds/fanfare', (req, res) => {
+  try {
+    const prodDir = path.join(__dirname, 'frontend', 'sounds', 'fanfare');
+    const devDir = path.join(__dirname, '..', 'frontend', 'public', 'sounds', 'fanfare');
+    const baseDir = config.isProduction ? prodDir : devDir;
+
+    if (!fs.existsSync(baseDir)) {
+      return res.json({ files: [], urls: [] });
+    }
+
+    const files = fs
+      .readdirSync(baseDir)
+      .filter(f => /\.(mp3|wav|ogg)$/i.test(f))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+
+    return res.json({
+      files,
+      urls: files.map(f => `/sounds/fanfare/${f}`)
+    });
+  } catch (error) {
+    console.error('❌ Error listing fanfare sounds:', error);
+    return res.status(500).json({ error: 'Failed to list fanfare sounds' });
+  }
+});
+
 // Voice management endpoints for admin panel
 app.get('/api/admin/voices', (req, res) => {
   try {

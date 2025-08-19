@@ -76,6 +76,219 @@ const app = express();
 app.use(express.json({ limit: '10mb' }));
 app.use(cors());
 
+// Simple in-memory announcer cache and helpers
+// Structure:
+// announcerCache.goals: Map<gameId, { lastGoalId, single: { male?: {text,audioPath,voice}, female?: {text,audioPath,voice} }, dual?: { conversation, updatedAt } }>
+// announcerCache.penalties: Map<gameId, { lastPenaltyId, single: { male?: {...}, female?: {...} }, dual?: { conversation, updatedAt } }>
+// announcerCache.randomDual: Map<key, { conversation, updatedAt }>
+const announcerCache = {
+  goals: new Map(),
+  penalties: new Map(),
+  randomDual: new Map()
+};
+
+function trimConversationLines(conversation, maxLines = 4) {
+  if (!Array.isArray(conversation)) return conversation;
+  if (conversation.length <= maxLines) return conversation;
+  return conversation.slice(0, maxLines);
+}
+
+async function warmupAnnouncer() {
+  try {
+    // Light-touch warmup: validate TTS client availability and perform a tiny synthesis with both voices
+    const { getAnnouncerVoices } = await import('./voiceConfig.js');
+    const voices = await getAnnouncerVoices();
+    const originalVoice = ttsService.selectedVoice;
+    for (const v of [voices.maleVoice, voices.femaleVoice]) {
+      try {
+        ttsService.selectedVoice = v;
+        await ttsService.generateSpeech('Warmup check', 'warmup', 'announcement');
+      } catch (_) { /* ignore warmup errors */ }
+    }
+    ttsService.selectedVoice = originalVoice;
+  } catch (_) {
+    // Ignore warmup failures; service can operate lazily
+  }
+  try {
+    // Light OpenAI warmup via a tiny dual conversation (ignored if missing API key)
+    if (generateDualRandomCommentary) {
+      await generateDualRandomCommentary('warmup', { division: 'Warmup' });
+    }
+  } catch (_) { /* ignore */ }
+}
+
+// Schedule warmup shortly after startup
+setTimeout(() => {
+  warmupAnnouncer();
+}, 2000);
+
+// ----- Pre-generation helpers -----
+async function preGenerateGoalAssets(gameId) {
+  try {
+    const goalsContainer = getGoalsContainer();
+    const gamesContainer = getGamesContainer();
+
+    const [{ resources: goals }, { resources: gamesByQuery }] = await Promise.all([
+      goalsContainer.items.query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
+        parameters: [{ name: "@gameId", value: gameId }]
+      }).fetchAll(),
+      gamesContainer.items.query({
+        query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
+        parameters: [{ name: "@gameId", value: gameId }]
+      }).fetchAll()
+    ]);
+
+    if (!gamesByQuery || gamesByQuery.length === 0 || !goals || goals.length === 0) return;
+    const game = gamesByQuery[0];
+    const lastGoal = goals[0];
+
+    const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.homeTeam).length;
+    const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.awayTeam).length;
+
+    const playerName = lastGoal.playerName || lastGoal.scorer;
+    const playerGoalsThisGame = goals.filter(g => (g.playerName || g.scorer) === playerName).length;
+
+    const goalData = {
+      playerName: lastGoal.playerName || lastGoal.scorer,
+      teamName: lastGoal.teamName || lastGoal.scoringTeam,
+      period: lastGoal.period,
+      timeRemaining: lastGoal.timeRemaining || lastGoal.time,
+      assistedBy: lastGoal.assistedBy || lastGoal.assists || [],
+      goalType: lastGoal.goalType || 'even strength',
+      homeScore: homeGoals,
+      awayScore: awayGoals,
+      homeTeam: game.homeTeam,
+      awayTeam: game.awayTeam
+    };
+
+    const playerStats = {
+      goalsThisGame: playerGoalsThisGame - 1,
+      seasonGoals: playerGoalsThisGame - 1
+    };
+
+    const entry = announcerCache.goals.get(gameId) || { single: {} };
+    entry.lastGoalId = lastGoal.id || lastGoal._rid || String(Date.now());
+
+    // Prepare single announcer male/female
+    const { getAnnouncerVoices } = await import('./voiceConfig.js');
+    const voices = await getAnnouncerVoices();
+
+    for (const [gender, voiceId] of [['male', voices.maleVoice], ['female', voices.femaleVoice]]) {
+      try {
+        const text = await generateGoalAnnouncement(goalData, playerStats, gender);
+        let audioPath = null;
+        if (ttsService && ttsService.isAvailable()) {
+          const orig = ttsService.selectedVoice;
+          try {
+            ttsService.selectedVoice = voiceId;
+            const audioResult = await ttsService.generateGoalSpeech(text, gameId);
+            audioPath = audioResult?.success ? audioResult.filename : null;
+          } finally {
+            ttsService.selectedVoice = orig;
+          }
+        }
+        entry.single[gender] = { text, audioPath, voice: voiceId, updatedAt: Date.now() };
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    // Prepare dual conversation (trim to 4 lines)
+    try {
+      const convo = await generateDualGoalAnnouncement(goalData, playerStats);
+      entry.dual = { conversation: trimConversationLines(convo, 4), updatedAt: Date.now() };
+    } catch (_) { /* ignore */ }
+
+    announcerCache.goals.set(gameId, entry);
+  } catch (err) {
+    // ignore pregen errors
+  }
+}
+
+async function preGeneratePenaltyAssets(gameId) {
+  try {
+    const penaltiesContainer = getPenaltiesContainer();
+    const gamesContainer = getGamesContainer();
+    const goalsContainer = getGoalsContainer();
+
+    const [{ resources: penalties }, { resources: gamesByQuery }, { resources: goals }] = await Promise.all([
+      penaltiesContainer.items.query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
+        parameters: [{ name: "@gameId", value: gameId }]
+      }).fetchAll(),
+      gamesContainer.items.query({
+        query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
+        parameters: [{ name: "@gameId", value: gameId }]
+      }).fetchAll(),
+      goalsContainer.items.query({
+        query: "SELECT * FROM c WHERE c.gameId = @gameId",
+        parameters: [{ name: "@gameId", value: gameId }]
+      }).fetchAll()
+    ]);
+
+    if (!gamesByQuery || gamesByQuery.length === 0 || !penalties || penalties.length === 0) return;
+    const game = gamesByQuery[0];
+    const lastPenalty = penalties[0];
+
+    const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.homeTeam).length;
+    const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.awayTeam).length;
+
+    const penaltyData = {
+      playerName: lastPenalty.playerName || lastPenalty.penalizedPlayer,
+      teamName: lastPenalty.teamName || lastPenalty.penalizedTeam,
+      penaltyType: lastPenalty.penaltyType,
+      period: lastPenalty.period,
+      timeRemaining: lastPenalty.timeRemaining || lastPenalty.time,
+      length: lastPenalty.length || lastPenalty.penaltyLength || 2
+    };
+
+    const gameContext = {
+      homeTeam: game.homeTeam,
+      awayTeam: game.awayTeam,
+      currentScore: { home: homeGoals, away: awayGoals }
+    };
+
+    const entry = announcerCache.penalties.get(gameId) || { single: {} };
+    entry.lastPenaltyId = lastPenalty.id || lastPenalty._rid || String(Date.now());
+
+    const { getAnnouncerVoices } = await import('./voiceConfig.js');
+    const voices = await getAnnouncerVoices();
+    for (const [gender, voiceId] of [['male', voices.maleVoice], ['female', voices.femaleVoice]]) {
+      try {
+        const text = await generatePenaltyAnnouncement(penaltyData, gameContext, gender);
+        let audioPath = null;
+        if (ttsService && ttsService.isAvailable()) {
+          const orig = ttsService.selectedVoice;
+          try {
+            ttsService.selectedVoice = voiceId;
+            const audioResult = await ttsService.generatePenaltySpeech(text, gameId);
+            audioPath = audioResult?.success ? audioResult.filename : null;
+          } finally {
+            ttsService.selectedVoice = orig;
+          }
+        }
+        entry.single[gender] = { text, audioPath, voice: voiceId, updatedAt: Date.now() };
+      } catch (_) { /* ignore */ }
+    }
+
+    try {
+      const convo = await generateDualPenaltyAnnouncement(penaltyData, gameContext);
+      entry.dual = { conversation: trimConversationLines(convo, 4), updatedAt: Date.now() };
+    } catch (_) { /* ignore */ }
+
+    announcerCache.penalties.set(gameId, entry);
+  } catch (_) { /* ignore */ }
+}
+
+async function preGenerateRandomDual(key, gameContext) {
+  try {
+    if (!generateDualRandomCommentary) return;
+    const convo = await generateDualRandomCommentary(gameContext?.gameId || key, gameContext || {});
+    announcerCache.randomDual.set(key, { conversation: trimConversationLines(convo, 4), updatedAt: Date.now() });
+  } catch (_) { /* ignore */ }
+}
+
 // Production middleware for request tracking and logging
 app.use((req, res, next) => {
   const startTime = Date.now();
@@ -993,9 +1206,11 @@ app.post('/api/goals', async (req, res) => {
       }
     };
     
-    const { resource } = await container.items.create(goal);
-    console.log('✅ Goal recorded successfully with analytics');
-    res.status(201).json(resource);
+  const { resource } = await container.items.create(goal);
+  console.log('✅ Goal recorded successfully with analytics');
+  // Kick off background pre-generation for announcer assets
+  preGenerateGoalAssets(gameId);
+  res.status(201).json(resource);
   } catch (error) {
     console.error('❌ Error creating goal:', error.message);
     handleError(res, error);
@@ -1156,9 +1371,10 @@ app.post('/api/penalties', async (req, res) => {
     };
     
     const { resource } = await container.items.create(penalty);
-    console.log('✅ Penalty recorded successfully with analytics');
-    
-    res.json({ 
+  console.log('✅ Penalty recorded successfully with analytics');
+  // Kick off background pre-generation for announcer assets
+  preGeneratePenaltyAssets(gameId);
+  res.json({ 
       success: true, 
       penalty: resource
     });
@@ -1424,11 +1640,43 @@ app.post('/api/goals/announce-last', async (req, res) => {
       seasonGoals: playerGoalsThisGame - 1 // For now, use game stats as season stats
     };
 
+    // Try to serve from cache now that we have context
+    const cached = announcerCache.goals.get(gameId);
+    if (cached) {
+      if (announcerMode === 'dual' && cached.dual?.conversation) {
+        return res.status(200).json({
+          success: true,
+          cached: true,
+          goal: lastGoal,
+          conversation: cached.dual.conversation,
+          goalData,
+          playerStats
+        });
+      }
+      if (announcerMode !== 'dual' && cached.single?.[voiceGender]?.text) {
+        return res.status(200).json({
+          success: true,
+          cached: true,
+          goal: lastGoal,
+          announcement: {
+            text: cached.single[voiceGender].text,
+            audioPath: cached.single[voiceGender].audioPath || null
+          },
+          goalData,
+          playerStats
+        });
+      }
+    }
+
     if (announcerMode === 'dual') {
       // Generate dual announcer conversation
-      const conversation = await generateDualGoalAnnouncement(goalData, playerStats);
+      const conversation = trimConversationLines(await generateDualGoalAnnouncement(goalData, playerStats), 4);
       
       console.log('✅ Dual goal announcement generated successfully');
+      // update cache
+      const entry = announcerCache.goals.get(gameId) || { single: {} };
+      entry.dual = { conversation, updatedAt: Date.now() };
+      announcerCache.goals.set(gameId, entry);
       
       res.status(200).json({
         success: true,
@@ -1446,6 +1694,11 @@ app.post('/api/goals/announce-last', async (req, res) => {
       const audioFilename = audioResult?.success ? audioResult.filename : null;
       
       requestLogger.success('Goal announcement generated successfully');
+
+      // update cache
+      const entry = announcerCache.goals.get(gameId) || { single: {} };
+      entry.single[voiceGender] = { text: announcementText, audioPath: audioFilename, voice: selectedVoice, updatedAt: Date.now() };
+      announcerCache.goals.set(gameId, entry);
       
       res.status(200).json({
         success: true,
@@ -1533,6 +1786,9 @@ app.post('/api/penalties/announce-last', async (req, res) => {
   try {
     const penaltiesContainer = getPenaltiesContainer();
     const gamesContainer = getGamesContainer();
+    const goalsContainer = getGoalsContainer();
+
+  // We'll check cache once we have context below
     
     // Get the most recent penalty for this game
     const { resources: penalties } = await penaltiesContainer.items
@@ -1572,7 +1828,6 @@ app.post('/api/penalties/announce-last', async (req, res) => {
     const lastPenalty = penalties[0];
     
     // Calculate current score for context (handle both new and legacy field names)
-    const goalsContainer = getGoalsContainer();
     const { resources: goals } = await goalsContainer.items
       .query({
         query: "SELECT * FROM c WHERE c.gameId = @gameId",
@@ -1580,7 +1835,7 @@ app.post('/api/penalties/announce-last', async (req, res) => {
       })
       .fetchAll();
 
-    const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.homeTeam).length;
+  const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.homeTeam).length;
     const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.awayTeam).length;
 
     // Prepare penalty data for announcement (handle both new and legacy field names)
@@ -1602,11 +1857,42 @@ app.post('/api/penalties/announce-last', async (req, res) => {
       }
     };
 
+    // Try to serve from cache now that we have context
+    const cached = announcerCache.penalties.get(gameId);
+    if (cached) {
+      if (announcerMode === 'dual' && cached.dual?.conversation) {
+        return res.status(200).json({
+          success: true,
+          cached: true,
+          penalty: lastPenalty,
+          conversation: cached.dual.conversation,
+          penaltyData,
+          gameContext
+        });
+      }
+      if (announcerMode !== 'dual' && cached.single?.[voiceGender]?.text) {
+        return res.status(200).json({
+          success: true,
+          cached: true,
+          penalty: lastPenalty,
+          announcement: {
+            text: cached.single[voiceGender].text,
+            audioPath: cached.single[voiceGender].audioPath || null
+          },
+          penaltyData,
+          gameContext
+        });
+      }
+    }
+
     if (announcerMode === 'dual') {
       // Generate dual announcer conversation
-      const conversation = await generateDualPenaltyAnnouncement(penaltyData, gameContext);
+      const conversation = trimConversationLines(await generateDualPenaltyAnnouncement(penaltyData, gameContext), 4);
       
       console.log('✅ Dual penalty announcement generated successfully');
+      const entry = announcerCache.penalties.get(gameId) || { single: {} };
+      entry.dual = { conversation, updatedAt: Date.now() };
+      announcerCache.penalties.set(gameId, entry);
       
       res.status(200).json({
         success: true,
@@ -1624,6 +1910,9 @@ app.post('/api/penalties/announce-last', async (req, res) => {
       const audioFilename = audioResult?.success ? audioResult.filename : null;
       
       console.log('✅ Penalty announcement generated successfully');
+      const entry = announcerCache.penalties.get(gameId) || { single: {} };
+      entry.single[voiceGender] = { text: announcementText, audioPath: audioFilename, voice: selectedVoice, updatedAt: Date.now() };
+      announcerCache.penalties.set(gameId, entry);
       
       res.status(200).json({
         success: true,
@@ -1752,9 +2041,20 @@ app.post('/api/randomCommentary', async (req, res) => {
         }
       }
       
-      // Generate the dual announcer conversation
-      console.log('🎙️ Calling generateDualRandomCommentary with context:', gameContext);
-      const conversation = await generateDualRandomCommentary(gameId, gameContext);
+      // Serve on-deck cached conversation if available
+      const key = gameId ? `game-${gameId}` : `div-${division || 'global'}`;
+      const cached = announcerCache.randomDual.get(key);
+      let conversation;
+      if (cached?.conversation) {
+        conversation = cached.conversation;
+      } else {
+        // Generate the dual announcer conversation
+        console.log('🎙️ Calling generateDualRandomCommentary with context:', gameContext);
+        conversation = await generateDualRandomCommentary(gameId, gameContext);
+        conversation = trimConversationLines(conversation, 4);
+      }
+      // Pre-generate the next one in background
+      preGenerateRandomDual(key, gameContext);
       console.log('🎙️ Received conversation from generateDualRandomCommentary:', conversation?.length, 'lines');
       
       console.log('✅ Dual random commentary conversation generated successfully');

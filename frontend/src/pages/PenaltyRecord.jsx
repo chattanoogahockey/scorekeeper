@@ -353,9 +353,9 @@ Length: ${formData.penaltyLength} minutes`;
                 <button 
                   type="button"
                   onClick={() => clearTime()} 
-                  className="py-2 bg-red-100 rounded-lg font-semibold text-red-700 hover:bg-red-200 transition-colors text-sm"
+                  className="py-2 px-3 border-2 border-red-500 bg-red-50 text-red-700 rounded-lg font-medium hover:bg-red-100 transition-colors text-sm"
                 >
-                  CLR
+                  Clear
                 </button>
                 <button 
                   type="button"
@@ -367,9 +367,9 @@ Length: ${formData.penaltyLength} minutes`;
                 <button 
                   type="button"
                   onClick={() => backspaceTime()} 
-                  className="py-2 bg-yellow-100 rounded-lg font-semibold text-yellow-700 hover:bg-yellow-200 transition-colors text-sm"
+                  className="py-2 px-3 border-2 border-gray-500 bg-gray-50 text-gray-700 rounded-lg font-medium hover:bg-gray-100 transition-colors text-sm"
                 >
-                  ←
+                  ⌫
                 </button>
               </div>
             </div>

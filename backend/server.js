@@ -1653,7 +1653,11 @@ app.post('/api/goals/announce-last', async (req, res) => {
           playerStats
         });
       }
-      if (announcerMode !== 'dual' && cached.single?.[voiceGender]?.text) {
+      // Only use single-mode cache if the cached voice matches the currently selected voice id
+      const { getAnnouncerVoices } = await import('./voiceConfig.js');
+      const voices = await getAnnouncerVoices();
+      const requestedVoiceId = voiceGender === 'male' ? voices.maleVoice : voices.femaleVoice;
+      if (announcerMode !== 'dual' && cached.single?.[voiceGender]?.text && (!cached.single[voiceGender].voice || cached.single[voiceGender].voice === requestedVoiceId)) {
         return res.status(200).json({
           success: true,
           cached: true,
@@ -1696,8 +1700,8 @@ app.post('/api/goals/announce-last', async (req, res) => {
       requestLogger.success('Goal announcement generated successfully');
 
       // update cache
-      const entry = announcerCache.goals.get(gameId) || { single: {} };
-      entry.single[voiceGender] = { text: announcementText, audioPath: audioFilename, voice: selectedVoice, updatedAt: Date.now() };
+  const entry = announcerCache.goals.get(gameId) || { single: {} };
+  entry.single[voiceGender] = { text: announcementText, audioPath: audioFilename, voice: selectedVoice, updatedAt: Date.now() };
       announcerCache.goals.set(gameId, entry);
       
       res.status(200).json({
@@ -1870,7 +1874,10 @@ app.post('/api/penalties/announce-last', async (req, res) => {
           gameContext
         });
       }
-      if (announcerMode !== 'dual' && cached.single?.[voiceGender]?.text) {
+      const { getAnnouncerVoices } = await import('./voiceConfig.js');
+      const voices = await getAnnouncerVoices();
+      const requestedVoiceId = voiceGender === 'male' ? voices.maleVoice : voices.femaleVoice;
+      if (announcerMode !== 'dual' && cached.single?.[voiceGender]?.text && (!cached.single[voiceGender].voice || cached.single[voiceGender].voice === requestedVoiceId)) {
         return res.status(200).json({
           success: true,
           cached: true,

@@ -29,7 +29,7 @@ export default function DJPanel() {
     const audio = currentAudioRef.current;
     const originalVolume = audio.volume;
     const fadeSteps = 50;
-    const fadeDuration = 6000; // 6 seconds (3x longer than before)
+  const fadeDuration = 5100; // 15% faster than 6000ms
     const stepTime = fadeDuration / fadeSteps;
     const volumeStep = originalVolume / fadeSteps;
 
@@ -52,6 +52,7 @@ export default function DJPanel() {
   
   // Dynamically loaded organ sounds (full URLs from /sounds/...)
   const [organUrls, setOrganUrls] = useState([]);
+  const organPoolRef = useRef([]);
 
   // Shuffle helper
   const shuffle = (arr) => {
@@ -71,7 +72,16 @@ export default function DJPanel() {
         const resp = await fetch('/api/sounds/organs');
         const data = await resp.json();
         if (!cancelled && Array.isArray(data.urls)) {
-          setOrganUrls(shuffle(data.urls));
+          const shuffled = shuffle(data.urls);
+          setOrganUrls(shuffled);
+          // Build initial pool ensuring first track differs from last session's start
+          const lastStart = localStorage.getItem('dj_lastOrganStart') || '';
+          let pool = [...shuffled];
+          if (pool.length > 1 && pool[0] === lastStart) {
+            // rotate to avoid same starting track
+            pool.push(pool.shift());
+          }
+          organPoolRef.current = pool;
           setCurrentOrganIndex(0);
         }
       } catch (e) {
@@ -84,6 +94,7 @@ export default function DJPanel() {
 
   // Dynamically loaded fanfare sounds
   const [fanfareUrls, setFanfareUrls] = useState([]);
+  const fanfarePoolRef = useRef([]);
 
   // Load fanfare list on mount and shuffle so each app open has a new order
   useEffect(() => {
@@ -93,7 +104,14 @@ export default function DJPanel() {
         const resp = await fetch('/api/sounds/fanfare');
         const data = await resp.json();
         if (!cancelled && Array.isArray(data.urls)) {
-          setFanfareUrls(shuffle(data.urls));
+          const shuffled = shuffle(data.urls);
+          setFanfareUrls(shuffled);
+          const lastStart = localStorage.getItem('dj_lastFanfareStart') || '';
+          let pool = [...shuffled];
+          if (pool.length > 1 && pool[0] === lastStart) {
+            pool.push(pool.shift());
+          }
+          fanfarePoolRef.current = pool;
           setCurrentFanfareIndex(0);
         }
       } catch (e) {
@@ -175,8 +193,12 @@ export default function DJPanel() {
       console.warn('No organ sounds available');
       return;
     }
-    // Get the current organ sound URL (already includes /sounds/organs/...)
-    const currentOrganUrl = organUrls[currentOrganIndex];
+    // Draw from pool; if empty, rebuild a new shuffled pool
+    if (!organPoolRef.current || organPoolRef.current.length === 0) {
+      const newPool = shuffle(organUrls);
+      organPoolRef.current = newPool;
+    }
+    const currentOrganUrl = organPoolRef.current.shift();
     
     // Stop any currently playing audio
     if (currentAudioRef.current) {
@@ -227,8 +249,10 @@ export default function DJPanel() {
       resetPlaying();
     });
 
-  // Move to next organ sound, loop back to 0 after the last one
-  setCurrentOrganIndex((prevIndex) => (prevIndex + 1) % organUrls.length);
+  // Remember last start to avoid same first track next session
+  try { localStorage.setItem('dj_lastOrganStart', currentOrganUrl); } catch {}
+  // Maintain legacy index increment for UI consistency (no functional impact now)
+  setCurrentOrganIndex((prevIndex) => (prevIndex + 1) % Math.max(organUrls.length, 1));
   };
 
   const playFanfareSound = () => {
@@ -242,8 +266,12 @@ export default function DJPanel() {
       console.warn('No fanfare sounds available');
       return;
     }
-    // Get the current fanfare sound URL
-    const currentFanfareUrl = fanfareUrls[currentFanfareIndex];
+    // Draw from pool; if empty, rebuild a new shuffled pool
+    if (!fanfarePoolRef.current || fanfarePoolRef.current.length === 0) {
+      const newPool = shuffle(fanfareUrls);
+      fanfarePoolRef.current = newPool;
+    }
+    const currentFanfareUrl = fanfarePoolRef.current.shift();
     
     // Stop any currently playing audio
     if (currentAudioRef.current) {
@@ -294,8 +322,9 @@ export default function DJPanel() {
       resetPlaying();
     });
 
-  // Move to next fanfare sound, loop back to 0 after the last one
-  setCurrentFanfareIndex((prevIndex) => (prevIndex + 1) % fanfareUrls.length);
+  // Remember last start to avoid same first track next session
+  try { localStorage.setItem('dj_lastFanfareStart', currentFanfareUrl); } catch {}
+  setCurrentFanfareIndex((prevIndex) => (prevIndex + 1) % Math.max(fanfareUrls.length, 1));
   };
 
   return (

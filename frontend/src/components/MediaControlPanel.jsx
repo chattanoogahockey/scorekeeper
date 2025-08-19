@@ -19,6 +19,7 @@ export default function MediaControlPanel({ gameId }) {
   
   // Fanfare sound URLs loaded dynamically
   const [fanfareSounds, setFanfareSounds] = useState([]);
+  const fanfarePoolRef = useRef([]);
   
   // DJ Audio progress state
   const [djAudioProgress, setDjAudioProgress] = useState({ 
@@ -33,6 +34,7 @@ export default function MediaControlPanel({ gameId }) {
 
   // Dynamic organ sound URLs
   const [organUrls, setOrganUrls] = useState([]);
+  const organPoolRef = useRef([]);
 
   const shuffle = (arr) => {
     const a = [...arr];
@@ -51,7 +53,14 @@ export default function MediaControlPanel({ gameId }) {
         const resp = await fetch('/api/sounds/organs');
         const data = await resp.json();
         if (!cancelled && Array.isArray(data.urls)) {
-          setOrganUrls(shuffle(data.urls));
+          const shuffled = shuffle(data.urls);
+          setOrganUrls(shuffled);
+          const lastStart = localStorage.getItem('mcp_lastOrganStart') || '';
+          let pool = [...shuffled];
+          if (pool.length > 1 && pool[0] === lastStart) {
+            pool.push(pool.shift());
+          }
+          organPoolRef.current = pool;
           setCurrentOrganIndex(0);
         }
       } catch (e) {
@@ -78,7 +87,14 @@ export default function MediaControlPanel({ gameId }) {
         const resp = await fetch('/api/sounds/fanfare');
         const data = await resp.json();
         if (!cancelled && Array.isArray(data.urls)) {
-          setFanfareSounds(shuffle(data.urls));
+          const shuffled = shuffle(data.urls);
+          setFanfareSounds(shuffled);
+          const lastStart = localStorage.getItem('mcp_lastFanfareStart') || '';
+          let pool = [...shuffled];
+          if (pool.length > 1 && pool[0] === lastStart) {
+            pool.push(pool.shift());
+          }
+          fanfarePoolRef.current = pool;
           setCurrentFanfareIndex(0);
         }
       } catch (e) {
@@ -98,7 +114,7 @@ export default function MediaControlPanel({ gameId }) {
     const audio = currentAudioRef.current;
     const originalVolume = audio.volume;
     const fadeSteps = 50;
-    const fadeDuration = 4800; // 20% faster than 6000ms
+  const fadeDuration = 4080; // 15% faster than prior 4800ms
     const stepTime = fadeDuration / fadeSteps;
     const volumeStep = originalVolume / fadeSteps;
 
@@ -175,7 +191,10 @@ export default function MediaControlPanel({ gameId }) {
       console.warn('No organ sounds available');
       return;
     }
-    const currentOrganUrl = organUrls[currentOrganIndex];
+    if (!organPoolRef.current || organPoolRef.current.length === 0) {
+      organPoolRef.current = shuffle(organUrls);
+    }
+    const currentOrganUrl = organPoolRef.current.shift();
     
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
@@ -220,13 +239,17 @@ export default function MediaControlPanel({ gameId }) {
       resetPlaying();
     });
 
-  setCurrentOrganIndex((prevIndex) => (prevIndex + 1) % organUrls.length);
+  try { localStorage.setItem('mcp_lastOrganStart', currentOrganUrl); } catch {}
+  setCurrentOrganIndex((prevIndex) => (prevIndex + 1) % Math.max(organUrls.length, 1));
   };
 
   const playFanfareSound = () => {
     if (isPlaying || fanfareSounds.length === 0) return;
 
-  const currentFanfareUrl = fanfareSounds[currentFanfareIndex];
+  if (!fanfarePoolRef.current || fanfarePoolRef.current.length === 0) {
+    fanfarePoolRef.current = shuffle(fanfareSounds);
+  }
+  const currentFanfareUrl = fanfarePoolRef.current.shift();
     
     if (currentAudioRef.current) {
       currentAudioRef.current.pause();
@@ -271,7 +294,8 @@ export default function MediaControlPanel({ gameId }) {
       resetPlaying();
     });
 
-    setCurrentFanfareIndex((prevIndex) => (prevIndex + 1) % fanfareSounds.length);
+  try { localStorage.setItem('mcp_lastFanfareStart', currentFanfareUrl); } catch {}
+  setCurrentFanfareIndex((prevIndex) => (prevIndex + 1) % Math.max(fanfareSounds.length, 1));
   };
 
   // Announcer Functions

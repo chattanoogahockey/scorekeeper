@@ -211,10 +211,25 @@ export default function GoalRecord() {
     // Extract minutes and seconds for validation
     const [minutes, seconds] = formattedTime.split(':').map(Number);
     
-    // Validate the time (no more than 20:00, no more than 59 seconds)
-    if (minutes > 20 || seconds > 59) {
-      console.log('Invalid time - minutes:', minutes, 'seconds:', seconds);
-      return;
+    // Defer strict validation until 4 digits entered so sequences like 1-6-0-0 work
+    if (newDigits.length === 4) {
+      // Enforce range: 00:01 to 17:00 inclusive
+      if (minutes > 17) {
+        console.log('Invalid time - minutes exceeds 17');
+        return;
+      }
+      if (minutes === 17 && seconds !== 0) {
+        console.log('Invalid time - beyond 17:00');
+        return;
+      }
+      if (minutes === 0 && seconds === 0) {
+        console.log('Invalid time - below 00:01');
+        return;
+      }
+      if (seconds > 59) {
+        console.log('Invalid time - seconds exceed 59');
+        return;
+      }
     }
     
     console.log('Setting time to:', formattedTime);

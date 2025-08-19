@@ -38,7 +38,14 @@ export default function PenaltyRecord() {
     else if (newDigits.length === 3) formatted = `0${newDigits.charAt(0)}:${newDigits.slice(1)}`;
     else formatted = `${newDigits.slice(0,2)}:${newDigits.slice(2)}`;
     const [mins, secs] = formatted.split(':').map(Number);
-    if (mins > 20 || secs > 59) return;
+    // Defer strict validation until 4 digits so sequences like 1-6-0-0 work
+    const totalDigits = newDigits.length;
+    if (totalDigits === 4) {
+      if (mins > 17) return;
+      if (mins === 17 && secs !== 0) return;
+      if (mins === 0 && secs === 0) return; // disallow 00:00
+      if (secs > 59) return;
+    }
     setFormData(prev => ({ ...prev, time: formatted }));
   };
 

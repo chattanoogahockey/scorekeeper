@@ -170,7 +170,7 @@ async function preGenerateGoalAssets(gameId) {
     const entry = announcerCache.goals.get(gameId) || { single: {} };
     entry.lastGoalId = lastGoal.id || lastGoal._rid || String(Date.now());
 
-    // Prepare single announcer male/female
+  // Prepare single announcer male/female (text + audio)
     const { getAnnouncerVoices } = await import('./voiceConfig.js');
     const voices = await getAnnouncerVoices();
 
@@ -194,11 +194,25 @@ async function preGenerateGoalAssets(gameId) {
       }
     }
 
-    // Prepare dual conversation (trim to 4 lines)
+    // Prepare dual conversation (trim to 4 lines) and attach synthetic minimal inter-line delay metadata
     try {
       const convo = await generateDualGoalAnnouncement(goalData, playerStats);
-      entry.dual = { conversation: trimConversationLines(convo, 4), updatedAt: Date.now() };
+      entry.dual = { conversation: trimConversationLines(convo, 4), updatedAt: Date.now(), lineGapMs: 200 };
     } catch (_) { /* ignore */ }
+
+    // Opportunistically pre-generate a fresh random dual commentary (used if user triggers random)
+    try {
+      if (generateDualRandomCommentary) {
+        const randomKey = `${gameId}-random-${Date.now()}`;
+        const randomConvo = await generateDualRandomCommentary(gameId, { context: 'post-goal', homeTeam: game.homeTeam, awayTeam: game.awayTeam });
+        announcerCache.randomDual.set(randomKey, { conversation: trimConversationLines(randomConvo, 4), updatedAt: Date.now(), lineGapMs: 250 });
+        // Keep the map from growing unbounded: prune oldest after 10
+        if (announcerCache.randomDual.size > 10) {
+          const oldestKey = Array.from(announcerCache.randomDual.entries()).sort((a,b)=>a[1].updatedAt-b[1].updatedAt)[0][0];
+          announcerCache.randomDual.delete(oldestKey);
+        }
+      }
+    } catch (_) { /* ignore random pregen errors */ }
 
     announcerCache.goals.set(gameId, entry);
   } catch (err) {
@@ -1210,6 +1224,8 @@ app.post('/api/goals', async (req, res) => {
   console.log('✅ Goal recorded successfully with analytics');
   // Kick off background pre-generation for announcer assets
   preGenerateGoalAssets(gameId);
+  // Eager follow-up: also schedule an extra refresh 1.5s later in case immediate generation missed due to rate limits
+  setTimeout(() => preGenerateGoalAssets(gameId), 1500);
   res.status(201).json(resource);
   } catch (error) {
     console.error('❌ Error creating goal:', error.message);
@@ -1643,12 +1659,13 @@ app.post('/api/goals/announce-last', async (req, res) => {
     // Try to serve from cache now that we have context
     const cached = announcerCache.goals.get(gameId);
     if (cached) {
-      if (announcerMode === 'dual' && cached.dual?.conversation) {
+    if (announcerMode === 'dual' && cached.dual?.conversation) {
         return res.status(200).json({
           success: true,
           cached: true,
           goal: lastGoal,
-          conversation: cached.dual.conversation,
+      conversation: cached.dual.conversation,
+      lineGapMs: cached.dual.lineGapMs || 180,
           goalData,
           playerStats
         });
@@ -1674,18 +1691,19 @@ app.post('/api/goals/announce-last', async (req, res) => {
 
     if (announcerMode === 'dual') {
       // Generate dual announcer conversation
-      const conversation = trimConversationLines(await generateDualGoalAnnouncement(goalData, playerStats), 4);
+  const conversation = trimConversationLines(await generateDualGoalAnnouncement(goalData, playerStats), 4);
       
       console.log('✅ Dual goal announcement generated successfully');
       // update cache
       const entry = announcerCache.goals.get(gameId) || { single: {} };
-      entry.dual = { conversation, updatedAt: Date.now() };
+  entry.dual = { conversation, updatedAt: Date.now(), lineGapMs: 180 };
       announcerCache.goals.set(gameId, entry);
       
       res.status(200).json({
         success: true,
         goal: lastGoal,
         conversation,
+        lineGapMs: 180,
         goalData,
         playerStats
       });

@@ -903,7 +903,32 @@ FORMAT: Return ONLY a JSON array with exactly 4 lines alternating male-female-ma
     console.log('🎙️ Generated conversation text:', conversationText);
     
     try {
-  const rawConversation = sanitizeConversation(JSON.parse(conversationText));
+      let parsed;
+      try {
+        parsed = JSON.parse(conversationText);
+      } catch (jsonErr) {
+        // If the model returned a JS-like array of strings without valid JSON, try to coerce
+        if (/^\[\s*".+"\s*\]/s.test(conversationText)) {
+          // Attempt relaxed parsing by replacing smart quotes
+          const normalized = conversationText.replace(/[“”]/g,'"').replace(/[‘’]/g,"'");
+          parsed = JSON.parse(normalized);
+        } else {
+          throw jsonErr;
+        }
+      }
+      // Support format: ["Al: text", "Linda: text", ...]
+      if (Array.isArray(parsed) && parsed.length && typeof parsed[0] === 'string') {
+        parsed = parsed.map(line => {
+          const m = line.match(/^\s*(Al|Linda)\s*:\s*(.*)$/i);
+          if (m) {
+            const speaker = m[1].toLowerCase() === 'al' ? 'male' : 'female';
+            return { speaker, text: m[2] };
+          }
+          // Fallback guess by alternating
+            return { speaker: 'male', text: line };
+        });
+      }
+      const rawConversation = sanitizeConversation(parsed);
       console.log('🎙️ Parsed raw conversation:', rawConversation);
       
       // Convert conversation format if needed
@@ -941,7 +966,7 @@ FORMAT: Return ONLY a JSON array with exactly 4 lines alternating male-female-ma
         throw new Error('Conversation is not an array');
       }
     } catch (parseError) {
-      console.error('Failed to parse dual random conversation:', parseError);
+  console.error('Failed to parse dual random conversation:', parseError);
       // Enhanced fallback to a more natural conversation
   return sanitizeConversation([
         {"speaker": "male", "text": conversationStarter},
@@ -1036,7 +1061,13 @@ const FLUFF_PATTERNS = [
   /what (an|a) (atmosphere|scene)/gi,
   /hockey (magic|theater)/gi,
   /storybook (finish|moment)/gi,
-  /pure (drama|electricity)/gi
+  /pure (drama|electricity)/gi,
+  /hold on to your helmets!?/gi,
+  /thrilling match/gi,
+  /keep (’|')?em coming/gi,
+  /lighting up the net/gi,
+  /has been lighting up the net/gi,
+  /hot streak/gi
 ];
 
 function stripFluff(text, log = false) {

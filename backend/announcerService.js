@@ -1006,6 +1006,11 @@ export function sanitizeConversation(convo, context = 'dual-announcer') {
   if (modifications > 0) {
     const msg = `Sanitized ${modifications} name issue(s) in conversation (${context})`;
     if (logger && logger.warn) logger.warn(msg); else console.warn(msg);
+    try {
+      if (globalThis.__ANNOUNCER_METRICS__) {
+        globalThis.__ANNOUNCER_METRICS__.hygiene.namesSanitized += modifications;
+      }
+    } catch (_) { /* ignore metrics errors */ }
   }
   return sanitized;
 }
@@ -1023,7 +1028,15 @@ const FLUFF_PATTERNS = [
   /(epic|massive|insane) (goal|shot|play)/gi,
   /all day long/gi,
   /no doubt about it/gi,
-  /(that|this) place is (going|about) (crazy|wild)/gi
+  /(that|this) place is (going|about) (crazy|wild)/gi,
+  /listen to that(,? folks?)?/gi,
+  /thrilling time to be (following|watching) the game/gi,
+  /you can (feel|sense) the (electricity|energy)/gi,
+  /right now in this building/gi,
+  /what (an|a) (atmosphere|scene)/gi,
+  /hockey (magic|theater)/gi,
+  /storybook (finish|moment)/gi,
+  /pure (drama|electricity)/gi
 ];
 
 function stripFluff(text, log = false) {
@@ -1045,6 +1058,14 @@ function stripFluff(text, log = false) {
   if (log && hits > 0) {
     if (logger && logger.warn) logger.warn(`Stripped ${hits} fluff phrase(s) from announcement`); else console.warn('Stripped fluff phrases');
   }
+  try {
+    if (hits > 0) {
+      // Lazy import of server metrics object via globalThis if exposed; ignore if not present
+      if (globalThis.__ANNOUNCER_METRICS__) {
+        globalThis.__ANNOUNCER_METRICS__.hygiene.fluffStripped += hits;
+      }
+    }
+  } catch (_) { /* ignore metric errors */ }
   return modified;
 }
 

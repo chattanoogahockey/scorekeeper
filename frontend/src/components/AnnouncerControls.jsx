@@ -182,7 +182,7 @@ export default function AnnouncerControls({ gameId }) {
   /**
    * Play dual announcer conversation with alternating voices using backend TTS
    */
-  const playDualAnnouncement = async (conversation) => {
+  const playDualAnnouncement = async (conversation, lineGapMs = 200) => {
     console.log('🎤 playDualAnnouncement called with:', conversation);
     console.log('🎤 Conversation type:', typeof conversation, 'Array?', Array.isArray(conversation));
     
@@ -267,10 +267,10 @@ export default function AnnouncerControls({ gameId }) {
                 currentTime += (line.text.split(' ').length / 150) * 60;
                 setAudioProgress(prev => ({ ...prev, current: currentTime }));
                 
-                // Faster transition between speakers (reduced from 500ms to 200ms)
+                // Use dynamic gap from backend metadata
                 setTimeout(() => {
                   resolve();
-                }, 200);
+                }, lineGapMs);
               };
               
               audio.onerror = (event) => {
@@ -305,7 +305,7 @@ export default function AnnouncerControls({ gameId }) {
                 
                 setTimeout(() => {
                   resolve();
-                }, 500);
+                }, lineGapMs);
               };
               
               utterance.onerror = (event) => {
@@ -359,12 +359,12 @@ export default function AnnouncerControls({ gameId }) {
       const data = await announce('goal', currentGameId, selectedVoice);
       
       if (data.success) {
-        const { announcement, scoreless, conversation } = data;
+        const { announcement, scoreless, conversation, lineGapMs } = data;
         
         // Handle dual announcer mode
         const mode = selectedVoice === 'dual' ? 'dual' : 'single';
         if (mode === 'dual' && conversation) {
-          await playDualAnnouncement(conversation);
+          await playDualAnnouncement(conversation, lineGapMs || 200);
           return;
         }
         
@@ -486,12 +486,12 @@ export default function AnnouncerControls({ gameId }) {
       const data = await announce('penalty', currentGameId, selectedVoice);
       
       if (data.success) {
-        const { announcement, conversation } = data;
+        const { announcement, conversation, lineGapMs } = data;
         
         // Handle dual announcer mode
         const mode = selectedVoice === 'dual' ? 'dual' : 'single';
         if (mode === 'dual' && conversation) {
-          await playDualAnnouncement(conversation);
+          await playDualAnnouncement(conversation, lineGapMs || 190);
           return;
         }
         
@@ -615,12 +615,12 @@ export default function AnnouncerControls({ gameId }) {
       console.log('Random commentary response:', data);
       
       if (data.success) {
-        const { text, audioPath, conversation } = data;
+        const { text, audioPath, conversation, lineGapMs } = data;
         console.log('🎙️ Random commentary data received:', { text, audioPath, conversation });
         
         // Handle dual announcer mode
         const mode = selectedVoice === 'dual' ? 'dual' : 'single';
-        if (mode === 'dual' && conversation) {
+  if (mode === 'dual' && conversation) {
           console.log('🎙️ Processing dual mode conversation:', conversation);
           console.log('🎙️ Conversation type:', typeof conversation, 'Array?', Array.isArray(conversation));
           if (Array.isArray(conversation)) {
@@ -631,7 +631,7 @@ export default function AnnouncerControls({ gameId }) {
           }
           
           try {
-            await playDualAnnouncement(conversation);
+            await playDualAnnouncement(conversation, lineGapMs || 200);
             setMessage('Random commentary complete!');
             setTimeout(() => setMessage(''), 2000);
           } catch (dualError) {

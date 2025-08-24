@@ -87,9 +87,52 @@ const announcerCache = {
   randomDual: new Map()
 };
 
+// In-memory announcer metrics (non-persistent)
+const announcerMetrics = {
+  cache: {
+    goals: { hits: 0, misses: 0 },
+    penalties: { hits: 0, misses: 0 },
+    randomDual: { hits: 0, misses: 0 }
+  },
+  generation: { goals: 0, penalties: 0, random: 0 },
+  timings: { goals: [], penalties: [], random: [] },
+  hygiene: { fluffStripped: 0, namesSanitized: 0, conversationsTrimmed: 0 },
+  lastReset: Date.now()
+};
+// Expose for announcerService (non-breaking if not used)
+globalThis.__ANNOUNCER_METRICS__ = announcerMetrics;
+
+function recordTiming(kind, ms) {
+  const arr = announcerMetrics.timings[kind];
+  if (!arr) return;
+  arr.push(ms);
+  if (arr.length > 250) arr.shift();
+}
+function average(arr) { return arr.length ? +(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0; }
+
+// Adaptive line gap heuristic for dual lines (ms)
+function computeAdaptiveLineGap({ period, timeRemaining, homeScore, awayScore, contextType } = {}) {
+  let base = 180;
+  if (contextType === 'random') base = 200;
+  if (contextType === 'penalty') base = 190;
+  // Parse timeRemaining (MM:SS) -> seconds
+  let secondsRem = 0;
+  if (typeof timeRemaining === 'string' && /:\d{2}$/.test(timeRemaining)) {
+    const [m, s] = timeRemaining.split(':').map(n => parseInt(n, 10));
+    if (!isNaN(m) && !isNaN(s)) secondsRem = m * 60 + s;
+  }
+  const scoreDiff = (typeof homeScore === 'number' && typeof awayScore === 'number') ? Math.abs(homeScore - awayScore) : 99;
+  if (period === 3 && secondsRem <= 300 && scoreDiff <= 1) base -= 30; // late & very close
+  else if (period === 3 && secondsRem <= 600 && scoreDiff <= 2) base -= 20; // mid-late close
+  if (base < 140) base = 140;
+  if (base > 260) base = 260;
+  return base;
+}
+
 function trimConversationLines(conversation, maxLines = 4) {
   if (!Array.isArray(conversation)) return conversation;
   if (conversation.length <= maxLines) return conversation;
+  announcerMetrics.hygiene.conversationsTrimmed++;
   return conversation.slice(0, maxLines);
 }
 
@@ -197,7 +240,15 @@ async function preGenerateGoalAssets(gameId) {
     // Prepare dual conversation (trim to 4 lines) and attach synthetic minimal inter-line delay metadata
     try {
       const convo = await generateDualGoalAnnouncement(goalData, playerStats);
-      entry.dual = { conversation: trimConversationLines(convo, 4), updatedAt: Date.now(), lineGapMs: 200 };
+      const gap = computeAdaptiveLineGap({
+        period: goalData.period,
+        timeRemaining: goalData.timeRemaining,
+        homeScore: goalData.homeScore,
+        awayScore: goalData.awayScore,
+        contextType: 'goal'
+      });
+      entry.dual = { conversation: trimConversationLines(convo, 4), updatedAt: Date.now(), lineGapMs: gap };
+      logger.info('Pre-generated dual goal conversation', { gameId, lineGapMs: gap, lines: entry.dual.conversation.length });
     } catch (_) { /* ignore */ }
 
     // Opportunistically pre-generate a fresh random dual commentary (used if user triggers random)
@@ -205,7 +256,8 @@ async function preGenerateGoalAssets(gameId) {
       if (generateDualRandomCommentary) {
         const randomKey = `${gameId}-random-${Date.now()}`;
         const randomConvo = await generateDualRandomCommentary(gameId, { context: 'post-goal', homeTeam: game.homeTeam, awayTeam: game.awayTeam });
-        announcerCache.randomDual.set(randomKey, { conversation: trimConversationLines(randomConvo, 4), updatedAt: Date.now(), lineGapMs: 250 });
+  const randomGap = computeAdaptiveLineGap({ contextType: 'random', period: goalData.period, timeRemaining: goalData.timeRemaining });
+  announcerCache.randomDual.set(randomKey, { conversation: trimConversationLines(randomConvo, 4), updatedAt: Date.now(), lineGapMs: randomGap });
         // Keep the map from growing unbounded: prune oldest after 10
         if (announcerCache.randomDual.size > 10) {
           const oldestKey = Array.from(announcerCache.randomDual.entries()).sort((a,b)=>a[1].updatedAt-b[1].updatedAt)[0][0];
@@ -288,7 +340,31 @@ async function preGeneratePenaltyAssets(gameId) {
 
     try {
       const convo = await generateDualPenaltyAnnouncement(penaltyData, gameContext);
-      entry.dual = { conversation: trimConversationLines(convo, 4), updatedAt: Date.now() };
+      const gap = computeAdaptiveLineGap({
+        period: penaltyData.period,
+        timeRemaining: penaltyData.timeRemaining,
+        homeScore: gameContext.currentScore.home,
+        awayScore: gameContext.currentScore.away,
+        contextType: 'penalty'
+      });
+      entry.dual = { conversation: trimConversationLines(convo, 4), updatedAt: Date.now(), lineGapMs: gap };
+      logger.info('Pre-generated dual penalty conversation', { gameId, lineGapMs: gap, lines: entry.dual.conversation.length });
+      // Second pass refinement similar to goal pre-generation
+      setTimeout(async () => {
+        try {
+          const refined = await generateDualPenaltyAnnouncement(penaltyData, gameContext);
+          const refinedGap = computeAdaptiveLineGap({
+            period: penaltyData.period,
+            timeRemaining: penaltyData.timeRemaining,
+            homeScore: gameContext.currentScore.home,
+            awayScore: gameContext.currentScore.away,
+            contextType: 'penalty'
+          });
+          entry.dual = { conversation: trimConversationLines(refined, 4), updatedAt: Date.now(), lineGapMs: refinedGap };
+          announcerCache.penalties.set(gameId, entry);
+          logger.info('Refined dual penalty conversation', { gameId, lineGapMs: refinedGap });
+        } catch (_) { /* ignore refinement */ }
+      }, 1500);
     } catch (_) { /* ignore */ }
 
     announcerCache.penalties.set(gameId, entry);
@@ -2071,11 +2147,16 @@ app.post('/api/randomCommentary', async (req, res) => {
       const cached = announcerCache.randomDual.get(key);
       let conversation;
       if (cached?.conversation) {
+        announcerMetrics.cache.randomDual.hits++;
         conversation = cached.conversation;
       } else {
+        announcerMetrics.cache.randomDual.misses++;
         // Generate the dual announcer conversation
         console.log('🎙️ Calling generateDualRandomCommentary with context:', gameContext);
+        const genStart = Date.now();
         conversation = await generateDualRandomCommentary(gameId, gameContext);
+        recordTiming('random', Date.now() - genStart);
+        announcerMetrics.generation.random++;
         conversation = trimConversationLines(conversation, 4);
       }
       // Pre-generate the next one in background
@@ -2084,10 +2165,18 @@ app.post('/api/randomCommentary', async (req, res) => {
       
       console.log('✅ Dual random commentary conversation generated successfully');
       
+      const adaptiveGap = computeAdaptiveLineGap({
+        period: gameContext.period,
+        timeRemaining: gameContext.timeRemaining,
+        homeScore: gameContext.currentScore?.home,
+        awayScore: gameContext.currentScore?.away,
+        contextType: 'random'
+      });
       res.status(200).json({
         success: true,
         type: 'dual_conversation',
         conversation,
+        lineGapMs: adaptiveGap,
         gameContext
       });
       
@@ -2238,6 +2327,27 @@ app.post('/api/randomCommentary', async (req, res) => {
     // Restore original voice
     ttsService.selectedVoice = originalVoice;
   }
+});
+
+// Announcer metrics endpoint (lightweight diagnostics)
+app.get('/api/announcer/metrics', (req, res) => {
+  const { cache, generation, timings, hygiene, lastReset } = announcerMetrics;
+  res.json({
+    cache,
+    generation,
+    hygiene,
+    averages: {
+      goalsMs: average(timings.goals),
+      penaltiesMs: average(timings.penalties),
+      randomMs: average(timings.random)
+    },
+    samples: {
+      goals: timings.goals.length,
+      penalties: timings.penalties.length,
+      random: timings.random.length
+    },
+    since: new Date(lastReset).toISOString()
+  });
 });
 
 // Helper functions for random commentary generation

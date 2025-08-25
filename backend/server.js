@@ -249,6 +249,7 @@ async function preGenerateGoalAssets(gameId) {
       });
       entry.dual = { conversation: trimConversationLines(convo, 4), updatedAt: Date.now(), lineGapMs: gap };
       logger.info('Pre-generated dual goal conversation', { gameId, lineGapMs: gap, lines: entry.dual.conversation.length });
+  announcerMetrics.generation.goals++;
     } catch (_) { /* ignore */ }
 
     // Opportunistically pre-generate a fresh random dual commentary (used if user triggers random)
@@ -1732,16 +1733,18 @@ app.post('/api/goals/announce-last', async (req, res) => {
       seasonGoals: playerGoalsThisGame - 1 // For now, use game stats as season stats
     };
 
-    // Try to serve from cache now that we have context
+    // Try to serve from cache only if it matches the most recent goal id
+    const latestGoalId = lastGoal.id || lastGoal._rid;
     const cached = announcerCache.goals.get(gameId);
-    if (cached) {
-    if (announcerMode === 'dual' && cached.dual?.conversation) {
+    if (cached && cached.lastGoalId === latestGoalId) {
+      if (announcerMode === 'dual' && cached.dual?.conversation) {
+        announcerMetrics.cache.goals.hits++; // metrics
         return res.status(200).json({
           success: true,
           cached: true,
           goal: lastGoal,
-      conversation: cached.dual.conversation,
-      lineGapMs: cached.dual.lineGapMs || 180,
+          conversation: cached.dual.conversation,
+          lineGapMs: cached.dual.lineGapMs || 180,
           goalData,
           playerStats
         });
@@ -1751,6 +1754,7 @@ app.post('/api/goals/announce-last', async (req, res) => {
       const voices = await getAnnouncerVoices();
       const requestedVoiceId = voiceGender === 'male' ? voices.maleVoice : voices.femaleVoice;
       if (announcerMode !== 'dual' && cached.single?.[voiceGender]?.text && (!cached.single[voiceGender].voice || cached.single[voiceGender].voice === requestedVoiceId)) {
+        announcerMetrics.cache.goals.hits++;
         return res.status(200).json({
           success: true,
           cached: true,
@@ -1763,41 +1767,58 @@ app.post('/api/goals/announce-last', async (req, res) => {
           playerStats
         });
       }
+    } else {
+      announcerMetrics.cache.goals.misses++;
+      // If we have a cached entry but it's stale, queue a background refresh (will overwrite after response)
+      if (cached && cached.lastGoalId !== latestGoalId) {
+        setTimeout(() => preGenerateGoalAssets(gameId), 50);
+      }
     }
 
     if (announcerMode === 'dual') {
-      // Generate dual announcer conversation
-  const conversation = trimConversationLines(await generateDualGoalAnnouncement(goalData, playerStats), 4);
-      
+      // Generate dual announcer conversation (adaptive gap)
+      const lineGapMs = computeAdaptiveLineGap({
+        period: goalData.period,
+        timeRemaining: goalData.timeRemaining,
+        homeScore: goalData.homeScore,
+        awayScore: goalData.awayScore,
+        contextType: 'goal'
+      });
+      const conversation = trimConversationLines(await generateDualGoalAnnouncement(goalData, playerStats), 4);
+
       console.log('✅ Dual goal announcement generated successfully');
-      // update cache
+      // update cache (ensure lastGoalId set)
       const entry = announcerCache.goals.get(gameId) || { single: {} };
-  entry.dual = { conversation, updatedAt: Date.now(), lineGapMs: 180 };
+      entry.lastGoalId = latestGoalId;
+      entry.dual = { conversation, updatedAt: Date.now(), lineGapMs };
       announcerCache.goals.set(gameId, entry);
-      
+  announcerMetrics.generation.goals++;
+
       res.status(200).json({
         success: true,
         goal: lastGoal,
         conversation,
-        lineGapMs: 180,
+        lineGapMs,
         goalData,
         playerStats
       });
     } else {
       // Generate single announcer text
       const announcementText = await generateGoalAnnouncement(goalData, playerStats, voiceGender);
-      
+
       // Generate TTS audio for goal announcement using optimized goal speech
       const audioResult = await ttsService.generateGoalSpeech(announcementText, gameId);
       const audioFilename = audioResult?.success ? audioResult.filename : null;
-      
+
       requestLogger.success('Goal announcement generated successfully');
 
-      // update cache
-  const entry = announcerCache.goals.get(gameId) || { single: {} };
-  entry.single[voiceGender] = { text: announcementText, audioPath: audioFilename, voice: selectedVoice, updatedAt: Date.now() };
+      // update cache (ensure lastGoalId set)
+      const entry = announcerCache.goals.get(gameId) || { single: {} };
+      entry.lastGoalId = latestGoalId;
+      entry.single[voiceGender] = { text: announcementText, audioPath: audioFilename, voice: selectedVoice, updatedAt: Date.now() };
       announcerCache.goals.set(gameId, entry);
-      
+  announcerMetrics.generation.goals++;
+
       res.status(200).json({
         success: true,
         goal: lastGoal,

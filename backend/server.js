@@ -3346,13 +3346,77 @@ app.get('/api/player-stats', async (req, res) => {
     const database = await getDatabase();
     const playerStatsContainer = database.container('playerStats');
     
-    // If refresh is requested, recalculate stats
+    // If refresh is requested, rebuild stats from raw events
     if (refresh === 'true') {
-      console.warn('Player stats refresh requested but not implemented in this deployment.');
-      return res.status(501).json({
-        error: 'Player stats refresh is disabled',
-        message: 'The refresh operation is not available in this deployment.'
-      });
+      const goalsC = database.container('goals');
+      const penaltiesC = database.container('penalties');
+
+      // Fetch all goal & penalty docs (pagination risk: assume manageable size; for very large, convert to segmented queries)
+      const [{ resources: allGoals }, { resources: allPenalties }] = await Promise.all([
+        goalsC.items.query({ query: 'SELECT * FROM c' }).fetchAll(),
+        penaltiesC.items.query({ query: 'SELECT * FROM c' }).fetchAll()
+      ]);
+
+      const statsMap = new Map();
+      const pid = (name, team) => `${(team||'').trim().toLowerCase()}::${(name||'').trim().toLowerCase()}`;
+
+      function ensure(name, team) {
+        const key = pid(name, team);
+        if (!statsMap.has(key)) {
+          statsMap.set(key, { id: key, playerId: key, playerName: name, teamName: team, goals:0, assists:0, points:0, pim:0, games:new Set(), lastUpdated: new Date().toISOString() });
+        }
+        return statsMap.get(key);
+      }
+
+      // Process goals
+      for (const g of allGoals) {
+        const scorer = g.playerName || g.scorer;
+        const team = g.teamName || g.scoringTeam;
+        if (scorer) {
+          const s = ensure(scorer, team);
+          s.goals++; s.points++; s.games.add(g.gameId || g.gameID || g.game || 'unknown');
+        }
+        const assists = g.assistedBy || g.assists || [];
+        if (Array.isArray(assists)) {
+          for (const a of assists) {
+            if (!a) continue;
+            const as = ensure(a, team);
+            as.assists++; as.points++; as.games.add(g.gameId || g.gameID || g.game || 'unknown');
+          }
+        }
+      }
+
+      // Process penalties (PIM)
+      for (const p of allPenalties) {
+        const name = p.playerName || p.penalizedPlayer;
+        const team = p.teamName || p.penalizedTeam;
+        if (!name) continue;
+        const ps = ensure(name, team);
+        const mins = parseInt(p.length || p.penaltyLength || p.minutes || 0, 10);
+        if (!isNaN(mins)) ps.pim += mins;
+        ps.games.add(p.gameId || p.gameID || p.game || 'unknown');
+      }
+
+      // Replace existing stats container entries (truncate naive approach)
+      try {
+        const { resources: existing } = await playerStatsContainer.items.query('SELECT c.id FROM c').fetchAll();
+        for (const e of existing) {
+          try { await playerStatsContainer.item(e.id, e.id).delete(); } catch (_) {}
+        }
+      } catch (_) {}
+
+      // Persist new docs
+      for (const rec of statsMap.values()) {
+        const gamesPlayed = rec.games.size;
+        await playerStatsContainer.items.create({
+          ...rec,
+          gamesPlayed,
+          games: Array.from(rec.games),
+          attendance: { gamesAttended: gamesPlayed, totalTeamGames: gamesPlayed, attendancePercentage: 100 },
+          updatedAt: new Date().toISOString()
+        });
+      }
+      return res.status(200).json({ success: true, rebuilt: statsMap.size });
     }
     
     let querySpec;
@@ -3412,6 +3476,130 @@ app.get('/api/player-stats', async (req, res) => {
       error: 'Failed to fetch player stats',
       message: error.message 
     });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Historical backfill: add missing game-submission docs for legacy games
+// POST /api/admin/backfill-submissions  { dryRun?: true }
+app.post('/api/admin/backfill-submissions', async (req, res) => {
+  const { dryRun } = req.body || {};
+  try {
+    const { getDatabase } = await import('./cosmosClient.js');
+    const db = await getDatabase();
+    const gamesC = db.container('games');
+    const goalsC = db.container('goals');
+    const penaltiesC = db.container('penalties');
+
+    // Fetch all base game records (exclude existing submission docs)
+    const { resources: baseGames } = await gamesC.items.query({
+      query: "SELECT * FROM c WHERE (NOT IS_DEFINED(c.eventType)) OR c.eventType != 'game-submission'"
+    }).fetchAll();
+
+    // Fetch existing submissions index
+    const { resources: existingSubs } = await gamesC.items.query({
+      query: "SELECT c.gameId FROM c WHERE c.eventType = 'game-submission'"
+    }).fetchAll();
+    const existingSet = new Set(existingSubs.map(s => s.gameId));
+
+    const toCreate = [];
+    for (const g of baseGames) {
+      const gameId = g.gameId || g.id;
+      if (!gameId || existingSet.has(gameId)) continue;
+      // Aggregate goals & penalties for summary
+      const [{ resources: gameGoals }, { resources: gamePens }] = await Promise.all([
+        goalsC.items.query({ query: 'SELECT * FROM c WHERE c.gameId = @gid', parameters: [{ name: '@gid', value: gameId }] }).fetchAll(),
+        penaltiesC.items.query({ query: 'SELECT * FROM c WHERE c.gameId = @gid', parameters: [{ name: '@gid', value: gameId }] }).fetchAll()
+      ]);
+      const goalsByTeam = {};
+      for (const goal of gameGoals) {
+        const t = goal.teamName || goal.scoringTeam || 'Unknown';
+        goalsByTeam[t] = (goalsByTeam[t] || 0) + 1;
+      }
+      const penaltiesByTeam = {};
+      let totalPIM = 0;
+      for (const pen of gamePens) {
+        const t = pen.teamName || pen.penalizedTeam || 'Unknown';
+        penaltiesByTeam[t] = (penaltiesByTeam[t] || 0) + 1;
+        const mins = parseInt(pen.length || pen.penaltyLength || 0, 10);
+        if (!isNaN(mins)) totalPIM += mins;
+      }
+      const submissionDoc = {
+        id: `${gameId}-submission-backfill`,
+        gameId,
+        eventType: 'game-submission',
+        createdAt: new Date().toISOString(),
+        source: 'backfill',
+        goalsByTeam,
+        penaltiesByTeam,
+        totalGoals: gameGoals.length,
+        totalPenalties: gamePens.length,
+        totalPIM,
+        division: g.division || g.league,
+        season: g.season || new Date().getFullYear(),
+        teams: [g.homeTeam, g.awayTeam].filter(Boolean)
+      };
+      toCreate.push(submissionDoc);
+    }
+
+    if (dryRun) {
+      return res.status(200).json({ success: true, dryRun: true, wouldCreate: toCreate.length });
+    }
+
+    for (const doc of toCreate) {
+      try { await gamesC.items.create(doc); } catch (e) { /* ignore duplicates */ }
+    }
+    res.status(200).json({ success: true, created: toCreate.length });
+  } catch (e) {
+    console.error('Backfill submissions error:', e);
+    res.status(500).json({ error: 'Failed to backfill submissions', message: e.message });
+  }
+});
+
+// Normalization endpoint: rewrite legacy field names to canonical schema
+// POST /api/admin/normalize-events { dryRun?: true }
+app.post('/api/admin/normalize-events', async (req, res) => {
+  const { dryRun } = req.body || {};
+  try {
+    const { getDatabase } = await import('./cosmosClient.js');
+    const db = await getDatabase();
+    const goalsC = db.container('goals');
+    const penaltiesC = db.container('penalties');
+    let updated = 0;
+    // Goals normalization
+    const { resources: goals } = await goalsC.items.query('SELECT * FROM c').fetchAll();
+    for (const g of goals) {
+      let changed = false;
+      if (!g.playerName && g.scorer) { g.playerName = g.scorer; changed = true; }
+      if (!g.teamName && g.scoringTeam) { g.teamName = g.scoringTeam; changed = true; }
+      if (!g.assistedBy && g.assists) { g.assistedBy = g.assists; changed = true; }
+      if (!g.timeRemaining && g.time) { g.timeRemaining = g.time; changed = true; }
+      if (changed && !dryRun) {
+        await goalsC.item(g.id, g.gameId).replace(g);
+        updated++;
+      } else if (changed) {
+        updated++;
+      }
+    }
+    // Penalties normalization
+    const { resources: pens } = await penaltiesC.items.query('SELECT * FROM c').fetchAll();
+    for (const p of pens) {
+      let changed = false;
+      if (!p.playerName && p.penalizedPlayer) { p.playerName = p.penalizedPlayer; changed = true; }
+      if (!p.teamName && p.penalizedTeam) { p.teamName = p.penalizedTeam; changed = true; }
+      if (!p.timeRemaining && p.time) { p.timeRemaining = p.time; changed = true; }
+      if (!p.length && p.penaltyLength) { p.length = p.penaltyLength; changed = true; }
+      if (changed && !dryRun) {
+        await penaltiesC.item(p.id, p.gameId).replace(p);
+        updated++;
+      } else if (changed) {
+        updated++;
+      }
+    }
+    res.status(200).json({ success: true, updated, dryRun: !!dryRun });
+  } catch (e) {
+    console.error('Normalization error:', e);
+    res.status(500).json({ error: 'Failed to normalize events', message: e.message });
   }
 });
 

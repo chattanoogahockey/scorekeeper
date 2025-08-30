@@ -15,8 +15,10 @@ export default function Statistics() {
   
   // State for filters and sorting
   const [selectedDivision, setSelectedDivision] = useState('All');
-  const [selectedSeason, setSelectedSeason] = useState('');
-  const [selectedYear, setSelectedYear] = useState('');
+  const [selectedSeason, setSelectedSeason] = useState('All');
+  const [selectedYear, setSelectedYear] = useState('All');
+  const [seasonOptions, setSeasonOptions] = useState(['All']);
+  const [yearOptions, setYearOptions] = useState(['All']);
   const [statScope, setStatScope] = useState('totals'); // totals | historical | live
   const [playerSortField, setPlayerSortField] = useState('goals');
   const [playerSortDirection, setPlayerSortDirection] = useState('desc');
@@ -25,6 +27,7 @@ export default function Statistics() {
 
   useEffect(() => { fetchPlayerStats(); }, [selectedDivision, selectedSeason, selectedYear, statScope]);
   useEffect(() => { fetchTeamStats(); }, [selectedDivision]);
+  useEffect(() => { fetchMeta(); }, []);
 
   const fetchPlayerStats = async () => {
     try {
@@ -33,8 +36,8 @@ export default function Statistics() {
       const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
       const params = new URLSearchParams();
       if (selectedDivision !== 'All') params.append('division', selectedDivision);
-      if (selectedSeason) params.append('season', selectedSeason);
-      if (selectedYear) params.append('year', selectedYear);
+  if (selectedSeason && selectedSeason !== 'All') params.append('season', selectedSeason);
+  if (selectedYear && selectedYear !== 'All') params.append('year', selectedYear);
       if (statScope) params.append('scope', statScope);
       const { data } = await axios.get(`${apiBase}/api/player-stats?${params.toString()}`);
       if (statScope === 'totals') setMergedStats(data);
@@ -69,10 +72,28 @@ export default function Statistics() {
     } catch (e) { console.error('Team stats fetch failed', e); }
   };
 
+  const fetchMeta = async () => {
+    try {
+      const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
+      const { data } = await axios.get(`${apiBase}/api/player-stats/meta`);
+      if (data?.seasons) setSeasonOptions(['All', ...data.seasons]);
+      if (data?.years) setYearOptions(['All', ...data.years]);
+    } catch (e) { console.error('Failed to load meta', e); }
+  };
+
   const divisions = ['All', 'Gold', 'Silver', 'Bronze'];
 
   const activeList = statScope === 'historical' ? historicalStats : statScope === 'live' ? liveStats : mergedStats;
   const filteredPlayerStats = activeList.filter(p => selectedDivision === 'All' || p.division === selectedDivision);
+  // Analytics derivations
+  const topScorer = filteredPlayerStats[0];
+  const totalGoals = filteredPlayerStats.reduce((s,p)=> s + (p.goals||0),0);
+  const totalAssists = filteredPlayerStats.reduce((s,p)=> s + (p.assists||0),0);
+  const totalPoints = filteredPlayerStats.reduce((s,p)=> s + (p.points||0),0);
+  const avgPoints = filteredPlayerStats.length ? (totalPoints / filteredPlayerStats.length).toFixed(2) : '0.00';
+  const medianPoints = (() => { if(!filteredPlayerStats.length) return '0'; const pts = filteredPlayerStats.map(p=>p.points||0).sort((a,b)=>a-b); const mid = Math.floor(pts.length/2); return pts.length%2? String(pts[mid]) : ((pts[mid-1]+pts[mid])/2).toFixed(1); })();
+  const goalsPerGameAgg = (()=> { const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); return gp? (totalGoals / gp).toFixed(2) : '0.00'; })();
+  const pointsPerPlayerPerGame = (()=> { const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); return gp? (totalPoints / gp).toFixed(2):'0.00'; })();
 
   const filteredTeamStats = teamStats.filter(team => selectedDivision === 'All' || team.division === selectedDivision);
 
@@ -183,8 +204,12 @@ export default function Statistics() {
                 <option key={division} value={division}>{division}</option>
               ))}
             </select>
-            <input placeholder="Season" value={selectedSeason} onChange={e=>setSelectedSeason(e.target.value)} className="px-2 py-2 border rounded-md text-sm" />
-            <input placeholder="Year" value={selectedYear} onChange={e=>setSelectedYear(e.target.value)} className="px-2 py-2 border rounded-md text-sm w-24" />
+            <select value={selectedSeason} onChange={e=>setSelectedSeason(e.target.value)} className="px-2 py-2 border rounded-md text-sm">
+              {seasonOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+            <select value={selectedYear} onChange={e=>setSelectedYear(e.target.value)} className="px-2 py-2 border rounded-md text-sm w-28">
+              {yearOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
             <select value={statScope} onChange={e=>setStatScope(e.target.value)} className="px-2 py-2 border rounded-md text-sm">
               <option value="totals">Totals (Career)</option>
               <option value="historical">Historical Only</option>
@@ -198,6 +223,32 @@ export default function Statistics() {
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">👤 Player Statistics ({statScope})</h2>
           <p className="text-xs text-gray-500 mb-4">Scope controls whether you see historical, live current season, or merged totals (career-like).</p>
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4 text-sm">
+            <div className="bg-blue-50 p-3 rounded border border-blue-200">
+              <div className="text-[10px] text-blue-700 uppercase tracking-wide">Top Scorer</div>
+              <div className="font-semibold text-blue-900 truncate" title={topScorer?.playerName}>{topScorer? topScorer.playerName : '—'}</div>
+            </div>
+            <div className="bg-green-50 p-3 rounded border border-green-200">
+              <div className="text-[10px] text-green-700 uppercase tracking-wide">Avg Points/Player</div>
+              <div className="font-semibold text-green-900">{avgPoints}</div>
+            </div>
+            <div className="bg-purple-50 p-3 rounded border border-purple-200">
+              <div className="text-[10px] text-purple-700 uppercase tracking-wide">Median Points</div>
+              <div className="font-semibold text-purple-900">{medianPoints}</div>
+            </div>
+            <div className="bg-orange-50 p-3 rounded border border-orange-200">
+              <div className="text-[10px] text-orange-700 uppercase tracking-wide">Total Goals</div>
+              <div className="font-semibold text-orange-900">{totalGoals}</div>
+            </div>
+            <div className="bg-teal-50 p-3 rounded border border-teal-200">
+              <div className="text-[10px] text-teal-700 uppercase tracking-wide">Goals / Game (Agg)</div>
+              <div className="font-semibold text-teal-900">{goalsPerGameAgg}</div>
+            </div>
+            <div className="bg-rose-50 p-3 rounded border border-rose-200">
+              <div className="text-[10px] text-rose-700 uppercase tracking-wide">Points / Player GP</div>
+              <div className="font-semibold text-rose-900">{pointsPerPlayerPerGame}</div>
+            </div>
+          </div>
           
           {sortedPlayerStats.length > 0 ? (
             <div className="overflow-x-auto">

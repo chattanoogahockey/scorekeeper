@@ -3570,6 +3570,27 @@ app.get('/api/player-stats', async (req, res) => {
   }
 });
 
+// Player stats metadata (distinct seasons & years from historical data)
+app.get('/api/player-stats/meta', async (req, res) => {
+  try {
+    const { getHistoricalPlayerStatsContainer } = await import('./cosmosClient.js');
+    const histC = getHistoricalPlayerStatsContainer();
+    const { resources } = await histC.items.query('SELECT c.season, c.year FROM c').fetchAll();
+    const seasons = new Set();
+    const years = new Set();
+    for (const r of resources) {
+      if (r.season) seasons.add(String(r.season));
+      if (r.year) years.add(String(r.year));
+    }
+    const seasonList = Array.from(seasons).filter(Boolean).sort((a,b)=> a.localeCompare(b));
+    const yearList = Array.from(years).filter(Boolean).sort((a,b)=> parseInt(b,10)-parseInt(a,10));
+    res.json({ seasons: seasonList, years: yearList, count: resources.length, generatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('Player stats meta error', e);
+    res.status(500).json({ error:'Failed to get player stats meta', message:e.message });
+  }
+});
+
 // Team stats aggregated view (backend is source of truth)
 app.get('/api/team-stats', async (req, res) => {
   const { division } = req.query || {};

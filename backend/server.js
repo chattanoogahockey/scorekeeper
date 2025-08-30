@@ -3400,6 +3400,25 @@ app.post('/api/admin/historical-player-stats/import', async (req, res) => {
   }
 });
 
+// Ensure historical-player-stats container exists (idempotent)
+app.post('/api/admin/historical-player-stats/ensure', async (req, res) => {
+  try {
+    const { getDatabase, getContainerDefinitions } = await import('./cosmosClient.js');
+    const db = await getDatabase();
+    const defs = getContainerDefinitions();
+    const def = defs['historical-player-stats'];
+    if (!def) return res.status(500).json({ error: 'Definition missing' });
+    const { container, resource } = await db.containers.createIfNotExists({
+      id: def.name,
+      partitionKey: def.partitionKey,
+      indexingPolicy: def.indexingPolicy
+    });
+    res.json({ success: true, container: def.name, created: !!resource?._rid });
+  } catch (e) {
+    res.status(500).json({ error: 'Ensure failed', message: e.message });
+  }
+});
+
 // Player stats merged view (live events + historical aggregates)
 app.get('/api/player-stats', async (req, res) => {
   const { refresh, division, year, scope } = req.query; // scope: totals|historical|live

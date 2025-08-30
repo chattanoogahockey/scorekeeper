@@ -98,8 +98,15 @@ export async function generateGoalAnnouncement(goalData, playerStats = null, voi
       `${awayTeam} ${awayScore}, ${homeTeam} ${homeScore}`;
 
     const statsText = playerStats ? 
-      `This is ${playerName}'s ${playerStats.goalsThisGame + 1}${getOrdinalSuffix(playerStats.goalsThisGame + 1)} goal of the game, and ${playerStats.seasonGoals + 1}${getOrdinalSuffix(playerStats.seasonGoals + 1)} of the season.` :
-      '';
+      `This is ${playerName}'s ${playerStats.goalsThisGame + 1}${getOrdinalSuffix(playerStats.goalsThisGame + 1)} goal of the game, and ${playerStats.seasonGoals + 1}${getOrdinalSuffix(playerStats.seasonGoals + 1)} of the season.` : '';
+
+    let careerLineInstruction = '';
+    if (playerStats && playerStats.includeCareerLine && typeof playerStats.careerGoalsBefore === 'number') {
+      const careerAfter = playerStats.careerGoalsBefore + 1;
+      careerLineInstruction = `OPTIONAL CAREER MILESTONE: If it flows naturally, append a short second sentence like: "That is ${playerName}'s ${careerAfter}${getOrdinalSuffix(careerAfter)} career goal." Keep it factual and concise. Do NOT include if it would create redundancy or exceed two sentences total.`;
+    } else {
+      careerLineInstruction = 'Do NOT mention broader career totals this time.';
+    }
 
     // Determine personality based on voice gender
     const personalityPrompt = voiceGender === 'female' ? 
@@ -183,6 +190,7 @@ Goal Type: ${goalType}
 ${assistText}
 Current Score: ${scoreText}
 ${statsText}
+${careerLineInstruction}
 
 ${timingContext}
 

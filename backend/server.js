@@ -170,6 +170,8 @@ async function preGenerateGoalAssets(gameId) {
   try {
     const goalsContainer = getGoalsContainer();
     const gamesContainer = getGamesContainer();
+  let historicalContainer = null;
+  try { const mod = await import('./cosmosClient.js'); historicalContainer = mod.getHistoricalPlayerStatsContainer?.(); } catch(_) {}
 
     const [{ resources: goals }, { resources: gamesByQuery }] = await Promise.all([
       goalsContainer.items.query({
@@ -207,8 +209,36 @@ async function preGenerateGoalAssets(gameId) {
 
     const playerStats = {
       goalsThisGame: playerGoalsThisGame - 1,
-      seasonGoals: playerGoalsThisGame - 1
+      seasonGoals: playerGoalsThisGame - 1,
+      // Career goals baseline (historical + simplistic current season approximation) loaded below
+      careerGoalsBefore: null,
+      includeCareerLine: false
     };
+
+    // In-memory caches for career lookups (per process)
+    if (!globalThis.__CAREER_GOAL_CACHE__) globalThis.__CAREER_GOAL_CACHE__ = new Map();
+    if (!globalThis.__CAREER_MENTION_CACHE__) globalThis.__CAREER_MENTION_CACHE__ = new Map(); // key: gameId|player
+    try {
+      const cacheKey = (goalData.playerName||'').toLowerCase();
+      let careerBaseline = globalThis.__CAREER_GOAL_CACHE__.get(cacheKey);
+      if (careerBaseline == null && historicalContainer) {
+        const { resources: histRows } = await historicalContainer.items.query({
+          query: 'SELECT c.goals FROM c WHERE c.playerName = @p',
+          parameters: [{ name: '@p', value: goalData.playerName }]
+        }).fetchAll();
+        careerBaseline = histRows.reduce((a,r)=>a+(r.goals||0),0);
+        globalThis.__CAREER_GOAL_CACHE__.set(cacheKey, careerBaseline);
+      }
+      if (careerBaseline != null) {
+        playerStats.careerGoalsBefore = careerBaseline + playerStats.seasonGoals; // seasonGoals here is per game so far; approximates if no season container
+        const mentionKey = `${gameId}::${cacheKey}`;
+        const alreadyMentioned = globalThis.__CAREER_MENTION_CACHE__.has(mentionKey);
+        if (!alreadyMentioned && playerStats.careerGoalsBefore >= 5 && Math.random() < 0.3) {
+          playerStats.includeCareerLine = true;
+          globalThis.__CAREER_MENTION_CACHE__.set(mentionKey, true);
+        }
+      }
+    } catch(_) { /* ignore career enrichment errors */ }
 
     const entry = announcerCache.goals.get(gameId) || { single: {} };
     entry.lastGoalId = lastGoal.id || lastGoal._rid || String(Date.now());
@@ -1730,8 +1760,37 @@ app.post('/api/goals/announce-last', async (req, res) => {
 
     const playerStats = {
       goalsThisGame: playerGoalsThisGame - 1, // Subtract 1 since we're announcing this goal
-      seasonGoals: playerGoalsThisGame - 1 // For now, use game stats as season stats
+      seasonGoals: playerGoalsThisGame - 1, // For now, use game stats as season stats
+      careerGoalsBefore: null,
+      includeCareerLine: false
     };
+
+    // Career enrichment (same logic as pregen if not cached)
+    try {
+      let historicalContainer = null;
+      try { const mod = await import('./cosmosClient.js'); historicalContainer = mod.getHistoricalPlayerStatsContainer?.(); } catch(_) {}
+      if (historicalContainer) {
+        if (!globalThis.__CAREER_GOAL_CACHE__) globalThis.__CAREER_GOAL_CACHE__ = new Map();
+        if (!globalThis.__CAREER_MENTION_CACHE__) globalThis.__CAREER_MENTION_CACHE__ = new Map();
+        const cacheKey = (goalData.playerName||'').toLowerCase();
+        let careerBaseline = globalThis.__CAREER_GOAL_CACHE__.get(cacheKey);
+        if (careerBaseline == null) {
+          const { resources: histRows } = await historicalContainer.items.query({
+            query: 'SELECT c.goals FROM c WHERE c.playerName = @p',
+            parameters: [{ name: '@p', value: goalData.playerName }]
+          }).fetchAll();
+          careerBaseline = histRows.reduce((a,r)=>a+(r.goals||0),0);
+          globalThis.__CAREER_GOAL_CACHE__.set(cacheKey, careerBaseline);
+        }
+        playerStats.careerGoalsBefore = careerBaseline + playerStats.seasonGoals;
+        const mentionKey = `${gameId}::${cacheKey}`;
+        const alreadyMentioned = globalThis.__CAREER_MENTION_CACHE__.has(mentionKey);
+        if (!alreadyMentioned && playerStats.careerGoalsBefore >= 5 && Math.random() < 0.3) {
+          playerStats.includeCareerLine = true;
+          globalThis.__CAREER_MENTION_CACHE__.set(mentionKey, true);
+        }
+      }
+    } catch(_) { /* ignore */ }
 
     // Try to serve from cache only if it matches the most recent goal id
     const latestGoalId = lastGoal.id || lastGoal._rid;

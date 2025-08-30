@@ -277,20 +277,8 @@ export default function InGameMenu() {
     
     try {
       const gameId = currentGame.id || currentGame.gameId;
-      
-      // Delete all goals for this game
-      const goalsResponse = await axios.get('/api/goals', { params: { gameId } });
-      for (const goal of goalsResponse.data || []) {
-        await axios.delete(`/api/goals/${goal.id}`, { params: { gameId } });
-      }
-      
-      // Delete all penalties for this game
-      const penaltiesResponse = await axios.get('/api/penalties', { params: { gameId } });
-      for (const penalty of penaltiesResponse.data || []) {
-        await axios.delete(`/api/penalties/${penalty.id}`, { params: { gameId } });
-      }
-      
-      alert('Game cancelled successfully. All data has been cleared.');
+  const resp = await axios.post(`/api/games/${gameId}/cancel`);
+  alert(`Game cancelled: deleted ${resp.data.goalsDeleted} goals, ${resp.data.penaltiesDeleted} penalties, ${resp.data.shotsDeleted} shots record${resp.data.forceRemoved ? ' and base game' : ''}.`);
       navigate('/'); // Go back to home
     } catch (error) {
       console.error('Failed to cancel game:', error);

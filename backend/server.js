@@ -4042,6 +4042,50 @@ app.delete('/api/shots-on-goal/:id', async (req, res) => {
   }
 });
 
+// Unified game cancel endpoint to purge all related data (goals, penalties, shots, attendance, OT/SO)
+app.post('/api/games/:gameId/cancel', async (req, res) => {
+  const { gameId } = req.params;
+  try {
+    const db = await (await import('./cosmosClient.js')).getDatabase();
+    const goalsC = db.container('goals');
+    const pensC = db.container('penalties');
+    const shotsC = db.container('shots-on-goal');
+    const attendC = db.container('attendance');
+    const otC = db.container('ot-shootout');
+    const gamesC = db.container('games');
+
+    async function deleteByQuery(container, query, paramName='@gid') {
+      try {
+        const { resources } = await container.items.query({ query, parameters:[{ name:paramName, value: gameId }] }).fetchAll();
+        for (const doc of resources) {
+          try { await container.item(doc.id, doc.gameId || doc.id).delete(); } catch(_) {}
+        }
+        return resources.length;
+      } catch { return 0; }
+    }
+
+    const [goalsDeleted, pensDeleted, shotsDeleted, attendDeleted, otDeleted] = await Promise.all([
+      deleteByQuery(goalsC, 'SELECT c.id, c.gameId FROM c WHERE c.gameId = @gid'),
+      deleteByQuery(pensC, 'SELECT c.id, c.gameId FROM c WHERE c.gameId = @gid'),
+      deleteByQuery(shotsC, 'SELECT c.id, c.gameId FROM c WHERE c.gameId = @gid'),
+      deleteByQuery(attendC, 'SELECT c.id, c.gameId FROM c WHERE c.gameId = @gid'),
+      deleteByQuery(otC, 'SELECT c.id, c.gameId FROM c WHERE c.gameId = @gid')
+    ]);
+
+    // Delete any submission doc for the game (eventType = game-submission)
+    await deleteByQuery(gamesC, 'SELECT c.id, c.gameId FROM c WHERE (c.gameId = @gid OR c.id = @gid) AND c.eventType = "game-submission"');
+
+    // Optionally delete base game record itself? Keep for scheduling clarity. Only remove if query param force=true
+    if (req.query.force === 'true') {
+      try { await gamesC.item(gameId, gameId).delete(); } catch(_) {}
+    }
+
+    res.json({ success:true, gameId, goalsDeleted, penaltiesDeleted: pensDeleted, shotsDeleted, attendanceDeleted: attendDeleted, otDeleted });
+  } catch (e) {
+    res.status(500).json({ error:'Failed to cancel game', message:e.message });
+  }
+});
+
 // Undo Last Action API endpoint (robust, PK-safe)
 app.post('/api/undo-last-action', async (req, res) => {
   console.log('↩️ Undoing last action...');

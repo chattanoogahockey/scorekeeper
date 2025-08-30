@@ -40,14 +40,24 @@ export default function Statistics() {
   if (selectedYear && selectedYear !== 'All') params.append('year', selectedYear);
       if (statScope) params.append('scope', statScope);
       const { data } = await axios.get(`${apiBase}/api/player-stats?${params.toString()}`);
-      if (statScope === 'totals') setMergedStats(data);
-      if (statScope === 'historical') setHistoricalStats(data);
-      if (statScope === 'live') setLiveStats(data);
+      const arr = Array.isArray(data.data) ? data.data : data; // support debug payload
+      if (statScope === 'totals') setMergedStats(arr);
+      if (statScope === 'historical') setHistoricalStats(arr);
+      if (statScope === 'live') setLiveStats(arr);
       if (statScope !== 'totals') {
         try {
           const totalsResp = await axios.get(`${apiBase}/api/player-stats?${params.toString().replace(`scope=${statScope}`, 'scope=totals')}`);
-          setMergedStats(totalsResp.data);
-        } catch {}
+          const totalsArr = Array.isArray(totalsResp.data.data) ? totalsResp.data.data : totalsResp.data;
+          setMergedStats(totalsArr);
+        } catch (e) { console.warn('Totals fallback failed', e); }
+      }
+      // If everything empty, run debug call
+      const empty = (!arr || arr.length === 0) && mergedStats.length === 0;
+      if (empty) {
+        try {
+          const dbg = await axios.get(`${apiBase}/api/player-stats?${params.toString()}&debug=true`);
+          console.log('Player stats debug diagnostics', dbg.data.debug || dbg.data);
+        } catch (dbgErr) { console.warn('Debug fetch failed', dbgErr); }
       }
     } catch (err) {
       console.error('Error fetching player stats:', err);

@@ -3480,7 +3480,7 @@ app.post('/api/admin/historical-player-stats/ensure', async (req, res) => {
 
 // Player stats merged view (live events + historical aggregates)
 app.get('/api/player-stats', async (req, res) => {
-  const { refresh, division, year, season, scope } = req.query; // scope: totals|historical|live
+  const { refresh, division, year, season, scope, debug } = req.query; // scope: totals|historical|live
   try {
   const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions } = await import('./cosmosClient.js');
   const db = await getDatabase();
@@ -3528,11 +3528,32 @@ app.get('/api/player-stats', async (req, res) => {
     const { resources: historical } = await histC.items.query({ query: histQuery, parameters: hParams }).fetchAll();
 
     // Fetch live filtered
-    let liveQuery = 'SELECT * FROM c';
+    let liveQuery = "SELECT * FROM c WHERE c.source = 'live'";
     const lParams = [];
-  if (division) { liveQuery = 'SELECT * FROM c WHERE c.division = @d'; lParams.push({ name:'@d', value: division }); }
-  // season/year filters not yet applied to live events (not stored); future enhancement
-  const { resources: live } = await liveC.items.query({ query: liveQuery, parameters: lParams }).fetchAll();
+    if (division) { liveQuery += ' AND c.division = @d'; lParams.push({ name:'@d', value: division }); }
+    const { resources: liveInitial } = await liveC.items.query({ query: liveQuery, parameters: lParams }).fetchAll();
+    let live = liveInitial;
+
+    // Auto-rebuild if empty and not explicitly filtered by year/season (only when totals/live requested)
+    if (!refresh && live.length === 0 && (!scope || scope !== 'historical')) {
+      try {
+        const [{ resources: goals }, { resources: pens }] = await Promise.all([
+          goalsC.items.query('SELECT * FROM c').fetchAll(),
+          pensC.items.query('SELECT * FROM c').fetchAll()
+        ]);
+        if (goals.length > 0 || pens.length > 0) {
+          const map = new Map();
+          const key = (name, div) => `${(div||'div').toLowerCase()}::${name.toLowerCase().replace(/\s+/g,'_')}`;
+          const ensure = (name, div) => { const k=key(name,div); if(!map.has(k)) map.set(k,{ id:k, playerId:k, playerName:name, division:div, goals:0, assists:0, pim:0, games:new Set() }); return map.get(k); };
+          for (const g of goals) {
+            const name = g.playerName || g.scorer; if(!name) continue; const div = g.division||null; const r=ensure(name,div); r.goals++; r.games.add(g.gameId); const assists = g.assistedBy||g.assists||[]; if(Array.isArray(assists)){ for(const a of assists){ if(!a) continue; const ar=ensure(a,div); ar.assists++; ar.games.add(g.gameId); }} }
+          for (const p of pens) { const name = p.playerName || p.penalizedPlayer; if(!name) continue; const div = p.division||null; const r=ensure(name,div); const mins=parseInt(p.length||p.penaltyLength||0,10); if(!isNaN(mins)) r.pim+=mins; r.games.add(p.gameId); }
+          for (const rec of map.values()) { const doc = { ...rec, _partitionKey: rec.division || 'global', points: rec.goals+rec.assists, gamesPlayed: rec.games.size, games: Array.from(rec.games), updatedAt: new Date().toISOString(), source:'live', autoRebuilt:true }; await liveC.items.upsert(doc); }
+          const { resources: liveAfter } = await liveC.items.query({ query: liveQuery, parameters: lParams }).fetchAll();
+          live = liveAfter;
+        }
+      } catch (autoErr) { console.warn('Auto rebuild live stats failed', autoErr.message); }
+    }
 
     const histIndex = new Map();
     for (const h of historical) {
@@ -3566,7 +3587,11 @@ app.get('/api/player-stats', async (req, res) => {
       else response.push({ ...base, ...totals, historical: histTotals, live: liveRec, scope:'totals' });
     }
 
-    res.json(response.sort((a,b)=> b.points - a.points));
+    const payload = response.sort((a,b)=> b.points - a.points);
+    if (debug === 'true') {
+      return res.json({ debug: { historicalCount: historical.length, liveCount: live.length, divisionFilter: division||null, autoRebuilt: live.some(l=>l.autoRebuilt), scopeRequested: scope||'totals' }, data: payload });
+    }
+    res.json(payload);
   } catch (e) {
     console.error('Player stats merged error', e);
     res.status(500).json({ error:'Failed to get player stats', message:e.message });

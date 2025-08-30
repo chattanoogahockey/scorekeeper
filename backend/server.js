@@ -3480,7 +3480,7 @@ app.post('/api/admin/historical-player-stats/ensure', async (req, res) => {
 
 // Player stats merged view (live events + historical aggregates)
 app.get('/api/player-stats', async (req, res) => {
-  const { refresh, division, year, scope } = req.query; // scope: totals|historical|live
+  const { refresh, division, year, season, scope } = req.query; // scope: totals|historical|live
   try {
     const { getDatabase, getHistoricalPlayerStatsContainer } = await import('./cosmosClient.js');
     const db = await getDatabase();
@@ -3515,10 +3515,11 @@ app.get('/api/player-stats', async (req, res) => {
     // Fetch historical filtered
     let histQuery = 'SELECT * FROM c';
     const hParams = [];
-    if (division || year) {
+    if (division || year || season) {
       const cond = [];
       if (division) { cond.push('c.division = @d'); hParams.push({ name:'@d', value: division }); }
       if (year) { cond.push('c.year = @y'); hParams.push({ name:'@y', value: year }); }
+      if (season) { cond.push('c.season = @s'); hParams.push({ name:'@s', value: season }); }
       histQuery = `SELECT * FROM c WHERE ${cond.join(' AND ')}`;
     }
     const { resources: historical } = await histC.items.query({ query: histQuery, parameters: hParams }).fetchAll();
@@ -3526,7 +3527,8 @@ app.get('/api/player-stats', async (req, res) => {
     // Fetch live filtered
     let liveQuery = 'SELECT * FROM c';
     const lParams = [];
-    if (division) { liveQuery = 'SELECT * FROM c WHERE c.division = @d'; lParams.push({ name:'@d', value: division }); }
+  if (division) { liveQuery = 'SELECT * FROM c WHERE c.division = @d'; lParams.push({ name:'@d', value: division }); }
+  // season/year filters not yet applied to live events (not stored); future enhancement
     const { resources: live } = await liveC.items.query({ query: liveQuery, parameters: lParams }).fetchAll();
 
     const histIndex = new Map();
@@ -3565,6 +3567,81 @@ app.get('/api/player-stats', async (req, res) => {
   } catch (e) {
     console.error('Player stats merged error', e);
     res.status(500).json({ error:'Failed to get player stats', message:e.message });
+  }
+});
+
+// Team stats aggregated view (backend is source of truth)
+app.get('/api/team-stats', async (req, res) => {
+  const { division } = req.query || {};
+  try {
+    const { getDatabase } = await import('./cosmosClient.js');
+    const db = await getDatabase();
+    const gamesC = db.container('games');
+    const goalsC = db.container('goals');
+
+    // Fetch submission docs
+    const { resources: submissions } = await gamesC.items.query({
+      query: "SELECT * FROM c WHERE c.eventType = 'game-submission'",
+      parameters: []
+    }).fetchAll();
+
+    // Build base games map to avoid N queries
+    const gameIds = submissions.map(s => s.gameId);
+    let games = [];
+    if (gameIds.length) {
+      // Chunk to avoid IN clause limits (Cosmos doesn't support large IN; query all games instead)
+      const { resources: allGames } = await gamesC.items.query('SELECT * FROM c WHERE NOT IS_DEFINED(c.eventType)').fetchAll();
+      const byId = new Map(allGames.map(g => [g.id, g]));
+      for (const sub of submissions) { const g = byId.get(sub.gameId); if (g) games.push(g); }
+    }
+
+    if (division && division.toLowerCase() !== 'all') {
+      games = games.filter(g => (g.division||'').toLowerCase() === division.toLowerCase());
+    }
+
+    // Fetch all goals for submitted games only (filter client side)
+    const { resources: allGoals } = await goalsC.items.query('SELECT * FROM c').fetchAll();
+    const relevantGoals = allGoals.filter(g => gameIds.includes(g.gameId));
+
+    const teamStatsMap = new Map();
+    for (const game of games) {
+      const div = game.division || game.league || null;
+      [game.homeTeam, game.awayTeam].forEach(teamName => {
+        if (!teamStatsMap.has(teamName)) {
+          teamStatsMap.set(teamName, { teamName, division: div, wins:0, losses:0, goalsFor:0, goalsAgainst:0, gamesPlayed:0 });
+        }
+      });
+    }
+
+    for (const goal of relevantGoals) {
+      const game = games.find(g => g.id === goal.gameId || g.gameId === goal.gameId);
+      if (!game) continue;
+      const scoringTeam = goal.scoringTeam || goal.team || goal.teamName;
+      if (scoringTeam && teamStatsMap.has(scoringTeam)) teamStatsMap.get(scoringTeam).goalsFor++;
+      const opp = scoringTeam === game.homeTeam ? game.awayTeam : game.homeTeam;
+      if (opp && teamStatsMap.has(opp)) teamStatsMap.get(opp).goalsAgainst++;
+    }
+
+    for (const game of games) {
+      const homeGoals = relevantGoals.filter(g => g.gameId === game.id && (g.scoringTeam||g.team) === game.homeTeam).length;
+      const awayGoals = relevantGoals.filter(g => g.gameId === game.id && (g.scoringTeam||g.team) === game.awayTeam).length;
+      if (homeGoals === awayGoals) continue; // ignore ties
+      const home = teamStatsMap.get(game.homeTeam);
+      const away = teamStatsMap.get(game.awayTeam);
+      if (home) { home.gamesPlayed++; if (homeGoals > awayGoals) home.wins++; else home.losses++; }
+      if (away) { away.gamesPlayed++; if (awayGoals > homeGoals) away.wins++; else away.losses++; }
+    }
+
+    const response = Array.from(teamStatsMap.values()).map(t => ({
+      ...t,
+      winPercentage: t.gamesPlayed ? Number(((t.wins / t.gamesPlayed) * 100).toFixed(1)) : 0,
+      goalDifferential: t.goalsFor - t.goalsAgainst
+    }));
+
+    res.json(response);
+  } catch (e) {
+    console.error('Team stats error', e);
+    res.status(500).json({ error:'Failed to get team stats', message:e.message });
   }
 });
 

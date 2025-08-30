@@ -6,207 +6,75 @@ export default function Statistics() {
   const navigate = useNavigate();
   
   // State for data
-  const [playerStats, setPlayerStats] = useState([]);
-  const [teamStats, setTeamStats] = useState([]);
+  const [mergedStats, setMergedStats] = useState([]); // merged totals
+  const [historicalStats, setHistoricalStats] = useState([]);
+  const [liveStats, setLiveStats] = useState([]);
+  const [teamStats, setTeamStats] = useState([]); // legacy team calc (still from events)
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
   // State for filters and sorting
   const [selectedDivision, setSelectedDivision] = useState('All');
+  const [selectedSeason, setSelectedSeason] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const [statScope, setStatScope] = useState('totals'); // totals | historical | live
   const [playerSortField, setPlayerSortField] = useState('goals');
   const [playerSortDirection, setPlayerSortDirection] = useState('desc');
   const [teamSortField, setTeamSortField] = useState('wins');
   const [teamSortDirection, setTeamSortDirection] = useState('desc');
 
-  useEffect(() => {
-    fetchStatistics();
-  }, []);
+  useEffect(() => { fetchPlayerStats(); }, [selectedDivision, selectedSeason, selectedYear, statScope]);
+  useEffect(() => { fetchTeamStats(); }, [selectedDivision]);
 
-  const fetchStatistics = async () => {
+  const fetchPlayerStats = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      const apiBase = import.meta.env.DEV 
-        ? '' 
-        : import.meta.env.VITE_API_BASE_URL || '';
-
-      // Fetch all data in parallel
-      const [goalsRes, penaltiesRes, gamesRes] = await Promise.all([
-        axios.get(`${apiBase}/api/goals`),
-        axios.get(`${apiBase}/api/penalties`),
-        axios.get(`${apiBase}/api/games/submitted`)
-      ]);
-
-      const goals = goalsRes.data || [];
-      const penalties = penaltiesRes.data || [];
-      const games = gamesRes.data || [];
-
-      // Calculate player statistics
-      const playerStatsMap = new Map();
-      
-      // Process goals for player stats
-      goals.forEach(goal => {
-        if (!goal.scorer) return;
-        
-        const key = `${goal.scorer}-${goal.scoringTeam}`;
-        if (!playerStatsMap.has(key)) {
-          playerStatsMap.set(key, {
-            name: goal.scorer,
-            team: goal.scoringTeam,
-            goals: 0,
-            assists: 0,
-            penaltyMinutes: 0,
-            gamesPlayed: new Set()
-          });
-        }
-        
-        const player = playerStatsMap.get(key);
-        player.goals++;
-        player.gamesPlayed.add(goal.gameId);
-        
-        // Process assists
-        if (goal.assists && Array.isArray(goal.assists)) {
-          goal.assists.forEach(assist => {
-            if (!assist) return;
-            const assistKey = `${assist}-${goal.scoringTeam}`;
-            if (!playerStatsMap.has(assistKey)) {
-              playerStatsMap.set(assistKey, {
-                name: assist,
-                team: goal.scoringTeam,
-                goals: 0,
-                assists: 0,
-                penaltyMinutes: 0,
-                gamesPlayed: new Set()
-              });
-            }
-            const assistPlayer = playerStatsMap.get(assistKey);
-            assistPlayer.assists++;
-            assistPlayer.gamesPlayed.add(goal.gameId);
-          });
-        }
-      });
-
-      // Process penalties for player stats
-      penalties.forEach(penalty => {
-        if (!penalty.penalizedPlayer) return;
-        
-        const key = `${penalty.penalizedPlayer}-${penalty.penalizedTeam}`;
-        if (!playerStatsMap.has(key)) {
-          playerStatsMap.set(key, {
-            name: penalty.penalizedPlayer,
-            team: penalty.penalizedTeam,
-            goals: 0,
-            assists: 0,
-            penaltyMinutes: 0,
-            gamesPlayed: new Set()
-          });
-        }
-        
-        const player = playerStatsMap.get(key);
-        player.penaltyMinutes += parseInt(penalty.penaltyLength) || 0;
-        player.gamesPlayed.add(penalty.gameId);
-      });
-
-      // Convert to array and calculate GP
-      const playersArray = Array.from(playerStatsMap.values()).map(player => ({
-        ...player,
-        gamesPlayed: player.gamesPlayed.size,
-        points: player.goals + player.assists
-      }));
-
-      // Calculate team statistics
-      const teamStatsMap = new Map();
-      
-      // Process games for team stats
-      games.forEach(game => {
-        // Initialize teams if not exists
-        [game.awayTeam, game.homeTeam].forEach(teamName => {
-          if (!teamStatsMap.has(teamName)) {
-            teamStatsMap.set(teamName, {
-              teamName: teamName,
-              wins: 0,
-              losses: 0,
-              goalsFor: 0,
-              goalsAgainst: 0,
-              gamesPlayed: 0,
-              division: game.division || game.league || 'Unknown'
-            });
-          }
-        });
-      });
-
-      // Calculate team goals and records
-      goals.forEach(goal => {
-        if (teamStatsMap.has(goal.scoringTeam)) {
-          teamStatsMap.get(goal.scoringTeam).goalsFor++;
-        }
-        
-        // Find the opposing team for this goal
-        const game = games.find(g => g.id === goal.gameId || g.gameId === goal.gameId);
-        if (game) {
-          const opposingTeam = goal.scoringTeam === game.homeTeam ? game.awayTeam : game.homeTeam;
-          if (teamStatsMap.has(opposingTeam)) {
-            teamStatsMap.get(opposingTeam).goalsAgainst++;
-          }
-        }
-      });
-
-      // Calculate wins/losses (simplified - you may need to adjust based on your game completion logic)
-      games.forEach(game => {
-        const homeGoals = goals.filter(g => (g.gameId === game.id || g.gameId === game.gameId) && g.scoringTeam === game.homeTeam).length;
-        const awayGoals = goals.filter(g => (g.gameId === game.id || g.gameId === game.gameId) && g.scoringTeam === game.awayTeam).length;
-        
-        if (homeGoals !== awayGoals) { // Not a tie
-          const homeTeamStats = teamStatsMap.get(game.homeTeam);
-          const awayTeamStats = teamStatsMap.get(game.awayTeam);
-          
-          if (homeTeamStats) {
-            homeTeamStats.gamesPlayed++;
-            if (homeGoals > awayGoals) {
-              homeTeamStats.wins++;
-            } else {
-              homeTeamStats.losses++;
-            }
-          }
-          
-          if (awayTeamStats) {
-            awayTeamStats.gamesPlayed++;
-            if (awayGoals > homeGoals) {
-              awayTeamStats.wins++;
-            } else {
-              awayTeamStats.losses++;
-            }
-          }
-        }
-      });
-
-      const teamsArray = Array.from(teamStatsMap.values()).map(team => ({
-        ...team,
-        winPercentage: team.gamesPlayed > 0 ? ((team.wins / team.gamesPlayed) * 100).toFixed(1) : '0.0',
-        goalDifferential: team.goalsFor - team.goalsAgainst
-      }));
-
-      setPlayerStats(playersArray);
-      setTeamStats(teamsArray);
+      const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
+      const params = new URLSearchParams();
+      if (selectedDivision !== 'All') params.append('division', selectedDivision);
+      if (selectedSeason) params.append('season', selectedSeason);
+      if (selectedYear) params.append('year', selectedYear);
+      if (statScope) params.append('scope', statScope);
+      const { data } = await axios.get(`${apiBase}/api/player-stats?${params.toString()}`);
+      if (statScope === 'totals') setMergedStats(data);
+      if (statScope === 'historical') setHistoricalStats(data);
+      if (statScope === 'live') setLiveStats(data);
+      if (statScope !== 'totals') {
+        try {
+          const totalsResp = await axios.get(`${apiBase}/api/player-stats?${params.toString().replace(`scope=${statScope}`, 'scope=totals')}`);
+          setMergedStats(totalsResp.data);
+        } catch {}
+      }
     } catch (err) {
-      console.error('Error fetching statistics:', err);
-      setError('Failed to load statistics. Please try again.');
+      console.error('Error fetching player stats:', err);
+      setError('Failed to load player statistics.');
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchTeamStats = async () => {
+    try {
+      const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
+      const params = new URLSearchParams();
+      if (selectedDivision !== 'All') params.append('division', selectedDivision);
+      const { data } = await axios.get(`${apiBase}/api/team-stats?${params.toString()}`);
+      // Ensure consistent fields
+      const normalized = data.map(t => ({
+        ...t,
+        winPercentage: t.winPercentage ?? (t.gamesPlayed ? ((t.wins / t.gamesPlayed) * 100).toFixed(1) : '0.0')
+      }));
+      setTeamStats(normalized);
+    } catch (e) { console.error('Team stats fetch failed', e); }
+  };
+
   const divisions = ['All', 'Gold', 'Silver', 'Bronze'];
 
-  const filteredPlayerStats = playerStats.filter(player => 
-    selectedDivision === 'All' || 
-    teamStats.find(team => team.teamName === player.team)?.division === selectedDivision
-  );
+  const activeList = statScope === 'historical' ? historicalStats : statScope === 'live' ? liveStats : mergedStats;
+  const filteredPlayerStats = activeList.filter(p => selectedDivision === 'All' || p.division === selectedDivision);
 
-  const filteredTeamStats = teamStats.filter(team =>
-    selectedDivision === 'All' || team.division === selectedDivision
-  );
+  const filteredTeamStats = teamStats.filter(team => selectedDivision === 'All' || team.division === selectedDivision);
 
   const sortPlayers = (field) => {
     const direction = playerSortField === field && playerSortDirection === 'desc' ? 'asc' : 'desc';
@@ -221,8 +89,14 @@ export default function Statistics() {
   };
 
   const sortedPlayerStats = [...filteredPlayerStats].sort((a, b) => {
-    const aVal = a[playerSortField];
-    const bVal = b[playerSortField];
+    const fieldMap = (obj, field) => {
+      if (field === 'playerName') return obj.playerName;
+      if (field === 'gp') return obj.gp;
+      if (field === 'pim') return obj.pim;
+      return obj[field];
+    };
+    const aVal = fieldMap(a, playerSortField);
+    const bVal = fieldMap(b, playerSortField);
     const modifier = playerSortDirection === 'desc' ? -1 : 1;
     
     if (typeof aVal === 'string') {
@@ -309,41 +183,32 @@ export default function Statistics() {
                 <option key={division} value={division}>{division}</option>
               ))}
             </select>
-            <button
-              onClick={fetchStatistics}
-              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors text-sm"
-            >
-              🔄 Refresh
-            </button>
+            <input placeholder="Season" value={selectedSeason} onChange={e=>setSelectedSeason(e.target.value)} className="px-2 py-2 border rounded-md text-sm" />
+            <input placeholder="Year" value={selectedYear} onChange={e=>setSelectedYear(e.target.value)} className="px-2 py-2 border rounded-md text-sm w-24" />
+            <select value={statScope} onChange={e=>setStatScope(e.target.value)} className="px-2 py-2 border rounded-md text-sm">
+              <option value="totals">Totals (Career)</option>
+              <option value="historical">Historical Only</option>
+              <option value="live">Current Season Only</option>
+            </select>
+            <button onClick={()=>fetchPlayerStats()} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors text-sm">🔄 Refresh</button>
           </div>
         </div>
 
-        {/* Player Statistics Table */}
+        {/* Player Statistics Table (Scoped) */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">👤 Player Statistics</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">👤 Player Statistics ({statScope})</h2>
+          <p className="text-xs text-gray-500 mb-4">Scope controls whether you see historical, live current season, or merged totals (career-like).</p>
           
           {sortedPlayerStats.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full table-auto">
                 <thead>
                   <tr className="bg-gray-100">
-                    <th 
-                      className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortPlayers('name')}
-                    >
-                      Name {getSortIcon('name', playerSortField, playerSortDirection)}
+                    <th className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-200" onClick={() => sortPlayers('playerName')}>
+                      Player {getSortIcon('playerName', playerSortField, playerSortDirection)}
                     </th>
-                    <th 
-                      className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortPlayers('team')}
-                    >
-                      Team {getSortIcon('team', playerSortField, playerSortDirection)}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortPlayers('gamesPlayed')}
-                    >
-                      GP {getSortIcon('gamesPlayed', playerSortField, playerSortDirection)}
+                    <th className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200" onClick={() => sortPlayers('gp')}>
+                      GP {getSortIcon('gp', playerSortField, playerSortDirection)}
                     </th>
                     <th 
                       className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
@@ -365,22 +230,21 @@ export default function Statistics() {
                     </th>
                     <th 
                       className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortPlayers('penaltyMinutes')}
+                      onClick={() => sortPlayers('pim')}
                     >
-                      PIM {getSortIcon('penaltyMinutes', playerSortField, playerSortDirection)}
+                      PIM {getSortIcon('pim', playerSortField, playerSortDirection)}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {sortedPlayerStats.map((player, index) => (
-                    <tr key={`${player.name}-${player.team}`} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-4 py-3 font-medium text-gray-900">{player.name}</td>
-                      <td className="px-4 py-3 text-gray-700">{player.team}</td>
-                      <td className="px-4 py-3 text-center text-gray-700">{player.gamesPlayed}</td>
-                      <td className="px-4 py-3 text-center font-bold text-blue-600">{player.goals}</td>
-                      <td className="px-4 py-3 text-center font-bold text-green-600">{player.assists}</td>
-                      <td className="px-4 py-3 text-center font-bold text-purple-600">{player.points}</td>
-                      <td className="px-4 py-3 text-center text-red-600">{player.penaltyMinutes}</td>
+                  {sortedPlayerStats.map((p, index) => (
+                    <tr key={`${p.playerName}-${index}`} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-4 py-3 font-medium text-gray-900">{p.playerName}</td>
+                      <td className="px-4 py-3 text-center text-gray-700">{p.gp}</td>
+                      <td className="px-4 py-3 text-center font-bold text-blue-600">{p.goals}</td>
+                      <td className="px-4 py-3 text-center font-bold text-green-600">{p.assists}</td>
+                      <td className="px-4 py-3 text-center font-bold text-purple-600">{p.points}</td>
+                      <td className="px-4 py-3 text-center text-red-600">{p.pim}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -391,7 +255,43 @@ export default function Statistics() {
           )}
         </div>
 
-        {/* Team Statistics Table */}
+        {/* Career Leaders (Totals) */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">🏆 Career Points Leaders</h2>
+          <p className="text-xs text-gray-500 mb-4">Merged totals (historical + live). Filtered by division / season / year if specified.</p>
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-auto">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="px-4 py-2 text-left">Player</th>
+                  <th className="px-4 py-2 text-center">Goals</th>
+                  <th className="px-4 py-2 text-center">Assists</th>
+                  <th className="px-4 py-2 text-center">Points</th>
+                  <th className="px-4 py-2 text-center">PIM</th>
+                  <th className="px-4 py-2 text-center">GP</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mergedStats
+                  .filter(p => selectedDivision === 'All' || p.division === selectedDivision)
+                  .sort((a,b)=> b.points - a.points)
+                  .slice(0,50)
+                  .map((p,i)=>(
+                    <tr key={p.playerName+ i} className={i%2===0?'bg-white':'bg-gray-50'}>
+                      <td className="px-4 py-2 font-medium">{p.playerName}</td>
+                      <td className="px-4 py-2 text-center text-blue-600 font-semibold">{p.goals}</td>
+                      <td className="px-4 py-2 text-center text-green-600 font-semibold">{p.assists}</td>
+                      <td className="px-4 py-2 text-center text-purple-600 font-semibold">{p.points}</td>
+                      <td className="px-4 py-2 text-center text-red-600">{p.pim}</td>
+                      <td className="px-4 py-2 text-center">{p.gp}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Team Statistics Table (unchanged calculation) */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-4">🏒 Team Statistics</h2>
           
@@ -486,7 +386,7 @@ export default function Statistics() {
           <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
             <h3 className="font-semibold text-purple-800 mb-1">Total Goals</h3>
             <p className="text-2xl font-bold text-purple-600">
-              {filteredPlayerStats.reduce((sum, player) => sum + player.goals, 0)}
+              {filteredPlayerStats.reduce((sum, player) => sum + (player.goals||0), 0)}
             </p>
           </div>
         </div>

@@ -165,7 +165,7 @@ export default function Statistics() {
             <div className="text-center py-20">
               <p className="text-red-600 mb-4">{error}</p>
               <button
-                onClick={fetchStatistics}
+                onClick={fetchPlayerStats}
                 className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors"
               >
                 Try Again

@@ -3482,9 +3482,10 @@ app.post('/api/admin/historical-player-stats/ensure', async (req, res) => {
 app.get('/api/player-stats', async (req, res) => {
   const { refresh, division, year, season, scope } = req.query; // scope: totals|historical|live
   try {
-    const { getDatabase, getHistoricalPlayerStatsContainer } = await import('./cosmosClient.js');
-    const db = await getDatabase();
-    const liveC = db.container('playerStats');
+  const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions } = await import('./cosmosClient.js');
+  const db = await getDatabase();
+  // Use standardized 'players' container for live aggregated stats
+  const liveC = db.container(getContainerDefinitions().players.name);
     const goalsC = db.container('goals');
     const pensC = db.container('penalties');
     const histC = getHistoricalPlayerStatsContainer();
@@ -3496,9 +3497,10 @@ app.get('/api/player-stats', async (req, res) => {
       ]);
       // Rebuild live container (truncate only live docs)
       try {
-        const { resources: existing } = await liveC.items.query('SELECT c.id FROM c').fetchAll();
-        for (const e of existing) { try { await liveC.item(e.id, e.id).delete(); } catch {} }
-      } catch {}
+        // Delete only previously generated live docs (source='live') to avoid wiping other player profiles
+        const { resources: existing } = await liveC.items.query("SELECT c.id, c._partitionKey FROM c WHERE c.source = 'live'").fetchAll();
+        for (const e of existing) { try { await liveC.item(e.id, e._partitionKey || e.id).delete(); } catch {} }
+      } catch (delErr) { console.warn('Live player stat cleanup issue', delErr.message); }
       const map = new Map();
       const key = (name, div) => `${(div||'div').toLowerCase()}::${name.toLowerCase().replace(/\s+/g,'_')}`;
       const ensure = (name, div) => { const k=key(name,div); if(!map.has(k)) map.set(k,{ id:k, playerId:k, playerName:name, division:div, goals:0, assists:0, pim:0, games:new Set() }); return map.get(k); };
@@ -3507,7 +3509,8 @@ app.get('/api/player-stats', async (req, res) => {
       for (const p of pens) {
         const name = p.playerName || p.penalizedPlayer; if(!name) continue; const div = p.division||null; const r=ensure(name,div); const mins=parseInt(p.length||p.penaltyLength||0,10); if(!isNaN(mins)) r.pim+=mins; r.games.add(p.gameId); }
       for (const rec of map.values()) {
-        await liveC.items.create({ ...rec, points: rec.goals+rec.assists, gamesPlayed: rec.games.size, games: Array.from(rec.games), updatedAt: new Date().toISOString(), source:'live' });
+        const doc = { ...rec, _partitionKey: rec.division || 'global', points: rec.goals+rec.assists, gamesPlayed: rec.games.size, games: Array.from(rec.games), updatedAt: new Date().toISOString(), source:'live' };
+        await liveC.items.upsert(doc);
       }
       return res.json({ success:true, rebuilt: map.size });
     }
@@ -3529,7 +3532,7 @@ app.get('/api/player-stats', async (req, res) => {
     const lParams = [];
   if (division) { liveQuery = 'SELECT * FROM c WHERE c.division = @d'; lParams.push({ name:'@d', value: division }); }
   // season/year filters not yet applied to live events (not stored); future enhancement
-    const { resources: live } = await liveC.items.query({ query: liveQuery, parameters: lParams }).fetchAll();
+  const { resources: live } = await liveC.items.query({ query: liveQuery, parameters: lParams }).fetchAll();
 
     const histIndex = new Map();
     for (const h of historical) {
@@ -3567,6 +3570,35 @@ app.get('/api/player-stats', async (req, res) => {
   } catch (e) {
     console.error('Player stats merged error', e);
     res.status(500).json({ error:'Failed to get player stats', message:e.message });
+  }
+});
+
+// Admin endpoint to normalize goal & penalty event field names for consistency (playerName, teamName)
+app.post('/api/admin/normalize-events', async (req, res) => {
+  try {
+    const { getDatabase } = await import('./cosmosClient.js');
+    const db = await getDatabase();
+    const goalsC = db.container('goals');
+    const pensC = db.container('penalties');
+    const updates = { goals:0, penalties:0 };
+    const { resources: goals } = await goalsC.items.query('SELECT * FROM c').fetchAll();
+    for (const g of goals) {
+      let changed = false;
+      if (!g.playerName && g.scorer) { g.playerName = g.scorer; changed = true; }
+      if (!g.teamName && (g.scoringTeam || g.team)) { g.teamName = g.scoringTeam || g.team; changed = true; }
+      if (changed) { try { await goalsC.items.upsert(g); updates.goals++; } catch {} }
+    }
+    const { resources: pens } = await pensC.items.query('SELECT * FROM c').fetchAll();
+    for (const p of pens) {
+      let changed = false;
+      if (!p.playerName && p.penalizedPlayer) { p.playerName = p.penalizedPlayer; changed = true; }
+      if (!p.teamName && p.penalizedTeam) { p.teamName = p.penalizedTeam; changed = true; }
+      if (changed) { try { await pensC.items.upsert(p); updates.penalties++; } catch {} }
+    }
+    res.json({ success:true, updates });
+  } catch (e) {
+    console.error('Normalization error', e);
+    res.status(500).json({ error:'Normalization failed', message:e.message });
   }
 });
 

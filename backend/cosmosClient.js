@@ -198,6 +198,21 @@ const CONTAINER_DEFINITIONS = {
         { path: '/timeRecorded/?' }
       ]
     }
+  },
+
+  // Historical aggregate player stats (read-only after import)
+  'historical-player-stats': {
+    name: containerNames.historicalPlayerStats,
+    partitionKey: '/division',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/division/?' },
+        { path: '/year/?' },
+        { path: '/playerName/?' }
+      ]
+    }
   }
 };
 
@@ -300,6 +315,12 @@ export function getOTShootoutContainer() {
 export function getShotsOnGoalContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS['shots-on-goal'].name);
+}
+
+// Historical player stats container
+export function getHistoricalPlayerStatsContainer() {
+  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  return database.container(CONTAINER_DEFINITIONS['historical-player-stats'].name);
 }
 
 // Legacy aliases for backward compatibility (deprecated)

@@ -3358,145 +3358,135 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Player Stats API endpoint for AI announcer
-app.get('/api/player-stats', async (req, res) => {
-  const { playerName, teamName, playerId, refresh } = req.query;
-  
+// Import historical aggregate player stats (separate container)
+app.post('/api/admin/historical-player-stats/import', async (req, res) => {
+  const { rows, csv, dryRun } = req.body || {};
   try {
-    const { getDatabase } = await import('./cosmosClient.js');
-    const database = await getDatabase();
-    const playerStatsContainer = database.container('playerStats');
-    
-    // If refresh is requested, rebuild stats from raw events
+    const { getHistoricalPlayerStatsContainer } = await import('./cosmosClient.js');
+    const c = getHistoricalPlayerStatsContainer();
+    let data = rows;
+    if (!data && csv) {
+      const parse = (text) => {
+        const lines = text.trim().split(/\r?\n/);
+        const header = lines.shift().split(',').map(h=>h.trim());
+        return lines.map(l => {
+          const parts = l.split(',').map(p=>p.trim());
+            const obj={};
+            header.forEach((h,i)=>obj[h]=parts[i]??'');
+            return obj;
+          });
+      };
+      data = parse(csv);
+    }
+    if (!Array.isArray(data)) return res.status(400).json({ error: 'Provide rows[] or csv' });
+    const norm = v => (v??'').toString().trim();
+    const toInt = v => { const n=parseInt(v,10); return isNaN(n)?0:n; };
+    let imported=0;
+    for (const r of data) {
+      const playerName = norm(r.Name);
+      const division = norm(r.Division)||'Unknown';
+      const year = norm(r.Year)||'Unknown';
+      if (!playerName || !division || !year) continue;
+      const goals = toInt(r.Goals); const assists = toInt(r.Assists); const pim = toInt(r.PIM); const gp = toInt(r.GP); const points = r.Points? toInt(r.Points) : goals+assists;
+      const id = `${year}-${division}-${playerName.toLowerCase().replace(/\s+/g,'_')}`;
+      const doc = { id, playerName, division, league: norm(r.League)||null, season: norm(r.Season)||null, year, goals, assists, pim, points, gp, source:'historical', importedAt: new Date().toISOString() };
+      if (!dryRun) await c.items.upsert(doc);
+      imported++;
+    }
+    res.status(200).json({ success:true, imported, dryRun: !!dryRun });
+  } catch (e) {
+    console.error('Historical import error', e);
+    res.status(500).json({ error:'Import failed', message:e.message });
+  }
+});
+
+// Player stats merged view (live events + historical aggregates)
+app.get('/api/player-stats', async (req, res) => {
+  const { refresh, division, year, scope } = req.query; // scope: totals|historical|live
+  try {
+    const { getDatabase, getHistoricalPlayerStatsContainer } = await import('./cosmosClient.js');
+    const db = await getDatabase();
+    const liveC = db.container('playerStats');
+    const goalsC = db.container('goals');
+    const pensC = db.container('penalties');
+    const histC = getHistoricalPlayerStatsContainer();
+
     if (refresh === 'true') {
-      const goalsC = database.container('goals');
-      const penaltiesC = database.container('penalties');
-
-      // Fetch all goal & penalty docs (pagination risk: assume manageable size; for very large, convert to segmented queries)
-      const [{ resources: allGoals }, { resources: allPenalties }] = await Promise.all([
-        goalsC.items.query({ query: 'SELECT * FROM c' }).fetchAll(),
-        penaltiesC.items.query({ query: 'SELECT * FROM c' }).fetchAll()
+      const [{ resources: goals }, { resources: pens }] = await Promise.all([
+        goalsC.items.query('SELECT * FROM c').fetchAll(),
+        pensC.items.query('SELECT * FROM c').fetchAll()
       ]);
-
-      const statsMap = new Map();
-      const pid = (name, team) => `${(team||'').trim().toLowerCase()}::${(name||'').trim().toLowerCase()}`;
-
-      function ensure(name, team) {
-        const key = pid(name, team);
-        if (!statsMap.has(key)) {
-          statsMap.set(key, { id: key, playerId: key, playerName: name, teamName: team, goals:0, assists:0, points:0, pim:0, games:new Set(), lastUpdated: new Date().toISOString() });
-        }
-        return statsMap.get(key);
-      }
-
-      // Process goals
-      for (const g of allGoals) {
-        const scorer = g.playerName || g.scorer;
-        const team = g.teamName || g.scoringTeam;
-        if (scorer) {
-          const s = ensure(scorer, team);
-          s.goals++; s.points++; s.games.add(g.gameId || g.gameID || g.game || 'unknown');
-        }
-        const assists = g.assistedBy || g.assists || [];
-        if (Array.isArray(assists)) {
-          for (const a of assists) {
-            if (!a) continue;
-            const as = ensure(a, team);
-            as.assists++; as.points++; as.games.add(g.gameId || g.gameID || g.game || 'unknown');
-          }
-        }
-      }
-
-      // Process penalties (PIM)
-      for (const p of allPenalties) {
-        const name = p.playerName || p.penalizedPlayer;
-        const team = p.teamName || p.penalizedTeam;
-        if (!name) continue;
-        const ps = ensure(name, team);
-        const mins = parseInt(p.length || p.penaltyLength || p.minutes || 0, 10);
-        if (!isNaN(mins)) ps.pim += mins;
-        ps.games.add(p.gameId || p.gameID || p.game || 'unknown');
-      }
-
-      // Replace existing stats container entries (truncate naive approach)
+      // Rebuild live container (truncate only live docs)
       try {
-        const { resources: existing } = await playerStatsContainer.items.query('SELECT c.id FROM c').fetchAll();
-        for (const e of existing) {
-          try { await playerStatsContainer.item(e.id, e.id).delete(); } catch (_) {}
-        }
-      } catch (_) {}
+        const { resources: existing } = await liveC.items.query('SELECT c.id FROM c').fetchAll();
+        for (const e of existing) { try { await liveC.item(e.id, e.id).delete(); } catch {} }
+      } catch {}
+      const map = new Map();
+      const key = (name, div) => `${(div||'div').toLowerCase()}::${name.toLowerCase().replace(/\s+/g,'_')}`;
+      const ensure = (name, div) => { const k=key(name,div); if(!map.has(k)) map.set(k,{ id:k, playerId:k, playerName:name, division:div, goals:0, assists:0, pim:0, games:new Set() }); return map.get(k); };
+      for (const g of goals) {
+        const name = g.playerName || g.scorer; if(!name) continue; const div = g.division||null; const r=ensure(name,div); r.goals++; r.games.add(g.gameId); const assists = g.assistedBy||g.assists||[]; if(Array.isArray(assists)){ for(const a of assists){ if(!a) continue; const ar=ensure(a,div); ar.assists++; ar.games.add(g.gameId); }} }
+      for (const p of pens) {
+        const name = p.playerName || p.penalizedPlayer; if(!name) continue; const div = p.division||null; const r=ensure(name,div); const mins=parseInt(p.length||p.penaltyLength||0,10); if(!isNaN(mins)) r.pim+=mins; r.games.add(p.gameId); }
+      for (const rec of map.values()) {
+        await liveC.items.create({ ...rec, points: rec.goals+rec.assists, gamesPlayed: rec.games.size, games: Array.from(rec.games), updatedAt: new Date().toISOString(), source:'live' });
+      }
+      return res.json({ success:true, rebuilt: map.size });
+    }
 
-      // Persist new docs
-      for (const rec of statsMap.values()) {
-        const gamesPlayed = rec.games.size;
-        await playerStatsContainer.items.create({
-          ...rec,
-          gamesPlayed,
-          games: Array.from(rec.games),
-          attendance: { gamesAttended: gamesPlayed, totalTeamGames: gamesPlayed, attendancePercentage: 100 },
-          updatedAt: new Date().toISOString()
-        });
-      }
-      return res.status(200).json({ success: true, rebuilt: statsMap.size });
+    // Fetch historical filtered
+    let histQuery = 'SELECT * FROM c';
+    const hParams = [];
+    if (division || year) {
+      const cond = [];
+      if (division) { cond.push('c.division = @d'); hParams.push({ name:'@d', value: division }); }
+      if (year) { cond.push('c.year = @y'); hParams.push({ name:'@y', value: year }); }
+      histQuery = `SELECT * FROM c WHERE ${cond.join(' AND ')}`;
     }
-    
-    let querySpec;
-    
-    if (playerId) {
-      // Get specific player by ID
-      querySpec = {
-        query: "SELECT * FROM c WHERE c.playerId = @playerId",
-        parameters: [{ name: "@playerId", value: playerId }]
-      };
-    } else if (playerName && teamName) {
-      // Get specific player by name and team
-      querySpec = {
-        query: "SELECT * FROM c WHERE c.playerName = @playerName AND c.teamName = @teamName",
-        parameters: [
-          { name: "@playerName", value: playerName },
-          { name: "@teamName", value: teamName }
-        ]
-      };
-    } else if (teamName) {
-      // Get all players for a team
-      querySpec = {
-        query: "SELECT * FROM c WHERE c.teamName = @teamName",
-        parameters: [{ name: "@teamName", value: teamName }]
-      };
-    } else {
-      // Get all player stats
-      querySpec = {
-        query: "SELECT * FROM c"
-      };
+    const { resources: historical } = await histC.items.query({ query: histQuery, parameters: hParams }).fetchAll();
+
+    // Fetch live filtered
+    let liveQuery = 'SELECT * FROM c';
+    const lParams = [];
+    if (division) { liveQuery = 'SELECT * FROM c WHERE c.division = @d'; lParams.push({ name:'@d', value: division }); }
+    const { resources: live } = await liveC.items.query({ query: liveQuery, parameters: lParams }).fetchAll();
+
+    const histIndex = new Map();
+    for (const h of historical) {
+      const k = `${(h.division||'div').toLowerCase()}::${h.playerName.toLowerCase()}::${h.year}`;
+      histIndex.set(k, h);
     }
-    
-    const { resources: playerStats } = await playerStatsContainer.items.query(querySpec).fetchAll();
-    
-    // Add AI announcer ready insights
-    const enrichedStats = playerStats.map(player => ({
-      ...player,
-      announcer: {
-        quickFacts: [
-          `${player.playerName} has ${player.attendance?.attendancePercentage || 0}% attendance this season`,
-          `Attended ${player.attendance?.gamesAttended || 0} of ${player.attendance?.totalTeamGames || 0} games`,
-          player.insights?.reliability ? `Reliability: ${player.insights.reliability}` : null
-        ].filter(Boolean),
-        soundBites: player.insights?.announcements || [],
-        metrics: {
-          attendance: player.attendance?.attendancePercentage || 0,
-          gamesPlayed: player.attendance?.gamesAttended || 0,
-          reliability: player.insights?.reliability || 'Unknown'
-        }
-      }
-    }));
-    
-    res.status(200).json(enrichedStats);
-  } catch (error) {
-    console.error('Error fetching player stats:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch player stats',
-      message: error.message 
-    });
+    const byNameDiv = (name, div) => `${(div||'div').toLowerCase()}::${name.toLowerCase()}`;
+    const mergedMap = new Map();
+
+    // Seed merged with historical
+    for (const h of historical) {
+      const k = byNameDiv(h.playerName, h.division);
+      if (!mergedMap.has(k)) mergedMap.set(k, { playerName: h.playerName, division: h.division, historical: [], live: null });
+      mergedMap.get(k).historical.push(h);
+    }
+    // Attach live
+    for (const l of live) {
+      const k = byNameDiv(l.playerName, l.division);
+      if (!mergedMap.has(k)) mergedMap.set(k, { playerName: l.playerName, division: l.division, historical: [], live: null });
+      mergedMap.get(k).live = l;
+    }
+
+    const response = [];
+    for (const entry of mergedMap.values()) {
+      const histTotals = entry.historical.reduce((acc,h)=>{ acc.goals+=h.goals; acc.assists+=h.assists; acc.points+=h.points; acc.pim+=h.pim; acc.gp+=h.gp; return acc; }, { goals:0, assists:0, points:0, pim:0, gp:0 });
+      const liveRec = entry.live ? { goals: entry.live.goals, assists: entry.live.assists, points: entry.live.points, pim: entry.live.pim, gp: entry.live.gamesPlayed } : { goals:0, assists:0, points:0, pim:0, gp:0 };
+      const totals = { goals: histTotals.goals + liveRec.goals, assists: histTotals.assists + liveRec.assists, points: histTotals.points + liveRec.points, pim: histTotals.pim + liveRec.pim, gp: histTotals.gp + liveRec.gp };
+      const base = { playerName: entry.playerName, division: entry.division };
+      if (scope === 'historical') response.push({ ...base, ...histTotals, scope:'historical' });
+      else if (scope === 'live') response.push({ ...base, ...liveRec, scope:'live' });
+      else response.push({ ...base, ...totals, historical: histTotals, live: liveRec, scope:'totals' });
+    }
+
+    res.json(response.sort((a,b)=> b.points - a.points));
+  } catch (e) {
+    console.error('Player stats merged error', e);
+    res.status(500).json({ error:'Failed to get player stats', message:e.message });
   }
 });
 

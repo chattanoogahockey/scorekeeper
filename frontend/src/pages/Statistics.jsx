@@ -1,6 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+import { Line, Bar } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 export default function Statistics() {
   const navigate = useNavigate();
@@ -9,7 +32,8 @@ export default function Statistics() {
   const [mergedStats, setMergedStats] = useState([]); // merged totals
   const [historicalStats, setHistoricalStats] = useState([]);
   const [liveStats, setLiveStats] = useState([]);
-  const [teamStats, setTeamStats] = useState([]); // legacy team calc (still from events)
+  const [teamStats, setTeamStats] = useState([]);
+  const [seasonalData, setSeasonalData] = useState([]); // For charts
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -17,17 +41,41 @@ export default function Statistics() {
   const [selectedDivision, setSelectedDivision] = useState('All');
   const [selectedSeason, setSelectedSeason] = useState('All');
   const [selectedYear, setSelectedYear] = useState('All');
+  const [careerSeasonFilter, setCareerSeasonFilter] = useState('All'); // Separate filter for career table
   const [seasonOptions, setSeasonOptions] = useState(['All']);
   const [yearOptions, setYearOptions] = useState(['All']);
-  const [statScope, setStatScope] = useState('totals'); // totals | historical | live
+  const [statScope, setStatScope] = useState('live'); // Default to current season
   const [playerSortField, setPlayerSortField] = useState('goals');
   const [playerSortDirection, setPlayerSortDirection] = useState('desc');
   const [teamSortField, setTeamSortField] = useState('wins');
   const [teamSortDirection, setTeamSortDirection] = useState('desc');
+  const [showCharts, setShowCharts] = useState(false);
 
   useEffect(() => { fetchPlayerStats(); }, [selectedDivision, selectedSeason, selectedYear, statScope]);
   useEffect(() => { fetchTeamStats(); }, [selectedDivision]);
   useEffect(() => { fetchMeta(); }, []);
+  useEffect(() => { fetchSeasonalData(); }, [selectedDivision]); // For charts
+
+  const fetchSeasonalData = async () => {
+    try {
+      const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
+      const params = new URLSearchParams();
+      if (selectedDivision !== 'All') params.append('division', selectedDivision);
+      params.append('scope', 'historical');
+      // Add cache-busting parameter
+      params.append('_t', Date.now().toString());
+      
+      const { data } = await axios.get(`${apiBase}/api/player-stats?${params.toString()}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
+      setSeasonalData(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error('Failed to fetch seasonal data for charts:', e);
+    }
+  };
 
   const fetchPlayerStats = async () => {
     try {
@@ -39,14 +87,29 @@ export default function Statistics() {
   if (selectedSeason && selectedSeason !== 'All') params.append('season', selectedSeason);
   if (selectedYear && selectedYear !== 'All') params.append('year', selectedYear);
       if (statScope) params.append('scope', statScope);
-      const { data } = await axios.get(`${apiBase}/api/player-stats?${params.toString()}`);
+      // Add cache-busting parameter to ensure fresh data from Cosmos
+      params.append('_t', Date.now().toString());
+      
+      const { data } = await axios.get(`${apiBase}/api/player-stats?${params.toString()}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       const arr = Array.isArray(data.data) ? data.data : data; // support debug payload
       if (statScope === 'totals') setMergedStats(arr);
       if (statScope === 'historical') setHistoricalStats(arr);
       if (statScope === 'live') setLiveStats(arr);
       if (statScope !== 'totals') {
         try {
-          const totalsResp = await axios.get(`${apiBase}/api/player-stats?${params.toString().replace(`scope=${statScope}`, 'scope=totals')}`);
+          const totalsParams = new URLSearchParams(params.toString().replace(`scope=${statScope}`, 'scope=totals'));
+          totalsParams.set('_t', Date.now().toString());
+          const totalsResp = await axios.get(`${apiBase}/api/player-stats?${totalsParams.toString()}`, {
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache'
+            }
+          });
           const totalsArr = Array.isArray(totalsResp.data.data) ? totalsResp.data.data : totalsResp.data;
           setMergedStats(totalsArr);
         } catch (e) { console.warn('Totals fallback failed', e); }
@@ -55,7 +118,10 @@ export default function Statistics() {
       const empty = (!arr || arr.length === 0) && mergedStats.length === 0;
       if (empty) {
         try {
-          const dbg = await axios.get(`${apiBase}/api/player-stats?${params.toString()}&debug=true`);
+          const debugParams = new URLSearchParams(params.toString());
+          debugParams.append('debug', 'true');
+          debugParams.set('_t', Date.now().toString());
+          const dbg = await axios.get(`${apiBase}/api/player-stats?${debugParams.toString()}`);
           console.log('Player stats debug diagnostics', dbg.data.debug || dbg.data);
         } catch (dbgErr) { console.warn('Debug fetch failed', dbgErr); }
       }
@@ -72,7 +138,15 @@ export default function Statistics() {
       const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
       const params = new URLSearchParams();
       if (selectedDivision !== 'All') params.append('division', selectedDivision);
-      const { data } = await axios.get(`${apiBase}/api/team-stats?${params.toString()}`);
+      // Add cache-busting parameter
+      params.append('_t', Date.now().toString());
+      
+      const { data } = await axios.get(`${apiBase}/api/team-stats?${params.toString()}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       // Ensure consistent fields
       const normalized = data.map(t => ({
         ...t,
@@ -85,9 +159,26 @@ export default function Statistics() {
   const fetchMeta = async () => {
     try {
       const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
-      const { data } = await axios.get(`${apiBase}/api/player-stats/meta`);
+      // Add cache-busting parameter
+      const params = new URLSearchParams();
+      params.append('_t', Date.now().toString());
+      
+      const { data } = await axios.get(`${apiBase}/api/player-stats/meta?${params.toString()}`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
+        }
+      });
       if (data?.seasons) setSeasonOptions(['All', ...data.seasons]);
-      if (data?.years) setYearOptions(['All', ...data.years]);
+      if (data?.years) {
+        const years = ['All', ...data.years];
+        setYearOptions(years);
+        // Set current year as default (assuming years are sorted newest first)
+        const currentYear = data.years[0];
+        if (currentYear && selectedYear === 'All') {
+          setSelectedYear(currentYear);
+        }
+      }
     } catch (e) { console.error('Failed to load meta', e); }
   };
 
@@ -95,6 +186,14 @@ export default function Statistics() {
 
   const activeList = statScope === 'historical' ? historicalStats : statScope === 'live' ? liveStats : mergedStats;
   const filteredPlayerStats = activeList.filter(p => selectedDivision === 'All' || p.division === selectedDivision);
+  
+  // Filter career leaders separately - for now use the same filters since historical data is aggregated
+  const careerFilteredStats = mergedStats.filter(p => {
+    const divisionMatch = selectedDivision === 'All' || p.division === selectedDivision;
+    // Note: since historical API aggregates data, season filtering isn't available for career table
+    return divisionMatch;
+  });
+
   // Analytics derivations
   const topScorer = filteredPlayerStats[0];
   const totalGoals = filteredPlayerStats.reduce((s,p)=> s + (p.goals||0),0);
@@ -106,6 +205,52 @@ export default function Statistics() {
   const pointsPerPlayerPerGame = (()=> { const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); return gp? (totalPoints / gp).toFixed(2):'0.00'; })();
 
   const filteredTeamStats = teamStats.filter(team => selectedDivision === 'All' || team.division === selectedDivision);
+
+  // Chart data generation
+  const generateSeasonalTrendsChart = () => {
+    // Since historical data is aggregated, we'll create a simple comparison chart instead
+    if (!seasonalData.length) return null;
+    
+    // For now, create a simple bar chart showing top performers from historical data
+    const topHistorical = seasonalData
+      .filter(p => p.points > 0)
+      .sort((a, b) => b.points - a.points)
+      .slice(0, 10);
+
+    return {
+      labels: topHistorical.map(p => p.playerName),
+      datasets: [
+        {
+          label: 'Historical Career Points',
+          data: topHistorical.map(p => p.points || 0),
+          borderColor: 'rgb(59, 130, 246)',
+          backgroundColor: 'rgba(59, 130, 246, 0.6)',
+        }
+      ]
+    };
+  };
+
+  const generateTopScorersChart = () => {
+    if (!filteredPlayerStats.length) return null;
+    
+    const topScorers = filteredPlayerStats.slice(0, 10);
+    
+    return {
+      labels: topScorers.map(p => p.playerName),
+      datasets: [
+        {
+          label: 'Goals',
+          data: topScorers.map(p => p.goals || 0),
+          backgroundColor: 'rgba(59, 130, 246, 0.8)',
+        },
+        {
+          label: 'Assists',
+          data: topScorers.map(p => p.assists || 0),
+          backgroundColor: 'rgba(34, 197, 94, 0.8)',
+        }
+      ]
+    };
+  };
 
   const sortPlayers = (field) => {
     const direction = playerSortField === field && playerSortDirection === 'desc' ? 'asc' : 'desc';
@@ -221,10 +366,16 @@ export default function Statistics() {
               {yearOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
             </select>
             <select value={statScope} onChange={e=>setStatScope(e.target.value)} className="px-2 py-2 border rounded-md text-sm">
-              <option value="totals">Totals (Career)</option>
+              <option value="live">Current Season</option>
               <option value="historical">Historical Only</option>
-              <option value="live">Current Season Only</option>
+              <option value="totals">Career Totals</option>
             </select>
+            <button 
+              onClick={() => setShowCharts(!showCharts)} 
+              className={`px-3 py-2 rounded-lg transition-colors text-sm ${showCharts ? 'bg-purple-500 hover:bg-purple-600' : 'bg-gray-500 hover:bg-gray-600'} text-white`}
+            >
+              {showCharts ? '📊 Hide Charts' : '📈 Show Charts'}
+            </button>
             <button onClick={()=>fetchPlayerStats()} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors text-sm">🔄 Refresh</button>
           </div>
         </div>
@@ -316,10 +467,68 @@ export default function Statistics() {
           )}
         </div>
 
+        {/* Analytics Charts */}
+        {showCharts && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">📈 Analytics & Trends</h2>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Seasonal Trends Chart */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Historical Career Leaders</h3>
+                {generateSeasonalTrendsChart() ? (
+                  <Bar
+                    data={generateSeasonalTrendsChart()}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: { position: 'top' },
+                        title: { display: true, text: 'Top Historical Performers by Career Points' }
+                      },
+                      scales: {
+                        y: { beginAtZero: true }
+                      }
+                    }}
+                  />
+                ) : (
+                  <p className="text-gray-500 text-center py-8">No historical data available for trends</p>
+                )}
+              </div>
+
+              {/* Top Scorers Chart */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Top 10 Scorers ({statScope})</h3>
+                {generateTopScorersChart() ? (
+                  <Bar
+                    data={generateTopScorersChart()}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: { position: 'top' },
+                        title: { display: true, text: 'Goals vs Assists Breakdown' }
+                      },
+                      scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true }
+                      }
+                    }}
+                  />
+                ) : (
+                  <p className="text-gray-500 text-center py-8">No data available for chart</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Career Leaders (Totals) */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">🏆 Career Points Leaders</h2>
-          <p className="text-xs text-gray-500 mb-4">Merged totals (historical + live). Filtered by division / season / year if specified.</p>
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-800">🏆 Career Points Leaders</h2>
+              <p className="text-xs text-gray-500">All-time career totals combining historical and current season data.</p>
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="min-w-full table-auto">
               <thead>
@@ -333,8 +542,7 @@ export default function Statistics() {
                 </tr>
               </thead>
               <tbody>
-                {mergedStats
-                  .filter(p => selectedDivision === 'All' || p.division === selectedDivision)
+                {careerFilteredStats
                   .sort((a,b)=> b.points - a.points)
                   .slice(0,50)
                   .map((p,i)=>(

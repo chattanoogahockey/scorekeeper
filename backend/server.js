@@ -3551,6 +3551,13 @@ app.post('/api/admin/historical-player-stats/ensure', async (req, res) => {
 
 // Player stats merged view (live events + historical aggregates)
 app.get('/api/player-stats', async (req, res) => {
+  // Set cache-busting headers to ensure fresh data from Cosmos
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+  
   const { refresh, division, year, season, scope, debug } = req.query; // scope: totals|historical|live
   try {
   const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions } = await import('./cosmosClient.js');
@@ -3721,6 +3728,13 @@ app.get('/api/player-stats/meta', async (req, res) => {
 
 // Team stats aggregated view (backend is source of truth)
 app.get('/api/team-stats', async (req, res) => {
+  // Set cache-busting headers to ensure fresh data from Cosmos
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0'
+  });
+  
   const { division } = req.query || {};
   try {
     const { getDatabase } = await import('./cosmosClient.js');

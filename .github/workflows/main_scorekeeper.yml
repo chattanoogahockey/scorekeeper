@@ -58,16 +58,19 @@ jobs:
       run: |
         mkdir -p deploy
         
-        # Backend essentials (no bloat)
+        # Backend essentials (production only)
         cp backend/package*.json deploy/
         cp backend/server.js deploy/
         cp backend/logger.js deploy/          # Logger module required by server.js
         cp -r backend/config deploy/config    # Config directory required by server.js
         cp backend/cosmosClient.js deploy/
         cp backend/ttsService.js deploy/
-        cp backend/rinkReportGenerator.js deploy/
         cp backend/voiceConfig.js deploy/
         cp backend/announcerService.js deploy/ || echo "Announcer service optional"
+        
+        # Copy essential utilities and middleware
+        cp -r backend/utils deploy/utils || echo "Utils directory optional"
+        cp -r backend/middleware deploy/middleware || echo "Middleware directory optional"
         
         # Copy backend node_modules (production only)
         cp -r backend/node_modules deploy/node_modules

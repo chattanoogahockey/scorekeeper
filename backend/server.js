@@ -12,13 +12,10 @@ import logger from './logger.js';
 // Load environment variables from .env file
 dotenv.config();
 
-// Debug environment loading
-if (process.env.NODE_ENV === 'development') {
-  console.log('🔧 Environment debug:', {
-    COSMOS_DB_URI: process.env.COSMOS_DB_URI ? 'SET' : 'NOT SET',
-    COSMOS_DB_KEY: process.env.COSMOS_DB_KEY ? 'SET' : 'NOT SET', 
-    COSMOS_DB_NAME: process.env.COSMOS_DB_NAME ? 'SET' : 'NOT SET'
-  });
+// Production environment validation
+if (!process.env.COSMOS_DB_URI || !process.env.COSMOS_DB_KEY) {
+  console.error('❌ Missing required environment variables');
+  process.exit(1);
 }
 
 import { 
@@ -197,8 +194,8 @@ async function preGenerateGoalAssets(gameId) {
     const game = gamesByQuery[0];
     const lastGoal = goals[0];
 
-    const homeGoals = goals.filter(g => (g.teamName === game.homeTeam).length;
-    const awayGoals = goals.filter(g => (g.teamName === game.awayTeam).length;
+    const homeGoals = goals.filter(g => g.teamName === game.homeTeam).length;
+    const awayGoals = goals.filter(g => g.teamName === game.awayTeam).length;
 
     const playerName = lastGoal.playerName;
     const playerGoalsThisGame = goals.filter(g => (g.playerName) === playerName).length;
@@ -337,8 +334,8 @@ async function preGeneratePenaltyAssets(gameId) {
     const game = gamesByQuery[0];
     const lastPenalty = penalties[0];
 
-    const homeGoals = goals.filter(g => (g.teamName === game.homeTeam).length;
-    const awayGoals = goals.filter(g => (g.teamName === game.awayTeam).length;
+    const homeGoals = goals.filter(g => g.teamName === game.homeTeam).length;
+    const awayGoals = goals.filter(g => g.teamName === game.awayTeam).length;
 
     const penaltyData = {
       playerName: lastPenalty.playerName,
@@ -1735,11 +1732,11 @@ app.post('/api/goals/announce-last', async (req, res) => {
 
     const lastGoal = goals[0];
     
-    // Calculate current score after this goal (handle both new and legacy field names)
-    const homeGoals = goals.filter(g => (g.teamName === game.homeTeam).length;
-    const awayGoals = goals.filter(g => (g.teamName === game.awayTeam).length;
+    // Calculate current score after this goal
+    const homeGoals = goals.filter(g => g.teamName === game.homeTeam).length;
+    const awayGoals = goals.filter(g => g.teamName === game.awayTeam).length;
 
-    // Get all goals by this player in this game for stats (handle both field names)
+    // Get all goals by this player in this game for stats
     const playerName = lastGoal.playerName;
     const playerGoalsThisGame = goals.filter(g => (g.playerName) === playerName).length;
 
@@ -2012,10 +2009,10 @@ app.post('/api/penalties/announce-last', async (req, res) => {
       })
       .fetchAll();
 
-  const homeGoals = goals.filter(g => (g.teamName === game.homeTeam).length;
-    const awayGoals = goals.filter(g => (g.teamName === game.awayTeam).length;
+  const homeGoals = goals.filter(g => g.teamName === game.homeTeam).length;
+    const awayGoals = goals.filter(g => g.teamName === game.awayTeam).length;
 
-    // Prepare penalty data for announcement (handle both new and legacy field names)
+    // Prepare penalty data for announcement
     const penaltyData = {
       playerName: lastPenalty.playerName,
       teamName: lastPenalty.teamName,

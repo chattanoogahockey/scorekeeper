@@ -65,6 +65,7 @@ jobs:
         cp -r backend/config deploy/config    # Config directory required by server.js
         cp backend/cosmosClient.js deploy/
         cp backend/ttsService.js deploy/
+        cp backend/rinkReportGenerator.js deploy/  # Core feature for post-game reports
         cp backend/voiceConfig.js deploy/
         cp backend/announcerService.js deploy/ || echo "Announcer service optional"
         

@@ -90,8 +90,8 @@ export default function InGameMenu() {
       setEventsError(null);
       
       // Calculate current score
-      const awayScore = goals.filter(g => g.scoringTeam === (gameToUse.awayTeam || gameToUse.awayTeamId)).length;
-      const homeScore = goals.filter(g => g.scoringTeam === (gameToUse.homeTeam || gameToUse.homeTeamId)).length;
+  const awayScore = goals.filter(g => (g.teamName || g.scoringTeam) === (gameToUse.awayTeam || gameToUse.awayTeamId)).length;
+  const homeScore = goals.filter(g => (g.teamName || g.scoringTeam) === (gameToUse.homeTeam || gameToUse.homeTeamId)).length;
       setCurrentScore({ away: awayScore, home: homeScore });
       
       // Set shots on goal
@@ -426,10 +426,10 @@ export default function InGameMenu() {
                   }`}>
                     {event.eventType === 'goal' ? (
                       <>
-                        <div className="font-medium">GOAL - {event.scorer}</div>
-                        <div className="text-gray-500">{event.scoringTeam} • Period {event.period} • {event.time}</div>
-                        {event.assists && event.assists.length > 0 && (
-                          <div className="text-xs text-gray-400">Assist: {event.assists.join(', ')}</div>
+                        <div className="font-medium">GOAL - {event.playerName || event.scorer}</div>
+                        <div className="text-gray-500">{event.teamName || event.scoringTeam} • Period {event.period} • {event.timeRemaining || event.time}</div>
+                        {(event.assistedBy || event.assists || []).length > 0 && (
+                          <div className="text-xs text-gray-400">Assist: {(event.assistedBy || event.assists).join(', ')}</div>
                         )}
                         {event.aiDescription && (
                           <div className="text-xs text-blue-600 mt-1 italic">
@@ -444,8 +444,8 @@ export default function InGameMenu() {
                       </>
                     ) : (
                       <>
-                        <div className="font-medium">{event.penaltyType} - {event.penalizedPlayer}</div>
-                        <div className="text-gray-500">{event.penalizedTeam} • Period {event.period} • {event.time} • {event.penaltyLength} min</div>
+                        <div className="font-medium">{event.penaltyType} - {event.playerName || event.penalizedPlayer}</div>
+                        <div className="text-gray-500">{event.teamName || event.penalizedTeam} • Period {event.period} • {event.timeRemaining || event.time} • {event.length || event.penaltyLength} min</div>
                         {event.aiDescription && (
                           <div className="text-xs text-blue-600 mt-1 italic">
                             🤖 {event.aiDescription}

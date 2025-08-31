@@ -100,25 +100,27 @@ This repository contains a full-stack web application for real‑time hockey sco
 
 #### Backend (.env in /backend directory)
 ```env
-# Required: Cosmos DB configuration
+# Required: Cosmos DB core configuration
 COSMOS_DB_URI=https://your-account.documents.azure.com:443/
 COSMOS_DB_KEY=your_primary_key
 COSMOS_DB_NAME=scorekeeper
 
-# Optional: Override container names for different environments
-COSMOS_DB_SETTINGS_CONTAINER=settings
-COSMOS_DB_ANALYTICS_CONTAINER=analytics
-COSMOS_DB_RINK_REPORTS_CONTAINER=rink_reports
-COSMOS_DB_GAMES_CONTAINER=games
-COSMOS_DB_PLAYERS_CONTAINER=playerStats
-COSMOS_DB_GOALS_CONTAINER=goals
-COSMOS_DB_PENALTIES_CONTAINER=penalties
-COSMOS_DB_ROSTERS_CONTAINER=rosters
-COSMOS_DB_ATTENDANCE_CONTAINER=attendance
-COSMOS_DB_OTSHOOTOUT_CONTAINER=otshootout
+# Standardized container names (override if your deployment differs)
+COSMOS_CONTAINER_SETTINGS=settings
+COSMOS_CONTAINER_ANALYTICS=analytics
+COSMOS_CONTAINER_RINK_REPORTS=rink-reports
+COSMOS_CONTAINER_GAMES=games
+COSMOS_CONTAINER_PLAYERS=players
+COSMOS_CONTAINER_GOALS=goals
+COSMOS_CONTAINER_PENALTIES=penalties
+COSMOS_CONTAINER_ROSTERS=rosters
+COSMOS_CONTAINER_ATTENDANCE=attendance
+COSMOS_CONTAINER_OT_SHOOTOUT=ot-shootout
+COSMOS_CONTAINER_SHOTS_ON_GOAL=shots-on-goal
+COSMOS_CONTAINER_HISTORICAL_PLAYER_STATS=historical-player-stats
 
-# Optional: Google Cloud TTS credentials
-GOOGLE_TTS_API_KEY=your_api_key
+# Google Cloud TTS (optional)
+GOOGLE_APPLICATION_CREDENTIALS_JSON={...service_account_json...}
 ```
 
 #### Frontend (automatically configured)
@@ -251,6 +253,18 @@ The project includes automated deployment via GitHub Actions:
    COSMOS_DB_URI=https://your-account.documents.azure.com:443/
    COSMOS_DB_KEY=your_primary_key
    COSMOS_DB_NAME=scorekeeper
+   COSMOS_CONTAINER_SETTINGS=settings
+   COSMOS_CONTAINER_ANALYTICS=analytics
+   COSMOS_CONTAINER_RINK_REPORTS=rink-reports
+   COSMOS_CONTAINER_GAMES=games
+   COSMOS_CONTAINER_PLAYERS=players
+   COSMOS_CONTAINER_GOALS=goals
+   COSMOS_CONTAINER_PENALTIES=penalties
+   COSMOS_CONTAINER_ROSTERS=rosters
+   COSMOS_CONTAINER_ATTENDANCE=attendance
+   COSMOS_CONTAINER_OT_SHOOTOUT=ot-shootout
+   COSMOS_CONTAINER_SHOTS_ON_GOAL=shots-on-goal
+   COSMOS_CONTAINER_HISTORICAL_PLAYER_STATS=historical-player-stats
    VITE_API_BASE_URL=https://scorekeeper.azurewebsites.net
    NODE_ENV=production
    ```

@@ -47,8 +47,8 @@ export default function Dashboard() {
   // Goal form state
   const [goalForm, setGoalForm] = useState({
     period: '',
-    scoringTeam: '',
-    scorer: '',
+    team: '',
+    player: '',
     assist1: '',
     assist2: '',
     time: '',
@@ -90,7 +90,7 @@ export default function Dashboard() {
   const handleGoalSubmit = async (e) => {
     e.preventDefault();
     // Validate required fields
-    const required = ['period', 'scoringTeam', 'scorer', 'time', 'shotType', 'goalType'];
+  const required = ['period', 'team', 'player', 'time', 'shotType', 'goalType'];
     for (const field of required) {
       if (!goalForm[field]) {
         setGoalError(`Missing required field: ${field}`);
@@ -101,20 +101,20 @@ export default function Dashboard() {
     setGoalError(null);
     try {
       await axios.post('/api/goals', {
-        gameId: selectedGame.id || selectedGame.gameId,
-        period: goalForm.period,
-        scoringTeam: goalForm.scoringTeam,
-        scorer: goalForm.scorer,
-        assists: [goalForm.assist1, goalForm.assist2].filter(Boolean),
-        time: goalForm.time,
-        shotType: goalForm.shotType,
-        goalType: goalForm.goalType,
+  gameId: selectedGame.id || selectedGame.gameId,
+  period: goalForm.period,
+  team: goalForm.team,
+  player: goalForm.player,
+  assist: [goalForm.assist1, goalForm.assist2].filter(Boolean)[0] || null, // backend currently supports single assist
+  time: goalForm.time,
+  shotType: goalForm.shotType,
+  goalType: goalForm.goalType,
       });
       // Reset form
       setGoalForm({
         period: '',
-        scoringTeam: '',
-        scorer: '',
+        team: '',
+        player: '',
         assist1: '',
         assist2: '',
         time: '',
@@ -202,11 +202,11 @@ export default function Dashboard() {
               </select>
             </div>
             <div className="flex flex-col">
-              <label>Scoring Team</label>
+              <label>Team</label>
               <select
-                value={goalForm.scoringTeam}
+                value={goalForm.team}
                 onChange={(e) => {
-                  setGoalForm({ ...goalForm, scoringTeam: e.target.value, scorer: '', assist1: '', assist2: '' });
+                  setGoalForm({ ...goalForm, team: e.target.value, player: '', assist1: '', assist2: '' });
                 }}
                 className="border rounded p-1"
               >
@@ -215,17 +215,17 @@ export default function Dashboard() {
                 <option value={selectedGame.homeTeam}>{selectedGame.homeTeam}</option>
               </select>
             </div>
-            {goalForm.scoringTeam && (
+            {goalForm.team && (
               <>
                 <div className="flex flex-col">
-                  <label>Scorer</label>
+                  <label>Player</label>
                   <select
-                    value={goalForm.scorer}
-                    onChange={(e) => setGoalForm({ ...goalForm, scorer: e.target.value })}
+                    value={goalForm.player}
+                    onChange={(e) => setGoalForm({ ...goalForm, player: e.target.value })}
                     className="border rounded p-1"
                   >
                     <option value="">Select Player</option>
-                    {getPlayersForTeam(goalForm.scoringTeam).map((p) => (
+                    {getPlayersForTeam(goalForm.team).map((p) => (
                       <option key={p.name} value={p.name}>{p.name}</option>
                     ))}
                   </select>
@@ -238,7 +238,7 @@ export default function Dashboard() {
                     className="border rounded p-1"
                   >
                     <option value="">None</option>
-                    {getPlayersForTeam(goalForm.scoringTeam).map((p) => (
+                    {getPlayersForTeam(goalForm.team).map((p) => (
                       <option key={p.name} value={p.name}>{p.name}</option>
                     ))}
                   </select>
@@ -251,7 +251,7 @@ export default function Dashboard() {
                     className="border rounded p-1"
                   >
                     <option value="">None</option>
-                    {getPlayersForTeam(goalForm.scoringTeam).map((p) => (
+                    {getPlayersForTeam(goalForm.team).map((p) => (
                       <option key={p.name} value={p.name}>{p.name}</option>
                     ))}
                   </select>
@@ -420,28 +420,23 @@ export default function Dashboard() {
           <h3 className="text-2xl font-semibold mb-2">Live Event Feed</h3>
           {eventsError && <p className="text-red-500">{eventsError}</p>}
           <ul className="space-y-2">
-            {events.map((event) => (
+                {events.map((event) => (
               <li key={event.id} className="border rounded p-2 bg-white shadow">
-                {event.scorer ? (
+                {event.eventType === 'goal' ? (
                   <div>
-                    <p>
-                      <span className="font-semibold">Goal</span> by {event.scorer} for {event.scoringTeam}
-                    </p>
+                    <p><span className="font-semibold">Goal</span> by {event.playerName || event.scorer} for {event.teamName || event.scoringTeam}</p>
                     <p className="text-sm text-gray-600">
-                      Assists: {event.assists && event.assists.length > 0 ? event.assists.join(', ') : 'None'} |
-                      Shot: {event.shotType} | Type: {event.goalType}
+                      Assists: {(event.assistedBy || event.assists || []).length > 0 ? (event.assistedBy || event.assists).join(', ') : 'None'} | Shot: {event.shotType} | Type: {event.goalType}
                     </p>
-                    <p className="text-sm text-gray-500">Time: {event.time}, Period: {event.period}</p>
+                    <p className="text-sm text-gray-500">Time: {event.timeRemaining || event.time}, Period: {event.period}</p>
                   </div>
                 ) : (
                   <div>
-                    <p>
-                      <span className="font-semibold">Penalty</span> on {event.penalizedPlayer} ({event.team})
-                    </p>
+                    <p><span className="font-semibold">Penalty</span> on {event.playerName || event.penalizedPlayer} ({event.teamName || event.penalizedTeam || event.team})</p>
                     <p className="text-sm text-gray-600">
-                      Type: {event.penaltyType}, Length: {event.length} minutes
+                      Type: {event.penaltyType}, Length: {event.length || event.penaltyLength} minutes
                     </p>
-                    <p className="text-sm text-gray-500">Time: {event.time}, Period: {event.period}</p>
+                    <p className="text-sm text-gray-500">Time: {event.timeRemaining || event.time}, Period: {event.period}</p>
                   </div>
                 )}
               </li>

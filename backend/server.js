@@ -3354,17 +3354,92 @@ app.get('/api/otshootout', async (req, res) => {
   }
 });
 
-// Health check endpoint for debugging production issues
+// Unified events endpoint (combines goals + penalties) for legacy frontend usage
+// Returns a normalized shape while preserving legacy fields for backward compatibility
+app.get('/api/events', async (req, res) => {
+  const { gameId } = req.query;
+  if (!gameId) return res.status(400).json({ error: 'gameId query param required' });
+  try {
+    const goalsContainer = getGoalsContainer();
+    const penaltiesContainer = getPenaltiesContainer();
+    const goalQuery = {
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId AND c.eventType = @eventType',
+      parameters: [
+        { name: '@gameId', value: gameId },
+        { name: '@eventType', value: 'goal' }
+      ]
+    };
+    const penQuery = {
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId',
+      parameters: [ { name: '@gameId', value: gameId } ]
+    };
+    const [{ resources: goals }, { resources: penalties }] = await Promise.all([
+      goalsContainer.items.query(goalQuery).fetchAll(),
+      penaltiesContainer.items.query(penQuery).fetchAll()
+    ]);
+
+    const normGoals = goals.map(g => ({
+      id: g.id,
+      eventType: 'goal',
+      gameId: g.gameId,
+      period: g.period,
+      division: g.division,
+      teamName: g.teamName || g.scoringTeam || g.team || null,
+      playerName: g.playerName || g.scorer || null,
+      assistedBy: g.assistedBy || g.assists || [],
+      timeRemaining: g.timeRemaining || g.time || null,
+      shotType: g.shotType,
+      goalType: g.goalType,
+      recordedAt: g.recordedAt,
+      // Legacy mirrors
+      scoringTeam: g.teamName || g.scoringTeam || g.team || null,
+      scorer: g.playerName || g.scorer || null,
+      assists: g.assistedBy || g.assists || [],
+      time: g.timeRemaining || g.time || null
+    }));
+
+    const normPens = penalties
+      .filter(p => (p.eventType === 'penalty') || p.penaltyType) // heuristic
+      .map(p => ({
+        id: p.id,
+        eventType: 'penalty',
+        gameId: p.gameId,
+        period: p.period,
+        division: p.division,
+        teamName: p.teamName || p.penalizedTeam || p.team || null,
+        playerName: p.playerName || p.penalizedPlayer || null,
+        penaltyType: p.penaltyType,
+        length: p.length || p.penaltyLength || null,
+        timeRemaining: p.timeRemaining || p.time || null,
+        recordedAt: p.recordedAt,
+        // Legacy mirrors
+        penalizedTeam: p.teamName || p.penalizedTeam || p.team || null,
+        penalizedPlayer: p.playerName || p.penalizedPlayer || null,
+        penaltyLength: p.length || p.penaltyLength || null,
+        time: p.timeRemaining || p.time || null
+      }));
+
+    const combined = [...normGoals, ...normPens].sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt));
+    res.json(combined);
+  } catch (e) {
+    console.error('Failed to fetch events', e);
+    handleError(res, e);
+  }
+});
+
+// Health check endpoint for debugging production issues (updated env var names)
 app.get('/api/health', (req, res) => {
   const envVars = {
     COSMOS_DB_URI: !!process.env.COSMOS_DB_URI,
     COSMOS_DB_KEY: !!process.env.COSMOS_DB_KEY,
     COSMOS_DB_NAME: !!process.env.COSMOS_DB_NAME,
-    COSMOS_DB_GAMES_CONTAINER: process.env.COSMOS_DB_GAMES_CONTAINER,
-    COSMOS_DB_ROSTERS_CONTAINER: process.env.COSMOS_DB_ROSTERS_CONTAINER,
-    COSMOS_DB_ATTENDANCE_CONTAINER: process.env.COSMOS_DB_ATTENDANCE_CONTAINER,
-    COSMOS_DB_GOALS_CONTAINER: process.env.COSMOS_DB_GOALS_CONTAINER,
-    COSMOS_DB_PENALTIES_CONTAINER: process.env.COSMOS_DB_PENALTIES_CONTAINER,
+    COSMOS_CONTAINER_GAMES: process.env.COSMOS_CONTAINER_GAMES,
+    COSMOS_CONTAINER_ROSTERS: process.env.COSMOS_CONTAINER_ROSTERS,
+    COSMOS_CONTAINER_ATTENDANCE: process.env.COSMOS_CONTAINER_ATTENDANCE,
+    COSMOS_CONTAINER_GOALS: process.env.COSMOS_CONTAINER_GOALS,
+    COSMOS_CONTAINER_PENALTIES: process.env.COSMOS_CONTAINER_PENALTIES,
+    COSMOS_CONTAINER_PLAYERS: process.env.COSMOS_CONTAINER_PLAYERS,
+    COSMOS_CONTAINER_HISTORICAL_PLAYER_STATS: process.env.COSMOS_CONTAINER_HISTORICAL_PLAYER_STATS,
     NODE_ENV: process.env.NODE_ENV,
     PORT: process.env.PORT
   };

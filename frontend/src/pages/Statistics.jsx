@@ -49,7 +49,6 @@ export default function Statistics() {
   const [playerSortDirection, setPlayerSortDirection] = useState('desc');
   const [teamSortField, setTeamSortField] = useState('wins');
   const [teamSortDirection, setTeamSortDirection] = useState('desc');
-  const [showCharts, setShowCharts] = useState(false);
 
   useEffect(() => { fetchPlayerStats(); }, [selectedDivision, selectedSeason, selectedYear, statScope]);
   useEffect(() => { fetchTeamStats(); }, [selectedDivision]);
@@ -87,6 +86,13 @@ export default function Statistics() {
   if (selectedSeason && selectedSeason !== 'All') params.append('season', selectedSeason);
   if (selectedYear && selectedYear !== 'All') params.append('year', selectedYear);
       if (statScope) params.append('scope', statScope);
+      
+      // For current season stats (live scope or no year/season filters), only show rostered players
+      const isCurrentSeason = statScope === 'live' || (!selectedYear || selectedYear === 'All') && (!selectedSeason || selectedSeason === 'All');
+      if (isCurrentSeason) {
+        params.append('rostered', 'true');
+      }
+      
       // Add cache-busting parameter to ensure fresh data from Cosmos
       params.append('_t', Date.now().toString());
       
@@ -169,14 +175,25 @@ export default function Statistics() {
           'Pragma': 'no-cache'
         }
       });
-      if (data?.seasons) setSeasonOptions(['All', ...data.seasons]);
+      
+      if (data?.seasons) {
+        // Only show real seasons (Fall, Winter, Spring, Summer)
+        const realSeasons = data.seasons.filter(season => 
+          ['Fall', 'Winter', 'Spring', 'Summer'].includes(season)
+        );
+        setSeasonOptions(['All', ...realSeasons]);
+      }
+      
       if (data?.years) {
-        const years = ['All', ...data.years];
+        // Only show years up to current year (filter out future placeholder years)
+        const currentYear = new Date().getFullYear();
+        const realYears = data.years.filter(year => parseInt(year) <= currentYear);
+        const years = ['All', ...realYears];
         setYearOptions(years);
         // Set current year as default (assuming years are sorted newest first)
-        const currentYear = data.years[0];
-        if (currentYear && selectedYear === 'All') {
-          setSelectedYear(currentYear);
+        const defaultYear = realYears[0];
+        if (defaultYear && selectedYear === 'All') {
+          setSelectedYear(defaultYear);
         }
       }
     } catch (e) { console.error('Failed to load meta', e); }
@@ -370,12 +387,6 @@ export default function Statistics() {
               <option value="historical">Historical Only</option>
               <option value="totals">Career Totals</option>
             </select>
-            <button 
-              onClick={() => setShowCharts(!showCharts)} 
-              className={`px-3 py-2 rounded-lg transition-colors text-sm ${showCharts ? 'bg-purple-500 hover:bg-purple-600' : 'bg-gray-500 hover:bg-gray-600'} text-white`}
-            >
-              {showCharts ? '📊 Hide Charts' : '📈 Show Charts'}
-            </button>
             <button onClick={()=>fetchPlayerStats()} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors text-sm">🔄 Refresh</button>
           </div>
         </div>
@@ -467,96 +478,55 @@ export default function Statistics() {
           )}
         </div>
 
-        {/* Analytics Charts */}
-        {showCharts && (
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">📈 Analytics & Trends</h2>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Seasonal Trends Chart */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Historical Career Leaders</h3>
-                {generateSeasonalTrendsChart() ? (
-                  <Bar
-                    data={generateSeasonalTrendsChart()}
-                    options={{
-                      responsive: true,
-                      plugins: {
-                        legend: { position: 'top' },
-                        title: { display: true, text: 'Top Historical Performers by Career Points' }
-                      },
-                      scales: {
-                        y: { beginAtZero: true }
-                      }
-                    }}
-                  />
-                ) : (
-                  <p className="text-gray-500 text-center py-8">No historical data available for trends</p>
-                )}
-              </div>
-
-              {/* Top Scorers Chart */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Top 10 Scorers ({statScope})</h3>
-                {generateTopScorersChart() ? (
-                  <Bar
-                    data={generateTopScorersChart()}
-                    options={{
-                      responsive: true,
-                      plugins: {
-                        legend: { position: 'top' },
-                        title: { display: true, text: 'Goals vs Assists Breakdown' }
-                      },
-                      scales: {
-                        x: { stacked: true },
-                        y: { stacked: true, beginAtZero: true }
-                      }
-                    }}
-                  />
-                ) : (
-                  <p className="text-gray-500 text-center py-8">No data available for chart</p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Career Leaders (Totals) */}
+        {/* Analytics Charts - Always Show */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800">🏆 Career Points Leaders</h2>
-              <p className="text-xs text-gray-500">All-time career totals combining historical and current season data.</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">📈 Analytics & Trends</h2>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Seasonal Trends Chart */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Historical Career Leaders</h3>
+              {generateSeasonalTrendsChart() ? (
+                <Bar
+                  data={generateSeasonalTrendsChart()}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: { position: 'top' },
+                      title: { display: true, text: 'Top Historical Performers by Career Points' }
+                    },
+                    scales: {
+                      y: { beginAtZero: true }
+                    }
+                  }}
+                />
+              ) : (
+                <p className="text-gray-500 text-center py-8">No historical data available for trends</p>
+              )}
             </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full table-auto">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="px-4 py-2 text-left">Player</th>
-                  <th className="px-4 py-2 text-center">Goals</th>
-                  <th className="px-4 py-2 text-center">Assists</th>
-                  <th className="px-4 py-2 text-center">Points</th>
-                  <th className="px-4 py-2 text-center">PIM</th>
-                  <th className="px-4 py-2 text-center">GP</th>
-                </tr>
-              </thead>
-              <tbody>
-                {careerFilteredStats
-                  .sort((a,b)=> b.points - a.points)
-                  .slice(0,50)
-                  .map((p,i)=>(
-                    <tr key={p.playerName+ i} className={i%2===0?'bg-white':'bg-gray-50'}>
-                      <td className="px-4 py-2 font-medium">{p.playerName}</td>
-                      <td className="px-4 py-2 text-center text-blue-600 font-semibold">{p.goals}</td>
-                      <td className="px-4 py-2 text-center text-green-600 font-semibold">{p.assists}</td>
-                      <td className="px-4 py-2 text-center text-purple-600 font-semibold">{p.points}</td>
-                      <td className="px-4 py-2 text-center text-red-600">{p.pim}</td>
-                      <td className="px-4 py-2 text-center">{p.gp}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+
+            {/* Top Scorers Chart */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">Top 10 Scorers ({statScope})</h3>
+              {generateTopScorersChart() ? (
+                <Bar
+                  data={generateTopScorersChart()}
+                  options={{
+                    responsive: true,
+                    plugins: {
+                      legend: { position: 'top' },
+                      title: { display: true, text: 'Goals vs Assists Breakdown' }
+                    },
+                    scales: {
+                      x: { stacked: true },
+                      y: { stacked: true, beginAtZero: true }
+                    }
+                  }}
+                />
+              ) : (
+                <p className="text-gray-500 text-center py-8">No data available for chart</p>
+              )}
+            </div>
           </div>
         </div>
 

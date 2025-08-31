@@ -1002,8 +1002,21 @@ app.get('/api/rosters', async (req, res) => {
       }
       
       if (season) {
-        conditions.push('c.season = @season');
-        parameters.push({ name: '@season', value: season });
+        // Handle both old format ("2025 Fall") and new structured queries
+        const seasonParts = season.trim().split(/\s+/);
+        if (seasonParts.length === 2) {
+          // New format: parse year and seasonType
+          const year = parseInt(seasonParts[0]);
+          const seasonType = seasonParts[1];
+          conditions.push('(c.season = @season OR (c.year = @year AND LOWER(c.seasonType) = LOWER(@seasonType)))');
+          parameters.push({ name: '@season', value: season });
+          parameters.push({ name: '@year', value: year });
+          parameters.push({ name: '@seasonType', value: seasonType });
+        } else {
+          // Old format or single value
+          conditions.push('c.season = @season');
+          parameters.push({ name: '@season', value: season });
+        }
       }
       
       if (division) {
@@ -1033,12 +1046,19 @@ app.post('/api/rosters', async (req, res) => {
     if (!teamName || !season || !division || !players) {
       return res.status(400).json({ error: 'Missing required fields: teamName, season, division, players' });
     }
+
+    // Parse season format (e.g., "2025 Fall" -> year: 2025, seasonType: "Fall")
+    const seasonParts = season.trim().split(/\s+/);
+    const year = seasonParts[0];
+    const seasonType = seasonParts[1] || 'Fall'; // Default to Fall if not specified
     
     const container = getRostersContainer();
     const rosterDoc = {
-      id: teamName.replace(/\s+/g, '_').toLowerCase(),
+      id: `${teamName.replace(/\s+/g, '_').toLowerCase()}_${year}_${seasonType.toLowerCase()}`,
       teamName,
-      season,
+      season, // Keep original format for backward compatibility
+      year: parseInt(year),
+      seasonType: seasonType,
       division,
       players: players.map(player => ({
         name: player.name,
@@ -2725,6 +2745,7 @@ app.post('/api/games/submit', async (req, res) => {
     }
     
     // Create game summary record with consistent ID format
+    const currentSeason = '2025 Fall'; // Current season configuration
     const gameSubmissionRecord = {
       id: `${gameId}-submission`, // Use consistent ID without timestamp
       gameId,
@@ -2733,6 +2754,9 @@ app.post('/api/games/submit', async (req, res) => {
       submittedBy: submittedBy || 'Unknown',
       division,
       league,
+      season: currentSeason,
+      year: 2025,
+      seasonType: 'Fall',
       homeTeam,
       awayTeam,
       finalScore: finalScore || {},
@@ -3558,15 +3582,16 @@ app.get('/api/player-stats', async (req, res) => {
     'Expires': '0'
   });
   
-  const { refresh, division, year, season, scope, debug } = req.query; // scope: totals|historical|live
+  const { refresh, division, year, season, scope, debug, rostered } = req.query; // scope: totals|historical|live
   try {
-  const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions } = await import('./cosmosClient.js');
+  const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions, getRostersContainer } = await import('./cosmosClient.js');
   const db = await getDatabase();
   // Use standardized 'player-stats' container for live aggregated stats
   const liveC = db.container(getContainerDefinitions()['player-stats'].name);
     const goalsC = db.container('goals');
     const pensC = db.container('penalties');
     const histC = getHistoricalPlayerStatsContainer();
+    const rostersC = getRostersContainer();
 
     if (refresh === 'true') {
       const [{ resources: goals }, { resources: pens }] = await Promise.all([
@@ -3654,8 +3679,75 @@ app.get('/api/player-stats', async (req, res) => {
       mergedMap.get(k).live = l;
     }
 
+    // Roster filtering for current season (2025 Fall) if rostered=true or scope=live
+    let rosterNames = new Set();
+    let shouldFilterByRoster = rostered === 'true' || (scope === 'live' && !year && !season);
+    
+    if (shouldFilterByRoster) {
+      try {
+        // Fetch current season rosters (try multiple season formats)
+        const seasonVariants = ['2025 Fall', '2025', 'Fall 2025'];
+        let rosters = [];
+        
+        for (const seasonVariant of seasonVariants) {
+          let rosterQuery = {
+            query: `SELECT * FROM c WHERE c.season = @season`,
+            parameters: [{ name: '@season', value: seasonVariant }]
+          };
+          
+          // If division filter is specified, apply it to rosters too
+          if (division) {
+            rosterQuery.query += ` AND LOWER(c.division) = LOWER(@division)`;
+            rosterQuery.parameters.push({ name: '@division', value: division });
+          }
+          
+          const { resources: seasonRosters } = await rostersC.items.query(rosterQuery).fetchAll();
+          if (seasonRosters.length > 0) {
+            rosters = seasonRosters;
+            console.log(`📋 Found rosters for season "${seasonVariant}": ${rosters.length} teams`);
+            break;
+          }
+        }
+        
+        if (rosters.length === 0) {
+          // If no rosters found, try fetching all rosters to see what seasons exist
+          const { resources: allRosters } = await rostersC.items.query('SELECT DISTINCT c.season FROM c').fetchAll();
+          const availableSeasons = allRosters.map(r => r.season);
+          console.log(`⚠️ No rosters found for current season variants. Available seasons: ${JSON.stringify(availableSeasons)}`);
+          console.log(`ℹ️ Disabling roster filtering since no current season rosters exist`);
+          // Don't filter by roster if no rosters exist
+          shouldFilterByRoster = false;
+        } else {
+          // Extract all player names from current season rosters
+          for (const roster of rosters) {
+            if (roster.players && Array.isArray(roster.players)) {
+              for (const player of roster.players) {
+                if (player.name) {
+                  rosterNames.add(player.name.toLowerCase());
+                }
+              }
+            }
+          }
+          
+          console.log(`📋 Found ${rosterNames.size} rostered players for current season filtering`);
+        }
+      } catch (rosterErr) {
+        console.warn('Failed to fetch roster data for filtering:', rosterErr.message);
+        // Continue without roster filtering if there's an error
+        shouldFilterByRoster = false;
+      }
+    }
+
     const response = [];
     for (const entry of mergedMap.values()) {
+      // Apply roster filtering if enabled
+      if (shouldFilterByRoster && rosterNames.size > 0) {
+        const playerNameLower = entry.playerName.toLowerCase();
+        if (!rosterNames.has(playerNameLower)) {
+          continue; // Skip non-rostered players
+        }
+      }
+      
       const histTotals = entry.historical.reduce((acc,h)=>{ acc.goals+=h.goals; acc.assists+=h.assists; acc.points+=h.points; acc.pim+=h.pim; acc.gp+=h.gp; return acc; }, { goals:0, assists:0, points:0, pim:0, gp:0 });
       const liveRec = entry.live ? { goals: entry.live.goals, assists: entry.live.assists, points: entry.live.points, pim: entry.live.pim, gp: entry.live.gamesPlayed } : { goals:0, assists:0, points:0, pim:0, gp:0 };
       const totals = { goals: histTotals.goals + liveRec.goals, assists: histTotals.assists + liveRec.assists, points: histTotals.points + liveRec.points, pim: histTotals.pim + liveRec.pim, gp: histTotals.gp + liveRec.gp };
@@ -3667,7 +3759,16 @@ app.get('/api/player-stats', async (req, res) => {
 
     const payload = response.sort((a,b)=> b.points - a.points);
     if (debug === 'true') {
-      return res.json({ debug: { historicalCount: historical.length, liveCount: live.length, divisionFilter: division||null, autoRebuilt: live.some(l=>l.autoRebuilt), scopeRequested: scope||'totals' }, data: payload });
+      return res.json({ debug: { 
+        historicalCount: historical.length, 
+        liveCount: live.length, 
+        divisionFilter: division||null, 
+        autoRebuilt: live.some(l=>l.autoRebuilt), 
+        scopeRequested: scope||'totals',
+        rosterFiltering: shouldFilterByRoster,
+        rosteredPlayersCount: rosterNames.size,
+        filteredResultCount: payload.length
+      }, data: payload });
     }
     res.json(payload);
   } catch (e) {
@@ -3742,57 +3843,89 @@ app.get('/api/team-stats', async (req, res) => {
     const gamesC = db.container('games');
     const goalsC = db.container('goals');
 
-    // Fetch submission docs
+    // Fetch submission docs (these contain all the game data we need)
     const { resources: submissions } = await gamesC.items.query({
       query: "SELECT * FROM c WHERE c.eventType = 'game-submission'",
       parameters: []
     }).fetchAll();
 
-    // Build base games map to avoid N queries
-    const gameIds = submissions.map(s => s.gameId);
-    let games = [];
-    if (gameIds.length) {
-      // Chunk to avoid IN clause limits (Cosmos doesn't support large IN; query all games instead)
-      const { resources: allGames } = await gamesC.items.query('SELECT * FROM c WHERE NOT IS_DEFINED(c.eventType)').fetchAll();
-      const byId = new Map(allGames.map(g => [g.id, g]));
-      for (const sub of submissions) { const g = byId.get(sub.gameId); if (g) games.push(g); }
+    if (!submissions.length) {
+      return res.json([]); // No submitted games yet
     }
 
+    // Filter by division if specified
+    let games = submissions;
     if (division && division.toLowerCase() !== 'all') {
       games = games.filter(g => (g.division||'').toLowerCase() === division.toLowerCase());
     }
 
-    // Fetch all goals for submitted games only (filter client side)
+    // Fetch all goals for submitted games
+    const gameIds = submissions.map(s => s.gameId);
     const { resources: allGoals } = await goalsC.items.query('SELECT * FROM c').fetchAll();
     const relevantGoals = allGoals.filter(g => gameIds.includes(g.gameId));
 
+    // Initialize team stats map
     const teamStatsMap = new Map();
     for (const game of games) {
       const div = game.division || game.league || null;
       [game.homeTeam, game.awayTeam].forEach(teamName => {
         if (!teamStatsMap.has(teamName)) {
-          teamStatsMap.set(teamName, { teamName, division: div, wins:0, losses:0, goalsFor:0, goalsAgainst:0, gamesPlayed:0 });
+          teamStatsMap.set(teamName, { 
+            teamName, 
+            division: div, 
+            wins: 0, 
+            losses: 0, 
+            goalsFor: 0, 
+            goalsAgainst: 0, 
+            gamesPlayed: 0 
+          });
         }
       });
     }
 
+    // Calculate goals for/against from actual goal records
     for (const goal of relevantGoals) {
-      const game = games.find(g => g.id === goal.gameId || g.gameId === goal.gameId);
-      if (!game) continue;
       const scoringTeam = goal.teamName;
-      if (scoringTeam && teamStatsMap.has(scoringTeam)) teamStatsMap.get(scoringTeam).goalsFor++;
-      const opp = scoringTeam === game.homeTeam ? game.awayTeam : game.homeTeam;
-      if (opp && teamStatsMap.has(opp)) teamStatsMap.get(opp).goalsAgainst++;
+      if (scoringTeam && teamStatsMap.has(scoringTeam)) {
+        teamStatsMap.get(scoringTeam).goalsFor++;
+      }
+      
+      // Find opponent team and increment goals against
+      const game = games.find(g => g.gameId === goal.gameId);
+      if (game) {
+        const opponent = scoringTeam === game.homeTeam ? game.awayTeam : game.homeTeam;
+        if (opponent && teamStatsMap.has(opponent)) {
+          teamStatsMap.get(opponent).goalsAgainst++;
+        }
+      }
     }
 
+    // Calculate wins/losses from final scores in submission documents
     for (const game of games) {
-      const homeGoals = relevantGoals.filter(g => g.gameId === game.id && g.teamName === game.homeTeam).length;
-      const awayGoals = relevantGoals.filter(g => g.gameId === game.id && g.teamName === game.awayTeam).length;
-      if (homeGoals === awayGoals) continue; // ignore ties
-      const home = teamStatsMap.get(game.homeTeam);
-      const away = teamStatsMap.get(game.awayTeam);
-      if (home) { home.gamesPlayed++; if (homeGoals > awayGoals) home.wins++; else home.losses++; }
-      if (away) { away.gamesPlayed++; if (awayGoals > homeGoals) away.wins++; else away.losses++; }
+      const finalScore = game.finalScore || {};
+      const homeScore = finalScore[game.homeTeam] || 0;
+      const awayScore = finalScore[game.awayTeam] || 0;
+      
+      const homeTeam = teamStatsMap.get(game.homeTeam);
+      const awayTeam = teamStatsMap.get(game.awayTeam);
+      
+      // Count games played for both teams regardless of score
+      if (homeTeam) homeTeam.gamesPlayed++;
+      if (awayTeam) awayTeam.gamesPlayed++;
+      
+      // Only count wins/losses for non-tied games
+      if (homeScore !== awayScore) {
+        if (homeTeam) {
+          if (homeScore > awayScore) homeTeam.wins++;
+          else homeTeam.losses++;
+        }
+        
+        if (awayTeam) {
+          if (awayScore > homeScore) awayTeam.wins++;
+          else awayTeam.losses++;
+        }
+      }
+      // Note: Tied games are neither wins nor losses, but still count as games played
     }
 
     const response = Array.from(teamStatsMap.values()).map(t => ({

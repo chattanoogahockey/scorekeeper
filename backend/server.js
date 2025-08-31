@@ -1300,12 +1300,7 @@ app.post('/api/goals', async (req, res) => {
       breakaway: breakaway || false,
       recordedAt: new Date().toISOString(),
       gameStatus: 'in-progress', // Will be updated when game is submitted
-      
-      // Keep legacy fields for backward compatibility
-      scoringTeam: team,
-      scorer: player,
-      assists: assist ? [assist] : [],
-      time,
+      // Legacy fields removed (scoringTeam, scorer, assists, time) now normalized via /api/admin/normalize-events
       
       // Advanced Analytics
       analytics: {
@@ -1463,12 +1458,7 @@ app.post('/api/penalties', async (req, res) => {
       details: details || {},
       recordedAt: new Date().toISOString(),
       gameStatus: 'in-progress', // Will be updated when game is submitted
-      
-      // Keep legacy fields for backward compatibility
-      penalizedTeam: team,
-      penalizedPlayer: player,
-      penaltyLength,
-      time,
+      // Legacy fields removed (penalizedTeam, penalizedPlayer, penaltyLength, time) now normalized via /api/admin/normalize-events
       
       // Advanced Analytics
       analytics: {

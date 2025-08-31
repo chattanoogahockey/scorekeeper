@@ -18,7 +18,7 @@ export const useGameContext = () => {
 };
 
 export function GameProvider({ children }) {
-  const [selectedLeague, setSelectedLeague] = useState(null);
+  const [selectedDivision, setSelectedDivision] = useState(null);
   const [selectedGame, setSelectedGame] = useState(null);
   const [rosters, setRosters] = useState([]);
   const [attendance, setAttendance] = useState({}); // { teamName: [playerName, ...] }
@@ -34,7 +34,7 @@ export function GameProvider({ children }) {
   const awayTeam = selectedGame?.awayTeam || selectedGame?.awayTeamId;
 
   const reset = () => {
-    setSelectedLeague(null);
+  setSelectedDivision(null);
     setSelectedGame(null);
     setRosters([]);
     setAttendance({});
@@ -43,8 +43,8 @@ export function GameProvider({ children }) {
   return (
     <GameContext.Provider
       value={{
-        selectedLeague,
-        setSelectedLeague,
+  selectedDivision,
+  setSelectedDivision,
         selectedGame,
         setSelectedGame,
         selectedGameId,

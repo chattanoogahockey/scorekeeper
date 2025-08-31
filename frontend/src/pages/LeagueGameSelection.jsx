@@ -5,7 +5,7 @@ import { GameContext } from '../contexts/GameContext.jsx';
 
 export default function LeagueGameSelection() {
   const navigate = useNavigate();
-  const { setSelectedLeague, setSelectedGame, reset, setRosters } = useContext(GameContext);
+  const { setSelectedDivision, setSelectedGame, reset, setRosters } = useContext(GameContext);
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -243,7 +243,7 @@ export default function LeagueGameSelection() {
           
           // CRITICAL: Set context synchronously and persist to sessionStorage as a fallback
           console.log('🎯 Setting context before navigation...');
-          setSelectedLeague(game.division);
+          setSelectedDivision(game.division);
           setRosters(processedRosters);
           setSelectedGame(game);
           try {
@@ -319,7 +319,7 @@ export default function LeagueGameSelection() {
       // If we reach here, this is either a new game OR user chose to start over
       console.log('🆕 Starting new game or fresh start - proceeding to roster attendance');
       setSelectedGame(game);
-      setSelectedLeague(game.division);
+  setSelectedDivision(game.division);
 
       // Preload rosters so the roster page renders immediately
       try {

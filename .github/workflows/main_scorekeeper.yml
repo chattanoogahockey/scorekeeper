@@ -58,20 +58,26 @@ jobs:
       run: |
         mkdir -p deploy
         
-        # Backend essentials (production only)
+        # Backend essentials (production only) - Updated for refactored structure
         cp backend/package*.json deploy/
-        cp backend/server.js deploy/
-        cp backend/logger.js deploy/          # Logger module required by server.js
-        cp -r backend/config deploy/config    # Config directory required by server.js
+        cp backend/server-refactored.js deploy/  # Use refactored server
+        cp backend/server.js deploy/             # Keep legacy as fallback
+        
+        # Copy refactored source structure
+        cp -r backend/src deploy/src
+        
+        # Copy essential legacy files still needed
+        cp backend/logger.js deploy/
         cp backend/cosmosClient.js deploy/
         cp backend/ttsService.js deploy/
-        cp backend/rinkReportGenerator.js deploy/  # Core feature for post-game reports
+        cp backend/rinkReportGenerator.js deploy/
         cp backend/voiceConfig.js deploy/
         cp backend/announcerService.js deploy/ || echo "Announcer service optional"
         
-        # Copy essential utilities and middleware
+        # Copy legacy directories that are still used
         cp -r backend/utils deploy/utils || echo "Utils directory optional"
         cp -r backend/middleware deploy/middleware || echo "Middleware directory optional"
+        cp -r backend/config deploy/config || echo "Config directory optional"
         
         # Copy backend node_modules (production only)
         cp -r backend/node_modules deploy/node_modules

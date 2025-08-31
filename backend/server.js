@@ -3393,7 +3393,7 @@ app.get('/api/events', async (req, res) => {
       gameId: g.gameId,
       period: g.period,
       division: g.division,
-      teamName: g.teamName || g.scoringTeam || g.team || null,
+      teamName: g.teamName || null,
       playerName: g.playerName || null,
       assistedBy: g.assistedBy || [],
       timeRemaining: g.timeRemaining || g.time || null,
@@ -3684,7 +3684,7 @@ app.post('/api/admin/normalize-events', async (req, res) => {
     for (const g of goals) {
       let changed = false;
       // Field already standardized - scorer field removed
-      if (!g.teamName && (g.scoringTeam || g.team)) { g.teamName = g.scoringTeam || g.team; changed = true; }
+      // teamName is now standardized across all containers
       if (changed) { try { await goalsC.items.upsert(g); updates.goals++; } catch {} }
     }
     const { resources: pens } = await pensC.items.query('SELECT * FROM c').fetchAll();
@@ -3768,15 +3768,15 @@ app.get('/api/team-stats', async (req, res) => {
     for (const goal of relevantGoals) {
       const game = games.find(g => g.id === goal.gameId || g.gameId === goal.gameId);
       if (!game) continue;
-      const scoringTeam = goal.scoringTeam || goal.team || goal.teamName;
+      const scoringTeam = goal.teamName;
       if (scoringTeam && teamStatsMap.has(scoringTeam)) teamStatsMap.get(scoringTeam).goalsFor++;
       const opp = scoringTeam === game.homeTeam ? game.awayTeam : game.homeTeam;
       if (opp && teamStatsMap.has(opp)) teamStatsMap.get(opp).goalsAgainst++;
     }
 
     for (const game of games) {
-      const homeGoals = relevantGoals.filter(g => g.gameId === game.id && (g.scoringTeam||g.team) === game.homeTeam).length;
-      const awayGoals = relevantGoals.filter(g => g.gameId === game.id && (g.scoringTeam||g.team) === game.awayTeam).length;
+      const homeGoals = relevantGoals.filter(g => g.gameId === game.id && g.teamName === game.homeTeam).length;
+      const awayGoals = relevantGoals.filter(g => g.gameId === game.id && g.teamName === game.awayTeam).length;
       if (homeGoals === awayGoals) continue; // ignore ties
       const home = teamStatsMap.get(game.homeTeam);
       const away = teamStatsMap.get(game.awayTeam);

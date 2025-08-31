@@ -22,16 +22,16 @@ const containerNames = config.cosmos.containers;
  * 
  * Container Schema:
  * 1. settings - Global application settings (voice config, etc.)
- * 2. analytics - Pre-aggregated statistics and leaderboards  
- * 3. rink_reports - Weekly division summaries and articles
- * 4. games - Game records and submissions
- * 5. players - Player statistics and profiles
- * 6. goals - Goal events and scoring data
- * 7. penalties - Penalty events and infractions
- * 8. rosters - Team rosters and player assignments
- * 9. attendance - Game attendance tracking
- * 10. otshootout - Overtime and shootout results
- * 11. shotsongoal - Shots on goal tracking and analytics
+ * 2. rink-reports - Weekly division summaries and articles
+ * 3. games - Game records and submissions
+ * 4. player-stats - Current season player statistics (live aggregation)
+ * 5. goals - Goal events and scoring data
+ * 6. penalties - Penalty events and infractions
+ * 7. rosters - Team rosters and player assignments
+ * 8. attendance - Game attendance tracking
+ * 9. ot-shootout - Overtime and shootout results
+ * 10. shots-on-goal - Shots on goal tracking and analytics
+ * 11. historical-player-stats - Historical player career statistics
  */
 
 const CONTAINER_DEFINITIONS = {
@@ -93,9 +93,9 @@ const CONTAINER_DEFINITIONS = {
     }
   },
   
-  // Player statistics and profiles
-  players: {
-    name: containerNames.players,
+  // Current season player statistics
+  'player-stats': {
+    name: containerNames.playerStats,
     partitionKey: '/_partitionKey',
     indexingPolicy: {
       indexingMode: 'consistent',
@@ -275,10 +275,10 @@ export function getGamesContainer() {
   return database.container(CONTAINER_DEFINITIONS.games.name);
 }
 
-// Players container - Player statistics and profiles
-export function getPlayersContainer() {
+// Player-stats container - Current season player statistics
+export function getPlayerStatsContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS.players.name);
+  return database.container(CONTAINER_DEFINITIONS['player-stats'].name);
 }
 
 // Goals container - Goal events and scoring data
@@ -325,13 +325,13 @@ export function getHistoricalPlayerStatsContainer() {
 
 // Legacy aliases for backward compatibility (deprecated)
 export function getTeamsContainer() {
-  console.warn('getTeamsContainer is deprecated, use getPlayersContainer or getRostersContainer');
+  console.warn('getTeamsContainer is deprecated, use getPlayerStatsContainer or getRostersContainer');
   return getRostersContainer();
 }
 
-export function getPlayerStatsContainer() {
-  console.warn('getPlayerStatsContainer is deprecated, use getPlayersContainer');
-  return getPlayersContainer();
+export function getPlayersContainer() {
+  console.warn('getPlayersContainer is deprecated, use getPlayerStatsContainer');
+  return getPlayerStatsContainer();
 }
 
 /**

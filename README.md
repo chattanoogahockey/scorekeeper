@@ -49,14 +49,14 @@ This repository contains a full-stack web application for real‑time hockey sco
 - **Azure Cosmos DB** (SQL API) with configurable containers:
   - `settings` – Global application settings
   - `analytics` – Pre-aggregated statistics and leaderboards
-  - `rink_reports` – Weekly division summaries and articles
+  - `rink-reports` – Weekly division summaries and articles
   - `games` – Game records and submissions
   - `players` – Player statistics and profiles
   - `goals` – Goal events and scoring data
   - `penalties` – Penalty events and infractions
   - `rosters` – Team rosters and player assignments
   - `attendance` – Game attendance tracking
-  - `otshootout` – Overtime and shootout results
+  - `ot-shootout` – Overtime and shootout results
 
 ## 🚀 Getting Started
 

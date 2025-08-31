@@ -30,8 +30,7 @@ import {
   getOTShootoutContainer, 
   getRinkReportsContainer,
   getSettingsContainer,
-  getAnalyticsContainer,
-  getPlayersContainer,
+  getPlayerStatsContainer,
   getShotsOnGoalContainer,
   initializeContainers,
   getHistoricalPlayerStatsContainer
@@ -198,18 +197,18 @@ async function preGenerateGoalAssets(gameId) {
     const game = gamesByQuery[0];
     const lastGoal = goals[0];
 
-    const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.homeTeam).length;
-    const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.awayTeam).length;
+    const homeGoals = goals.filter(g => (g.teamName === game.homeTeam).length;
+    const awayGoals = goals.filter(g => (g.teamName === game.awayTeam).length;
 
-    const playerName = lastGoal.playerName || lastGoal.scorer;
-    const playerGoalsThisGame = goals.filter(g => (g.playerName || g.scorer) === playerName).length;
+    const playerName = lastGoal.playerName;
+    const playerGoalsThisGame = goals.filter(g => (g.playerName) === playerName).length;
 
     const goalData = {
-      playerName: lastGoal.playerName || lastGoal.scorer,
+      playerName: lastGoal.playerName,
       teamName: lastGoal.teamName || lastGoal.scoringTeam,
       period: lastGoal.period,
       timeRemaining: lastGoal.timeRemaining || lastGoal.time,
-      assistedBy: lastGoal.assistedBy || lastGoal.assists || [],
+      assistedBy: lastGoal.assistedBy || [],
       goalType: lastGoal.goalType || 'even strength',
       homeScore: homeGoals,
       awayScore: awayGoals,
@@ -338,16 +337,16 @@ async function preGeneratePenaltyAssets(gameId) {
     const game = gamesByQuery[0];
     const lastPenalty = penalties[0];
 
-    const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.homeTeam).length;
-    const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.awayTeam).length;
+    const homeGoals = goals.filter(g => (g.teamName === game.homeTeam).length;
+    const awayGoals = goals.filter(g => (g.teamName === game.awayTeam).length;
 
     const penaltyData = {
-      playerName: lastPenalty.playerName || lastPenalty.penalizedPlayer,
-      teamName: lastPenalty.teamName || lastPenalty.penalizedTeam,
+      playerName: lastPenalty.playerName,
+      teamName: lastPenalty.teamName,
       penaltyType: lastPenalty.penaltyType,
       period: lastPenalty.period,
-      timeRemaining: lastPenalty.timeRemaining || lastPenalty.time,
-      length: lastPenalty.length || lastPenalty.penaltyLength || 2
+      timeRemaining: lastPenalty.timeRemaining,
+      length: lastPenalty.length || 2
     };
 
     const gameContext = {
@@ -1310,7 +1309,7 @@ app.post('/api/goals', async (req, res) => {
       breakaway: breakaway || false,
       recordedAt: new Date().toISOString(),
       gameStatus: 'in-progress', // Will be updated when game is submitted
-      // Legacy fields removed (scoringTeam, scorer, assists, time) now normalized via /api/admin/normalize-events
+      // Fields standardized: playerName, teamName, timeRemaining, length
       
       // Advanced Analytics
       analytics: {
@@ -1397,14 +1396,14 @@ app.post('/api/penalties', async (req, res) => {
     // Calculate current score at time of penalty
     const scoreByTeam = {};
     existingGoals.forEach(goal => {
-      const team = goal.teamName || goal.scoringTeam; // Handle both new and legacy field names
+      const team = goal.teamName; // Standardized field name
       scoreByTeam[team] = (scoreByTeam[team] || 0) + 1;
     });
     
     // Determine penalty context
     const penaltySequenceNumber = existingPenalties.length + 1;
-    const teamPenalties = existingPenalties.filter(p => (p.teamName || p.penalizedTeam) === team);
-    const playerPenalties = existingPenalties.filter(p => (p.playerName || p.penalizedPlayer) === player);
+    const teamPenalties = existingPenalties.filter(p => p.teamName === team);
+    const playerPenalties = existingPenalties.filter(p => (p.playerName) === player);
     
     let penaltyContext = 'Regular penalty';
     if (penaltySequenceNumber === 1) {
@@ -1446,14 +1445,14 @@ app.post('/api/penalties', async (req, res) => {
       const lastGoal = existingGoals[existingGoals.length - 1];
       const timeSinceLastGoal = Date.now() - new Date(lastGoal.recordedAt).getTime();
       if (timeSinceLastGoal < 120000) { // Within 2 minutes
-        const teamName = lastGoal.teamName || lastGoal.scoringTeam; // Handle both field names
+        const teamName = lastGoal.teamName; // Standardized field name
         previousEvent = `After goal by ${teamName}`;
       }
     }
     
     // Calculate team totals
-    const teamTotalPIM = teamPenalties.reduce((sum, p) => sum + parseInt(p.length || p.penaltyLength || 0), 0);
-    const playerTotalPIM = playerPenalties.reduce((sum, p) => sum + parseInt(p.length || p.penaltyLength || 0), 0);
+    const teamTotalPIM = teamPenalties.reduce((sum, p) => sum + parseInt(p.length || 0), 0);
+    const playerTotalPIM = playerPenalties.reduce((sum, p) => sum + parseInt(p.length || 0), 0);
     
     const penalty = {
       id: `${gameId}-penalty-${Date.now()}`,
@@ -1468,7 +1467,7 @@ app.post('/api/penalties', async (req, res) => {
       details: details || {},
       recordedAt: new Date().toISOString(),
       gameStatus: 'in-progress', // Will be updated when game is submitted
-      // Legacy fields removed (penalizedTeam, penalizedPlayer, penaltyLength, time) now normalized via /api/admin/normalize-events
+      // Fields standardized: playerName, teamName, timeRemaining, length
       
       // Advanced Analytics
       analytics: {
@@ -1537,7 +1536,7 @@ app.get('/api/goals', async (req, res) => {
       }
       
       if (playerId) {
-        conditions.push('c.scorer = @playerId');
+        conditions.push('c.playerName = @playerId');
         parameters.push({ name: '@playerId', value: playerId });
       }
       
@@ -1737,20 +1736,20 @@ app.post('/api/goals/announce-last', async (req, res) => {
     const lastGoal = goals[0];
     
     // Calculate current score after this goal (handle both new and legacy field names)
-    const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.homeTeam).length;
-    const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.awayTeam).length;
+    const homeGoals = goals.filter(g => (g.teamName === game.homeTeam).length;
+    const awayGoals = goals.filter(g => (g.teamName === game.awayTeam).length;
 
     // Get all goals by this player in this game for stats (handle both field names)
-    const playerName = lastGoal.playerName || lastGoal.scorer;
-    const playerGoalsThisGame = goals.filter(g => (g.playerName || g.scorer) === playerName).length;
+    const playerName = lastGoal.playerName;
+    const playerGoalsThisGame = goals.filter(g => (g.playerName) === playerName).length;
 
     // Prepare goal data for announcement
     const goalData = {
-      playerName: lastGoal.playerName || lastGoal.scorer,
+      playerName: lastGoal.playerName,
       teamName: lastGoal.teamName || lastGoal.scoringTeam,
       period: lastGoal.period,
       timeRemaining: lastGoal.timeRemaining || lastGoal.time,
-      assistedBy: lastGoal.assistedBy || lastGoal.assists || [],
+      assistedBy: lastGoal.assistedBy || [],
       goalType: lastGoal.goalType || 'even strength',
       homeScore: homeGoals,
       awayScore: awayGoals,
@@ -2013,17 +2012,17 @@ app.post('/api/penalties/announce-last', async (req, res) => {
       })
       .fetchAll();
 
-  const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.homeTeam).length;
-    const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === game.awayTeam).length;
+  const homeGoals = goals.filter(g => (g.teamName === game.homeTeam).length;
+    const awayGoals = goals.filter(g => (g.teamName === game.awayTeam).length;
 
     // Prepare penalty data for announcement (handle both new and legacy field names)
     const penaltyData = {
-      playerName: lastPenalty.playerName || lastPenalty.penalizedPlayer,
-      teamName: lastPenalty.teamName || lastPenalty.penalizedTeam,
+      playerName: lastPenalty.playerName,
+      teamName: lastPenalty.teamName,
       penaltyType: lastPenalty.penaltyType,
       period: lastPenalty.period,
-      timeRemaining: lastPenalty.timeRemaining || lastPenalty.time,
-      length: lastPenalty.length || lastPenalty.penaltyLength || 2
+      timeRemaining: lastPenalty.timeRemaining,
+      length: lastPenalty.length || 2
     };
 
     const gameContext = {
@@ -2470,7 +2469,7 @@ async function generateGameSpecificCommentary(goalsContainer, penaltiesContainer
     
     if (gameGoals.length > 0) {
       const recentGoal = gameGoals[gameGoals.length - 1];
-      const scorer = recentGoal.playerName || recentGoal.scorer || 'a player';
+      const scorer = recentGoal.playerName || 'a player';
       const team = recentGoal.teamName || recentGoal.scoringTeam || 'their team';
       templates.push(`What a goal by ${scorer} for ${team}!`);
       templates.push(`${team} finds the back of the net with that goal from ${scorer}!`);
@@ -2513,7 +2512,7 @@ async function generateHotPlayerCommentary(goalsContainer, gameId, division) {
     // Count goals by player
     const playerGoals = {};
     recentGoals.forEach(goal => {
-      const player = goal.playerName || goal.scorer;
+      const player = goal.playerName;
       if (player) {
         playerGoals[player] = (playerGoals[player] || 0) + 1;
       }
@@ -2553,7 +2552,7 @@ async function generateLeaderCommentary(goalsContainer, division) {
     // Count total goals by player
     const playerTotals = {};
     allGoals.forEach(goal => {
-      const player = goal.playerName || goal.scorer;
+      const player = goal.playerName;
       if (player) {
         playerTotals[player] = (playerTotals[player] || 0) + 1;
       }
@@ -2744,11 +2743,11 @@ app.post('/api/games/submit', async (req, res) => {
       totalPenalties: penalties.length,
       gameSummary: {
         goalsByTeam: goals.reduce((acc, goal) => {
-          acc[goal.scoringTeam] = (acc[goal.scoringTeam] || 0) + 1;
+          acc[goal.teamName] = (acc[goal.teamName] || 0) + 1;
           return acc;
         }, {}),
         penaltiesByTeam: penalties.reduce((acc, penalty) => {
-          acc[penalty.penalizedTeam] = (acc[penalty.penalizedTeam] || 0) + 1;
+          acc[penalty.teamName] = (acc[penalty.teamName] || 0) + 1;
           return acc;
         }, {}),
         totalPIM: penalties.reduce((sum, p) => sum + parseInt(p.penaltyLength || 0), 0)
@@ -3180,12 +3179,12 @@ app.get('/api/penalties', async (req, res) => {
       }
       
       if (team) {
-        conditions.push('c.penalizedTeam = @team');
+        conditions.push('c.teamName = @team');
         parameters.push({ name: '@team', value: team });
       }
       
       if (playerId) {
-        conditions.push('c.penalizedPlayer = @playerId');
+        conditions.push('c.playerName = @playerId');
         parameters.push({ name: '@playerId', value: playerId });
       }
       
@@ -3227,7 +3226,7 @@ app.delete('/api/penalties/:id', async (req, res) => {
 });
 
 // OT/Shootout endpoints
-app.post('/api/otshootout', async (req, res) => {
+app.post('/api/ot-shootout', async (req, res) => {
   console.log('🏒 Recording OT/Shootout result...');
   const { gameId, winner, gameType, finalScore, submittedBy } = req.body;
 
@@ -3258,7 +3257,7 @@ app.post('/api/otshootout', async (req, res) => {
     
     // Create OT/Shootout record
     const otShootoutRecord = {
-      id: `${gameId}-otshootout-${Date.now()}`,
+      id: `${gameId}-ot-shootout-${Date.now()}`,
       eventType: 'ot-shootout',
       gameId,
       winner,
@@ -3273,11 +3272,11 @@ app.post('/api/otshootout', async (req, res) => {
         totalGoals: goals.length,
         totalPenalties: penalties.length,
         goalsByTeam: goals.reduce((acc, goal) => {
-          acc[goal.scoringTeam] = (acc[goal.scoringTeam] || 0) + 1;
+          acc[goal.teamName] = (acc[goal.teamName] || 0) + 1;
           return acc;
         }, {}),
         penaltiesByTeam: penalties.reduce((acc, penalty) => {
-          acc[penalty.penalizedTeam] = (acc[penalty.penalizedTeam] || 0) + 1;
+          acc[penalty.teamName] = (acc[penalty.teamName] || 0) + 1;
           return acc;
         }, {}),
         totalPIM: penalties.reduce((sum, p) => sum + parseInt(p.penaltyLength || 0), 0)
@@ -3337,7 +3336,7 @@ app.post('/api/otshootout', async (req, res) => {
   }
 });
 
-app.get('/api/otshootout', async (req, res) => {
+app.get('/api/ot-shootout', async (req, res) => {
   const { gameId } = req.query;
 
   try {
@@ -3395,17 +3394,17 @@ app.get('/api/events', async (req, res) => {
       period: g.period,
       division: g.division,
       teamName: g.teamName || g.scoringTeam || g.team || null,
-      playerName: g.playerName || g.scorer || null,
-      assistedBy: g.assistedBy || g.assists || [],
+      playerName: g.playerName || null,
+      assistedBy: g.assistedBy || [],
       timeRemaining: g.timeRemaining || g.time || null,
       shotType: g.shotType,
       goalType: g.goalType,
       recordedAt: g.recordedAt,
-      // Legacy mirrors
-      scoringTeam: g.teamName || g.scoringTeam || g.team || null,
-      scorer: g.playerName || g.scorer || null,
-      assists: g.assistedBy || g.assists || [],
-      time: g.timeRemaining || g.time || null
+      // Legacy mirrors for backward compatibility
+      scoringTeam: g.teamName || null,
+      scorer: g.playerName || null,
+      assists: g.assistedBy || [],
+      time: g.timeRemaining || null
     }));
 
     const normPens = penalties
@@ -3416,17 +3415,17 @@ app.get('/api/events', async (req, res) => {
         gameId: p.gameId,
         period: p.period,
         division: p.division,
-        teamName: p.teamName || p.penalizedTeam || p.team || null,
-        playerName: p.playerName || p.penalizedPlayer || null,
+        teamName: p.teamName || null,
+        playerName: p.playerName || null,
         penaltyType: p.penaltyType,
         length: p.length || p.penaltyLength || null,
         timeRemaining: p.timeRemaining || p.time || null,
         recordedAt: p.recordedAt,
-        // Legacy mirrors
-        penalizedTeam: p.teamName || p.penalizedTeam || p.team || null,
-        penalizedPlayer: p.playerName || p.penalizedPlayer || null,
-        penaltyLength: p.length || p.penaltyLength || null,
-        time: p.timeRemaining || p.time || null
+        // Legacy mirrors for backward compatibility
+        penalizedTeam: p.teamName || null,
+        penalizedPlayer: p.playerName || null,
+        penaltyLength: p.length || null,
+        time: p.timeRemaining || null
       }));
 
     const combined = [...normGoals, ...normPens].sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt));
@@ -3559,8 +3558,8 @@ app.get('/api/player-stats', async (req, res) => {
   try {
   const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions } = await import('./cosmosClient.js');
   const db = await getDatabase();
-  // Use standardized 'players' container for live aggregated stats
-  const liveC = db.container(getContainerDefinitions().players.name);
+  // Use standardized 'player-stats' container for live aggregated stats
+  const liveC = db.container(getContainerDefinitions()['player-stats'].name);
     const goalsC = db.container('goals');
     const pensC = db.container('penalties');
     const histC = getHistoricalPlayerStatsContainer();
@@ -3580,9 +3579,9 @@ app.get('/api/player-stats', async (req, res) => {
       const key = (name, div) => `${(div||'div').toLowerCase()}::${name.toLowerCase().replace(/\s+/g,'_')}`;
       const ensure = (name, div) => { const k=key(name,div); if(!map.has(k)) map.set(k,{ id:k, playerId:k, playerName:name, division:div, goals:0, assists:0, pim:0, games:new Set() }); return map.get(k); };
       for (const g of goals) {
-        const name = g.playerName || g.scorer; if(!name) continue; const div = g.division||null; const r=ensure(name,div); r.goals++; r.games.add(g.gameId); const assists = g.assistedBy||g.assists||[]; if(Array.isArray(assists)){ for(const a of assists){ if(!a) continue; const ar=ensure(a,div); ar.assists++; ar.games.add(g.gameId); }} }
+        const name = g.playerName; if(!name) continue; const div = g.division||null; const r=ensure(name,div); r.goals++; r.games.add(g.gameId); const assists = g.assistedBy||g.assists||[]; if(Array.isArray(assists)){ for(const a of assists){ if(!a) continue; const ar=ensure(a,div); ar.assists++; ar.games.add(g.gameId); }} }
       for (const p of pens) {
-        const name = p.playerName || p.penalizedPlayer; if(!name) continue; const div = p.division||null; const r=ensure(name,div); const mins=parseInt(p.length||p.penaltyLength||0,10); if(!isNaN(mins)) r.pim+=mins; r.games.add(p.gameId); }
+        const name = p.playerName; if(!name) continue; const div = p.division||null; const r=ensure(name,div); const mins=parseInt(p.length||p.penaltyLength||0,10); if(!isNaN(mins)) r.pim+=mins; r.games.add(p.gameId); }
       for (const rec of map.values()) {
         const doc = { ...rec, _partitionKey: rec.division || 'global', points: rec.goals+rec.assists, gamesPlayed: rec.games.size, games: Array.from(rec.games), updatedAt: new Date().toISOString(), source:'live' };
         await liveC.items.upsert(doc);
@@ -3621,8 +3620,8 @@ app.get('/api/player-stats', async (req, res) => {
           const key = (name, div) => `${(div||'div').toLowerCase()}::${name.toLowerCase().replace(/\s+/g,'_')}`;
           const ensure = (name, div) => { const k=key(name,div); if(!map.has(k)) map.set(k,{ id:k, playerId:k, playerName:name, division:div, goals:0, assists:0, pim:0, games:new Set() }); return map.get(k); };
           for (const g of goals) {
-            const name = g.playerName || g.scorer; if(!name) continue; const div = g.division||null; const r=ensure(name,div); r.goals++; r.games.add(g.gameId); const assists = g.assistedBy||g.assists||[]; if(Array.isArray(assists)){ for(const a of assists){ if(!a) continue; const ar=ensure(a,div); ar.assists++; ar.games.add(g.gameId); }} }
-          for (const p of pens) { const name = p.playerName || p.penalizedPlayer; if(!name) continue; const div = p.division||null; const r=ensure(name,div); const mins=parseInt(p.length||p.penaltyLength||0,10); if(!isNaN(mins)) r.pim+=mins; r.games.add(p.gameId); }
+            const name = g.playerName; if(!name) continue; const div = g.division||null; const r=ensure(name,div); r.goals++; r.games.add(g.gameId); const assists = g.assistedBy||g.assists||[]; if(Array.isArray(assists)){ for(const a of assists){ if(!a) continue; const ar=ensure(a,div); ar.assists++; ar.games.add(g.gameId); }} }
+          for (const p of pens) { const name = p.playerName; if(!name) continue; const div = p.division||null; const r=ensure(name,div); const mins=parseInt(p.length||p.penaltyLength||0,10); if(!isNaN(mins)) r.pim+=mins; r.games.add(p.gameId); }
           for (const rec of map.values()) { const doc = { ...rec, _partitionKey: rec.division || 'global', points: rec.goals+rec.assists, gamesPlayed: rec.games.size, games: Array.from(rec.games), updatedAt: new Date().toISOString(), source:'live', autoRebuilt:true }; await liveC.items.upsert(doc); }
           const { resources: liveAfter } = await liveC.items.query({ query: liveQuery, parameters: lParams }).fetchAll();
           live = liveAfter;
@@ -3684,14 +3683,14 @@ app.post('/api/admin/normalize-events', async (req, res) => {
     const { resources: goals } = await goalsC.items.query('SELECT * FROM c').fetchAll();
     for (const g of goals) {
       let changed = false;
-      if (!g.playerName && g.scorer) { g.playerName = g.scorer; changed = true; }
+      // Field already standardized - scorer field removed
       if (!g.teamName && (g.scoringTeam || g.team)) { g.teamName = g.scoringTeam || g.team; changed = true; }
       if (changed) { try { await goalsC.items.upsert(g); updates.goals++; } catch {} }
     }
     const { resources: pens } = await pensC.items.query('SELECT * FROM c').fetchAll();
     for (const p of pens) {
       let changed = false;
-      if (!p.playerName && p.penalizedPlayer) { p.playerName = p.penalizedPlayer; changed = true; }
+      // Field already standardized - penalizedPlayer field removed
       if (!p.teamName && p.penalizedTeam) { p.teamName = p.penalizedTeam; changed = true; }
       if (changed) { try { await pensC.items.upsert(p); updates.penalties++; } catch {} }
     }
@@ -3832,13 +3831,13 @@ app.post('/api/admin/backfill-submissions', async (req, res) => {
       ]);
       const goalsByTeam = {};
       for (const goal of gameGoals) {
-        const t = goal.teamName || goal.scoringTeam || 'Unknown';
+        const t = goal.teamName || 'Unknown';
         goalsByTeam[t] = (goalsByTeam[t] || 0) + 1;
       }
       const penaltiesByTeam = {};
       let totalPIM = 0;
       for (const pen of gamePens) {
-        const t = pen.teamName || pen.penalizedTeam || 'Unknown';
+        const t = pen.teamName || 'Unknown';
         penaltiesByTeam[t] = (penaltiesByTeam[t] || 0) + 1;
         const mins = parseInt(pen.length || pen.penaltyLength || 0, 10);
         if (!isNaN(mins)) totalPIM += mins;
@@ -3889,7 +3888,7 @@ app.post('/api/admin/normalize-events', async (req, res) => {
     const { resources: goals } = await goalsC.items.query('SELECT * FROM c').fetchAll();
     for (const g of goals) {
       let changed = false;
-      if (!g.playerName && g.scorer) { g.playerName = g.scorer; changed = true; }
+      // Field already standardized - scorer field removed
       if (!g.teamName && g.scoringTeam) { g.teamName = g.scoringTeam; changed = true; }
       if (!g.assistedBy && g.assists) { g.assistedBy = g.assists; changed = true; }
       if (!g.timeRemaining && g.time) { g.timeRemaining = g.time; changed = true; }
@@ -3904,7 +3903,7 @@ app.post('/api/admin/normalize-events', async (req, res) => {
     const { resources: pens } = await penaltiesC.items.query('SELECT * FROM c').fetchAll();
     for (const p of pens) {
       let changed = false;
-      if (!p.playerName && p.penalizedPlayer) { p.playerName = p.penalizedPlayer; changed = true; }
+      // Field already standardized - penalizedPlayer field removed
       if (!p.teamName && p.penalizedTeam) { p.teamName = p.penalizedTeam; changed = true; }
       if (!p.timeRemaining && p.time) { p.timeRemaining = p.time; changed = true; }
       if (!p.length && p.penaltyLength) { p.length = p.penaltyLength; changed = true; }

@@ -43,7 +43,7 @@ const OTShootoutButton = ({ onGameCompleted }) => {
         submittedBy: 'Scorekeeper'
       };
 
-      const response = await axios.post('/api/otshootout', payload);
+      const response = await axios.post('/api/ot-shootout', payload);
       
       if (response.data.success) {
         alert(`${gameType === 'overtime' ? 'Overtime' : 'Shootout'} winner recorded! Game completed and submitted automatically.`);

@@ -7,8 +7,7 @@ import {
   getOTShootoutContainer, 
   getRinkReportsContainer,
   getSettingsContainer,
-  getAnalyticsContainer,
-  getPlayersContainer,
+  getPlayerStatsContainer,
   initializeContainers
 } from './cosmosClient.js';
 

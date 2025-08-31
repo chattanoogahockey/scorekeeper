@@ -39,8 +39,9 @@ export const config = {
       rosters: process.env.COSMOS_CONTAINER_ROSTERS || 'rosters',
       attendance: process.env.COSMOS_CONTAINER_ATTENDANCE || 'attendance',
       otShootout: process.env.COSMOS_CONTAINER_OT_SHOOTOUT || 'ot-shootout',
-      shotsOnGoal: process.env.COSMOS_CONTAINER_SHOTS_ON_GOAL || 'shots-on-goal'
-  , historicalPlayerStats: process.env.COSMOS_CONTAINER_HISTORICAL_PLAYER_STATS || 'historical-player-stats'
+      shotsOnGoal: process.env.COSMOS_CONTAINER_SHOTS_ON_GOAL || 'shots-on-goal',
+      historicalPlayerStats: process.env.COSMOS_CONTAINER_HISTORICAL_PLAYER_STATS || 'historical-player-stats',
+      playerStats: process.env.COSMOS_CONTAINER_PLAYER_STATS || 'player-stats'
     }
   },
   

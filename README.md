@@ -313,6 +313,30 @@ The project includes automated deployment via GitHub Actions:
 
 ## 📊 Version Management
 
+### Historical Player Stats Import
+
+Two methods:
+
+1. API route (server running):
+   ```powershell
+   npm run dev
+   npm run import-historical -- "C:\\Users\\marce\\OneDrive\\Documents\\CHAHKY\\data\\final_historical_data.csv"
+   ```
+   Add `--dry` to preview without writes.
+
+2. Direct Cosmos (no server needed):
+   ```powershell
+   npm run import-historical-direct -- "C:\\Users\\marce\\OneDrive\\Documents\\CHAHKY\\data\\final_historical_data.csv"
+   ```
+   Also supports `--dry`.
+
+Required CSV columns: Name,Division,Year,Goals,Assists,PIM,GP (optional Points,League,Season). Points auto-calculated if missing.
+
+Verify sample after import:
+```powershell
+Invoke-RestMethod -Uri "http://localhost:3001/api/player-stats?scope=historical" | Select-Object -First 5 | ConvertTo-Json -Depth 4
+```
+
 The application uses unified versioning across all components:
 
 - **Package Version**: Defined in root `package.json` (currently 2.1.0)

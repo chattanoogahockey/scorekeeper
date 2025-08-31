@@ -216,10 +216,10 @@ export default function Statistics() {
   const totalGoals = filteredPlayerStats.reduce((s,p)=> s + (p.goals||0),0);
   const totalAssists = filteredPlayerStats.reduce((s,p)=> s + (p.assists||0),0);
   const totalPoints = filteredPlayerStats.reduce((s,p)=> s + (p.points||0),0);
-  const avgPoints = filteredPlayerStats.length ? (totalPoints / filteredPlayerStats.length).toFixed(2) : '0.00';
+  const avgPoints = filteredPlayerStats.length ? (totalPoints / filteredPlayerStats.length).toFixed(1) : '0.0';
   const medianPoints = (() => { if(!filteredPlayerStats.length) return '0'; const pts = filteredPlayerStats.map(p=>p.points||0).sort((a,b)=>a-b); const mid = Math.floor(pts.length/2); return pts.length%2? String(pts[mid]) : ((pts[mid-1]+pts[mid])/2).toFixed(1); })();
-  const goalsPerGameAgg = (()=> { const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); return gp? (totalGoals / gp).toFixed(2) : '0.00'; })();
-  const pointsPerPlayerPerGame = (()=> { const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); return gp? (totalPoints / gp).toFixed(2):'0.00'; })();
+  const goalsPerGameAgg = (()=> { const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); return gp? (totalGoals / gp).toFixed(1) : '0.0'; })();
+  const pointsPerPlayerPerGame = (()=> { const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); return gp? (totalPoints / gp).toFixed(1):'0.0'; })();
 
   const filteredTeamStats = teamStats.filter(team => selectedDivision === 'All' || team.division === selectedDivision);
 

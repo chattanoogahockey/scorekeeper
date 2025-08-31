@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { GameContext } from '../contexts/GameContext.jsx';
+import { GameContext } from '../contexts/game-context.jsx';
 
 export default function LeagueGameSelection() {
   const navigate = useNavigate();

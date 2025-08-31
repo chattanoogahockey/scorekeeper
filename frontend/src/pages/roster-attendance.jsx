@@ -1,7 +1,7 @@
 import React, { useContext, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { GameContext } from '../contexts/GameContext.jsx';
+import { GameContext } from '../contexts/game-context.jsx';
 
 /**
  * Roster attendance page allows the scorekeeper to record which players

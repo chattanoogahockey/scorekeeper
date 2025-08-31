@@ -1,10 +1,10 @@
 import React, { useContext, useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import { GameContext } from '../contexts/GameContext.jsx';
+import { GameContext } from '../contexts/game-context.jsx';
 
-import AnnouncerControls from '../components/AnnouncerControls.jsx';
-import DJPanel from '../components/DJPanel.jsx';
+import AnnouncerControls from '../components/announcer-controls.jsx';
+import DJPanel from '../components/dj-panel.jsx';
 
 /**
  * Dashboard page allows scorekeepers to record goals and penalties and view live updates.

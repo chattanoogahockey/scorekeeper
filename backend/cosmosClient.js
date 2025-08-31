@@ -36,7 +36,7 @@ const containerNames = config.cosmos.containers;
 
 const CONTAINER_DEFINITIONS = {
   // Global application settings
-  settings: {
+  'app-settings': {
     name: containerNames.settings,
     partitionKey: '/type',
     indexingPolicy: {
@@ -47,7 +47,7 @@ const CONTAINER_DEFINITIONS = {
   },
   
   // Pre-aggregated analytics and statistics
-  analytics: {
+  'analytics-data': {
     name: containerNames.analytics,
     partitionKey: '/division', 
     indexingPolicy: {
@@ -78,7 +78,7 @@ const CONTAINER_DEFINITIONS = {
   },
   
   // Game records and submissions
-  games: {
+  'game-records': {
     name: containerNames.games,
     partitionKey: '/division',
     indexingPolicy: {
@@ -110,7 +110,7 @@ const CONTAINER_DEFINITIONS = {
   },
   
   // Goal events and scoring data
-  goals: {
+  'goal-events': {
     name: containerNames.goals,
     partitionKey: '/gameId',
     indexingPolicy: {
@@ -126,7 +126,7 @@ const CONTAINER_DEFINITIONS = {
   },
   
   // Penalty events and infractions
-  penalties: {
+  'penalty-events': {
     name: containerNames.penalties,
     partitionKey: '/gameId',
     indexingPolicy: {
@@ -142,7 +142,7 @@ const CONTAINER_DEFINITIONS = {
   },
   
   // Team rosters and player assignments
-  rosters: {
+  'team-rosters': {
     name: containerNames.rosters,
     partitionKey: '/teamName',
     indexingPolicy: {
@@ -157,7 +157,7 @@ const CONTAINER_DEFINITIONS = {
   },
   
   // Game attendance tracking
-  attendance: {
+  'game-attendance': {
     name: containerNames.attendance,
     partitionKey: '/gameId',
     indexingPolicy: {
@@ -171,7 +171,7 @@ const CONTAINER_DEFINITIONS = {
   },
   
   // Overtime and shootout results
-  'ot-shootout': {
+  'overtime-shootout': {
     name: containerNames.otShootout,
     partitionKey: '/gameId',
     indexingPolicy: {
@@ -254,13 +254,13 @@ export function getDatabase() {
 // Settings container - Global application settings
 export function getSettingsContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS.settings.name);
+  return database.container(CONTAINER_DEFINITIONS['app-settings'].name);
 }
 
 // Analytics container - Pre-aggregated statistics  
 export function getAnalyticsContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS.analytics.name);
+  return database.container(CONTAINER_DEFINITIONS['analytics-data'].name);
 }
 
 // Rink reports container - Weekly division summaries
@@ -272,7 +272,7 @@ export function getRinkReportsContainer() {
 // Games container - Game records and submissions
 export function getGamesContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS.games.name);
+  return database.container(CONTAINER_DEFINITIONS['game-records'].name);
 }
 
 // Player-stats container - Current season player statistics
@@ -284,31 +284,31 @@ export function getPlayerStatsContainer() {
 // Goals container - Goal events and scoring data
 export function getGoalsContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS.goals.name);
+  return database.container(CONTAINER_DEFINITIONS['goal-events'].name);
 }
 
 // Penalties container - Penalty events and infractions
 export function getPenaltiesContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS.penalties.name);
+  return database.container(CONTAINER_DEFINITIONS['penalty-events'].name);
 }
 
 // Rosters container - Team rosters and player assignments
 export function getRostersContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS.rosters.name);
+  return database.container(CONTAINER_DEFINITIONS['team-rosters'].name);
 }
 
 // Attendance container - Game attendance tracking
 export function getAttendanceContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS.attendance.name);
+  return database.container(CONTAINER_DEFINITIONS['game-attendance'].name);
 }
 
 // OT/Shootout container - Overtime and shootout results
 export function getOTShootoutContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS['ot-shootout'].name);
+  return database.container(CONTAINER_DEFINITIONS['overtime-shootout'].name);
 }
 
 // Shots on Goal container - Shots on goal tracking and analytics

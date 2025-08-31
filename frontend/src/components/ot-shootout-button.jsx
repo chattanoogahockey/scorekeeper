@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useGameContext } from '../contexts/GameContext';
+import { useGameContext } from '../contexts/game-context.jsx';
 
 const OTShootoutButton = ({ onGameCompleted }) => {
   const { selectedGameId, homeTeam, awayTeam } = useGameContext();

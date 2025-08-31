@@ -1,5 +1,5 @@
 import React, { useState, useRef, useContext, useEffect } from 'react';
-import { GameContext } from '../contexts/GameContext.jsx';
+import { GameContext } from '../contexts/game-context.jsx';
 
 /**
  * MediaControlPanel provides DJ sound effects controls for organ music,

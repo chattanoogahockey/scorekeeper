@@ -1,17 +1,17 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import InitialMenu from './pages/InitialMenu.jsx';
-import AdminPanel from './pages/AdminPanel.jsx';
-import EditGame from './pages/EditGame.jsx';
-import LeagueGameSelection from './pages/LeagueGameSelection.jsx';
-import RosterAttendance from './pages/RosterAttendance.jsx';
-import InGameMenu from './pages/InGameMenu.jsx';
-import GoalRecord from './pages/GoalRecord.jsx';
-import PenaltyRecord from './pages/PenaltyRecord.jsx';
-import Dashboard from './pages/Dashboard.jsx';
-import Statistics from './pages/Statistics.jsx';
-import RinkReport from './pages/RinkReport.jsx';
-import { GameProvider } from './contexts/GameContext.jsx';
+import InitialMenu from './pages/initial-menu.jsx';
+import AdminPanel from './pages/admin-panel.jsx';
+import EditGame from './pages/edit-game.jsx';
+import LeagueGameSelection from './pages/league-game-selection.jsx';
+import RosterAttendance from './pages/roster-attendance.jsx';
+import InGameMenu from './pages/in-game-menu.jsx';
+import GoalRecord from './pages/goal-record.jsx';
+import PenaltyRecord from './pages/penalty-record.jsx';
+import Dashboard from './pages/dashboard.jsx';
+import Statistics from './pages/statistics.jsx';
+import RinkReport from './pages/rink-report.jsx';
+import { GameProvider } from './contexts/game-context.jsx';
 
 /**
  * Main application component defining routes and wrapping with GameProvider.

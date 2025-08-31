@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { GameContext } from '../contexts/GameContext.jsx';
+import { GameContext } from '../contexts/game-context.jsx';
 
 /**
  * Goal Recording Page - Mobile-friendly goal entry form

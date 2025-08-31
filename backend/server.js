@@ -142,10 +142,10 @@ function trimConversationLines(conversation, maxLines = 4) {
   return conversation.slice(0, maxLines);
 }
 
-async function warmupAnnouncer() {
+async function initializeAnnouncer() {
   try {
     // Light-touch warmup: validate TTS client availability and perform a tiny synthesis with both voices
-    const { getAnnouncerVoices } = await import('./voiceConfig.js');
+    const { getAnnouncerVoices } = await import('./voice-config.js');
     const voices = await getAnnouncerVoices();
     const originalVoice = ttsService.selectedVoice;
     for (const v of [voices.maleVoice, voices.femaleVoice]) {
@@ -168,7 +168,7 @@ async function warmupAnnouncer() {
 
 // Schedule warmup shortly after startup
 setTimeout(() => {
-  warmupAnnouncer();
+  initializeAnnouncer();
 }, 2000);
 
 // ----- Pre-generation helpers -----
@@ -250,7 +250,7 @@ async function preGenerateGoalAssets(gameId) {
     entry.lastGoalId = lastGoal.id || lastGoal._rid || String(Date.now());
 
   // Prepare single announcer male/female (text + audio)
-    const { getAnnouncerVoices } = await import('./voiceConfig.js');
+    const { getAnnouncerVoices } = await import('./voice-config.js');
     const voices = await getAnnouncerVoices();
 
     for (const [gender, voiceId] of [['male', voices.maleVoice], ['female', voices.femaleVoice]]) {
@@ -355,7 +355,7 @@ async function preGeneratePenaltyAssets(gameId) {
     const entry = announcerCache.penalties.get(gameId) || { single: {} };
     entry.lastPenaltyId = lastPenalty.id || lastPenalty._rid || String(Date.now());
 
-    const { getAnnouncerVoices } = await import('./voiceConfig.js');
+    const { getAnnouncerVoices } = await import('./voice-config.js');
     const voices = await getAnnouncerVoices();
     for (const [gender, voiceId] of [['male', voices.maleVoice], ['female', voices.femaleVoice]]) {
       try {
@@ -1630,7 +1630,7 @@ app.post('/api/goals/announce-last', async (req, res) => {
   }
 
   // Map voice gender to Google TTS Studio voices using UNIFIED voice configuration
-  const { getAnnouncerVoices, logTtsUse } = await import('./voiceConfig.js');
+  const { getAnnouncerVoices, logTtsUse } = await import('./voice-config.js');
   const voiceConfig = await getAnnouncerVoices();
   
   let selectedVoice = voiceGender === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
@@ -1825,7 +1825,7 @@ app.post('/api/goals/announce-last', async (req, res) => {
         });
       }
       // Only use single-mode cache if the cached voice matches the currently selected voice id
-      const { getAnnouncerVoices } = await import('./voiceConfig.js');
+      const { getAnnouncerVoices } = await import('./voice-config.js');
       const voices = await getAnnouncerVoices();
       const requestedVoiceId = voiceGender === 'male' ? voices.maleVoice : voices.femaleVoice;
       if (announcerMode !== 'dual' && cached.single?.[voiceGender]?.text && (!cached.single[voiceGender].voice || cached.single[voiceGender].voice === requestedVoiceId)) {
@@ -1952,7 +1952,7 @@ app.post('/api/penalties/announce-last', async (req, res) => {
   }
 
   // Map voice gender to Google TTS Studio voices using UNIFIED voice configuration
-  const { getAnnouncerVoices, logTtsUse } = await import('./voiceConfig.js');
+  const { getAnnouncerVoices, logTtsUse } = await import('./voice-config.js');
   const voiceConfig = await getAnnouncerVoices();
   
   let selectedVoice = voiceGender === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
@@ -2064,7 +2064,7 @@ app.post('/api/penalties/announce-last', async (req, res) => {
           gameContext
         });
       }
-      const { getAnnouncerVoices } = await import('./voiceConfig.js');
+      const { getAnnouncerVoices } = await import('./voice-config.js');
       const voices = await getAnnouncerVoices();
       const requestedVoiceId = voiceGender === 'male' ? voices.maleVoice : voices.femaleVoice;
       if (announcerMode !== 'dual' && cached.single?.[voiceGender]?.text && (!cached.single[voiceGender].voice || cached.single[voiceGender].voice === requestedVoiceId)) {
@@ -4877,7 +4877,7 @@ app.post('/api/tts/dual-line', async (req, res) => {
     console.log(`🎤 Generating ${speaker === 'male' ? 'Al' : 'Linda'} TTS: "${text.substring(0, 50)}..."`);
     
     // Use the UNIFIED voice configuration system - same as individual buttons
-    const { getAnnouncerVoices, logTtsUse } = await import('./voiceConfig.js');
+    const { getAnnouncerVoices, logTtsUse } = await import('./voice-config.js');
     const voiceConfig = await getAnnouncerVoices();
     
     // Select studio voice based on speaker using the SAME voices as individual buttons

@@ -1,5 +1,5 @@
 {
-  "name": "scorekeeper",
+  "name": "hockey-scorekeeper-backend",
   "version": "2.1.0",
   "type": "module",
   "description": "Backend API for real-time hockey scorekeeping application.",

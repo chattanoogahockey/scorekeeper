@@ -1,5 +1,5 @@
 {
-  "name": "scorekeeper2",
+  "name": "hockey-scorekeeper",
   "version": "2.1.0",
   "description": "Hockey scorekeeper application with automated Azure deployment",
   "type": "module",

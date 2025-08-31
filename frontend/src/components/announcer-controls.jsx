@@ -1,8 +1,8 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import axios from 'axios';
-import { GameContext } from '../contexts/GameContext.jsx';
-import { configureUtteranceWithFallbackVoice, configureGeneralUtterance } from '../utils/voiceConfig.js';
-import { announce, handleAnnouncerError } from '../services/announcerApi.js';
+import { GameContext } from '../contexts/game-context.jsx';
+import { configureUtteranceWithFallbackVoice, configureGeneralUtterance } from '../utils/voice-config.js';
+import { announce, handleAnnouncerError } from '../services/announcer-api.js';
 
 /**
  * AnnouncerControls provides buttons for the scorekeeper to trigger Google

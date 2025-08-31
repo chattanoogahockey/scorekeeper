@@ -268,7 +268,7 @@ class TTSService {
     }
 
     // Validate voice exists in Google Cloud catalog to prevent fallback
-    const { validateVoice } = await import('./voiceConfig.js');
+    const { validateVoice } = await import('./voice-config.js');
     const isValidVoice = await validateVoice(this.client, this.selectedVoice);
     
     if (!isValidVoice) {

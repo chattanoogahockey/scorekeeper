@@ -4,6 +4,11 @@
  * Updated: 2025-08-09 to ensure deployment includes this file
  */
 
+import dotenv from 'dotenv';
+
+// Load environment variables first
+dotenv.config({ path: './.env' });
+
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = !isProduction;
 

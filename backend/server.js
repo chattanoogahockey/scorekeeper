@@ -12,6 +12,15 @@ import logger from './logger.js';
 // Load environment variables from .env file
 dotenv.config();
 
+// Debug environment loading
+if (process.env.NODE_ENV === 'development') {
+  console.log('🔧 Environment debug:', {
+    COSMOS_DB_URI: process.env.COSMOS_DB_URI ? 'SET' : 'NOT SET',
+    COSMOS_DB_KEY: process.env.COSMOS_DB_KEY ? 'SET' : 'NOT SET', 
+    COSMOS_DB_NAME: process.env.COSMOS_DB_NAME ? 'SET' : 'NOT SET'
+  });
+}
+
 import { 
   getGamesContainer, 
   getAttendanceContainer, 
@@ -24,7 +33,8 @@ import {
   getAnalyticsContainer,
   getPlayersContainer,
   getShotsOnGoalContainer,
-  initializeContainers
+  initializeContainers,
+  getHistoricalPlayerStatsContainer
 } from './cosmosClient.js';
 
 // Read package.json for version info

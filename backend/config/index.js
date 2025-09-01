@@ -30,7 +30,6 @@ export const config = {
     // Container names - Updated to use containers with actual data
     containers: {
       settings: process.env.COSMOS_CONTAINER_SETTINGS || 'settings', // Use old 'settings' (empty but consistent)
-      analytics: process.env.COSMOS_CONTAINER_ANALYTICS || 'analytics', // Use old 'analytics' (empty but consistent)
       rinkReports: process.env.COSMOS_CONTAINER_RINK_REPORTS || 'rink-reports',
       games: process.env.COSMOS_CONTAINER_GAMES || 'games', // Use 'games' (has real data)
       players: process.env.COSMOS_CONTAINER_PLAYERS || 'players',

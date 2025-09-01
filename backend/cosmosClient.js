@@ -46,22 +46,6 @@ const CONTAINER_DEFINITIONS = {
     }
   },
   
-  // Pre-aggregated analytics and statistics
-  'analytics-data': {
-    name: containerNames.analytics,
-    partitionKey: '/division', 
-    indexingPolicy: {
-      indexingMode: 'consistent',
-      includedPaths: [
-        { path: '/*' },
-        { path: '/division/?' },
-        { path: '/week/?' },
-        { path: '/type/?' },
-        { path: '/lastUpdated/?' }
-      ]
-    }
-  },
-  
   // Weekly rink reports and articles
   'rink-reports': {
     name: containerNames.rinkReports,
@@ -265,12 +249,6 @@ export function getDatabase() {
 export function getSettingsContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
   return database.container(CONTAINER_DEFINITIONS['app-settings'].name);
-}
-
-// Analytics container - Pre-aggregated statistics  
-export function getAnalyticsContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS['analytics-data'].name);
 }
 
 // Rink reports container - Weekly division summaries

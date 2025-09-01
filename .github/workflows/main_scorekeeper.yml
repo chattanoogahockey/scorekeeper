@@ -50,6 +50,8 @@ jobs:
       run: |
         cd frontend
         npm ci
+        # Clear Vite cache to prevent stale module resolution issues
+        rm -rf node_modules/.vite
         # Generate version info with deployment timestamp
         NODE_ENV=production DEPLOYMENT_TIMESTAMP=$DEPLOYMENT_TIMESTAMP node generate-version.js
         npm run build

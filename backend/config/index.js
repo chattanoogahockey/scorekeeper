@@ -27,18 +27,18 @@ export const config = {
     uri: process.env.COSMOS_DB_URI,
     key: process.env.COSMOS_DB_KEY,
     database: process.env.COSMOS_DB_NAME,
-    // Container names with consistent hyphenated naming
+    // Container names - Updated to use containers with actual data
     containers: {
-      settings: process.env.COSMOS_CONTAINER_SETTINGS || 'app-settings',
-      analytics: process.env.COSMOS_CONTAINER_ANALYTICS || 'analytics-data',
+      settings: process.env.COSMOS_CONTAINER_SETTINGS || 'settings', // Use old 'settings' (empty but consistent)
+      analytics: process.env.COSMOS_CONTAINER_ANALYTICS || 'analytics', // Use old 'analytics' (empty but consistent)
       rinkReports: process.env.COSMOS_CONTAINER_RINK_REPORTS || 'rink-reports',
-      games: process.env.COSMOS_CONTAINER_GAMES || 'game-records',
+      games: process.env.COSMOS_CONTAINER_GAMES || 'games', // Use 'games' (has real data)
       players: process.env.COSMOS_CONTAINER_PLAYERS || 'players',
-      goals: process.env.COSMOS_CONTAINER_GOALS || 'goal-events',
-      penalties: process.env.COSMOS_CONTAINER_PENALTIES || 'penalty-events',
-      rosters: process.env.COSMOS_CONTAINER_ROSTERS || 'team-rosters',
-      attendance: process.env.COSMOS_CONTAINER_ATTENDANCE || 'game-attendance',
-      otShootout: process.env.COSMOS_CONTAINER_OT_SHOOTOUT || 'overtime-shootout',
+      goals: process.env.COSMOS_CONTAINER_GOALS || 'goals', // Use 'goals' (has real data)
+      penalties: process.env.COSMOS_CONTAINER_PENALTIES || 'penalties', // Use 'penalties' (has real data)
+      rosters: process.env.COSMOS_CONTAINER_ROSTERS || 'rosters', // Use 'rosters' (has real data)
+      attendance: process.env.COSMOS_CONTAINER_ATTENDANCE || 'attendance', // Use 'attendance' (has real data)
+      otShootout: process.env.COSMOS_CONTAINER_OT_SHOOTOUT || 'ot-shootout', // Use 'ot-shootout' (has real data)
       shotsOnGoal: process.env.COSMOS_CONTAINER_SHOTS_ON_GOAL || 'shots-on-goal',
       historicalPlayerStats: process.env.COSMOS_CONTAINER_HISTORICAL_PLAYER_STATS || 'historical-player-stats',
       playerStats: process.env.COSMOS_CONTAINER_PLAYER_STATS || 'player-stats'

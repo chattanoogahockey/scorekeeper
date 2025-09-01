@@ -77,9 +77,9 @@ const CONTAINER_DEFINITIONS = {
     }
   },
   
-  // Game records and submissions
+  // Game records and submissions (using 'games' container which has real data)
   'game-records': {
-    name: containerNames.games,
+    name: containerNames.games, // This will now be 'games' instead of 'game-records'
     partitionKey: '/division',
     indexingPolicy: {
       indexingMode: 'consistent',

@@ -24,16 +24,16 @@ export class DatabaseService {
    */
   static getContainer(containerName) {
     const containers = {
-      'game-records': getGamesContainer,
-      'goal-records': getGoalsContainer,
-      'penalty-records': getPenaltiesContainer,
-      'team-rosters': getRostersContainer,
-      'game-attendance': getAttendanceContainer,
-      'overtime-shootout': getOTShootoutContainer,
+      'games': getGamesContainer, // Updated to use 'games' (has real data)
+      'goals': getGoalsContainer, // Updated to use 'goals' (has real data)
+      'penalties': getPenaltiesContainer, // Updated to use 'penalties' (has real data)
+      'rosters': getRostersContainer, // Updated to use 'rosters' (has real data)
+      'attendance': getAttendanceContainer, // Updated to use 'attendance' (has real data)
+      'ot-shootout': getOTShootoutContainer, // Updated to use 'ot-shootout' (has real data)
       'rink-reports': getRinkReportsContainer,
-      'app-settings': getSettingsContainer,
-      'player-statistics': getPlayerStatsContainer,
-      'shot-records': getShotsOnGoalContainer,
+      'settings': getSettingsContainer, // Updated to use 'settings'
+      'player-stats': getPlayerStatsContainer,
+      'shots-on-goal': getShotsOnGoalContainer,
       'historical-player-stats': getHistoricalPlayerStatsContainer
     };
 
@@ -207,7 +207,7 @@ export class DatabaseService {
       querySpec = { query: 'SELECT * FROM c' };
     }
 
-    return this.query('game-records', querySpec);
+    return this.query('games', querySpec);
   }
 
   /**
@@ -215,7 +215,7 @@ export class DatabaseService {
    * @returns {Promise<Object[]>} Submitted games array
    */
   static async getSubmittedGames() {
-    const submissions = await this.query('game-records', {
+    const submissions = await this.query('games', {
       query: "SELECT * FROM c WHERE c.eventType = 'game-submission'",
       parameters: []
     });
@@ -223,7 +223,7 @@ export class DatabaseService {
     const submittedGames = [];
     for (const submission of submissions) {
       try {
-        const game = await this.getById('game-records', submission.gameId);
+        const game = await this.getById('games', submission.gameId);
         if (game) {
           submittedGames.push({
             ...game,
@@ -255,7 +255,7 @@ export class DatabaseService {
    */
   static async getRosters(filters = {}) {
     if (filters.gameId) {
-      const game = await this.getById('game-records', filters.gameId);
+      const game = await this.getById('games', filters.gameId);
       if (!game) {
         throw new Error('Game not found');
       }
@@ -263,7 +263,7 @@ export class DatabaseService {
       const homeTeam = game.homeTeam;
       const awayTeam = game.awayTeam;
 
-      const rosters = await this.query('team-rosters', {
+      const rosters = await this.query('rosters', {
         query: 'SELECT * FROM c WHERE LOWER(c.teamName) IN (LOWER(@home), LOWER(@away))',
         parameters: [
           { name: '@home', value: homeTeam },
@@ -304,7 +304,7 @@ export class DatabaseService {
         }
       : { query: 'SELECT * FROM c' };
 
-    return this.query('team-rosters', querySpec);
+    return this.query('rosters', querySpec);
   }
 
   /**
@@ -330,8 +330,8 @@ export class DatabaseService {
     };
 
     const [goals, penalties] = await Promise.all([
-      filters.eventType === 'penalty' ? Promise.resolve([]) : this.query('goal-records', goalsQuery),
-      filters.eventType === 'goal' ? Promise.resolve([]) : this.query('penalty-records', penaltiesQuery)
+      filters.eventType === 'penalty' ? Promise.resolve([]) : this.query('goals', goalsQuery),
+      filters.eventType === 'goal' ? Promise.resolve([]) : this.query('penalties', penaltiesQuery)
     ]);
 
     // Normalize and merge events

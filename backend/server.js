@@ -1179,11 +1179,6 @@ app.get('/api/games', async (req, res) => {
 
     const { resources: games } = await container.items.query(querySpec).fetchAll();
 
-    
-    if (games.length > 0) {
-
-    }
-    
     // Enhanced response with metadata for production
     const responseData = {
       success: true,
@@ -1199,7 +1194,7 @@ app.get('/api/games', async (req, res) => {
     };
     
     // Return games array directly for backward compatibility, but log structured response
-
+    logger.logApiResponse('Games API', games.length, requestId);
     res.status(200).json(games);
   } catch (error) {
     handleError(res, error, 'Games API');

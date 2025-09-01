@@ -43,7 +43,7 @@ export class AttendanceController {
       }
     };
 
-    const record = await DatabaseService.upsert('game-attendance', attendanceRecord);
+    const record = await DatabaseService.upsert('attendance', attendanceRecord);
 
     logger.info('Attendance recorded', { gameId, totalPresent: attendanceRecord.summary.totalPresent });
     res.status(201).json(record);
@@ -55,7 +55,7 @@ export class AttendanceController {
   static getAttendance = asyncHandler(async (req, res) => {
     const { gameId } = req.params;
 
-    const attendance = await DatabaseService.getById('game-attendance', `${gameId}-attendance`);
+    const attendance = await DatabaseService.getById('attendance', `${gameId}-attendance`);
 
     if (!attendance) {
       return res.status(404).json({ error: 'Attendance record not found' });
@@ -68,7 +68,7 @@ export class AttendanceController {
    * Get all attendance records
    */
   static getAllAttendance = asyncHandler(async (req, res) => {
-    const attendanceRecords = await DatabaseService.query('game-attendance', {
+    const attendanceRecords = await DatabaseService.query('attendance', {
       query: 'SELECT * FROM c ORDER BY c.recordedAt DESC'
     });
 

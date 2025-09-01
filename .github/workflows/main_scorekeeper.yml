@@ -73,7 +73,7 @@ jobs:
         cp backend/cosmosClient.js deploy/
         cp backend/ttsService.js deploy/
         cp backend/rinkReportGenerator.js deploy/
-        cp backend/voiceConfig.js deploy/
+        cp backend/voice-config.js deploy/
         cp backend/announcerService.js deploy/ || echo "Announcer service optional"
         
         # Copy legacy directories that are still used

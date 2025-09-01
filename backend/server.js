@@ -1042,16 +1042,34 @@ app.get('/api/rosters', async (req, res) => {
 app.post('/api/rosters', async (req, res) => {
   try {
     const { teamName, season, division, players } = req.body;
-    
+
     if (!teamName || !season || !division || !players) {
       return res.status(400).json({ error: 'Missing required fields: teamName, season, division, players' });
+    }
+
+    // Import validation functions
+    const { validateRosterData, generatePlayerId } = await import('./eventValidation.js');
+
+    // Validate roster data
+    const validationErrors = await validateRosterData({
+      teamName,
+      season,
+      division,
+      players
+    });
+
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationErrors
+      });
     }
 
     // Parse season format (e.g., "2025 Fall" -> year: 2025, seasonType: "Fall")
     const seasonParts = season.trim().split(/\s+/);
     const year = seasonParts[0];
     const seasonType = seasonParts[1] || 'Fall'; // Default to Fall if not specified
-    
+
     const container = getRostersContainer();
     const rosterDoc = {
       id: `${teamName.replace(/\s+/g, '_').toLowerCase()}_${year}_${seasonType.toLowerCase()}`,
@@ -1065,18 +1083,27 @@ app.post('/api/rosters', async (req, res) => {
         firstName: player.firstName || player.name.split(' ')[0],
         lastName: player.lastName || player.name.split(' ').slice(1).join(' '),
         jerseyNumber: player.jerseyNumber,
-        position: player.position || 'Player'
+        position: player.position || 'Player',
+        playerId: player.playerId || generatePlayerId(teamName, player.name)
       })),
       totalPlayers: players.length,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
-    
+
     const { resource } = await container.items.create(rosterDoc);
-    res.status(201).json(resource);
+    console.log('✅ Roster created successfully with player IDs');
+
+    res.status(201).json({
+      success: true,
+      roster: resource
+    });
   } catch (error) {
     console.error('Error creating roster:', error);
-    res.status(500).json({ error: 'Failed to create roster' });
+    res.status(500).json({
+      error: 'Failed to create roster',
+      details: error.message
+    });
   }
 });
 
@@ -1137,7 +1164,7 @@ app.get('/api/game-events', async (req, res) => {
     const goalsQuery = wantsGoals
       ? {
           query: gameId
-            ? 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt DESC'
+            ? 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.sequenceNumber ASC'
             : 'SELECT * FROM c ORDER BY c.recordedAt DESC',
           parameters: gameId ? [{ name: '@gameId', value: gameId }] : [],
         }
@@ -1146,7 +1173,7 @@ app.get('/api/game-events', async (req, res) => {
     const penaltiesQuery = wantsPenalties
       ? {
           query: gameId
-            ? 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt DESC'
+            ? 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.sequenceNumber ASC'
             : 'SELECT * FROM c ORDER BY c.recordedAt DESC',
           parameters: gameId ? [{ name: '@gameId', value: gameId }] : [],
         }
@@ -1166,20 +1193,47 @@ app.get('/api/game-events', async (req, res) => {
       eventType: 'goal',
       ...g,
       recordedAt: normalizeRecordedAt(g),
+      // Ensure standardized fields are present
+      playerName: g.playerName || g.scorer || '',
+      teamName: g.teamName || g.scoringTeam || '',
+      timeRemaining: g.timeRemaining || g.time || '',
+      assistedBy: g.assistedBy || g.assists || [],
+      gameMetadata: g.gameMetadata || {},
+      sequenceNumber: g.sequenceNumber || 0,
+      playerId: g.playerId || null
     }));
+
     const penalties = (penaltiesResult.resources || []).map((p) => ({
       eventType: 'penalty',
       ...p,
       recordedAt: normalizeRecordedAt(p),
+      // Ensure standardized fields are present
+      playerName: p.playerName || p.penalizedPlayer || '',
+      teamName: p.teamName || p.penalizedTeam || '',
+      timeRemaining: p.timeRemaining || p.time || '',
+      penaltyLength: p.penaltyLength || p.length || 0,
+      infraction: p.infraction || p.penaltyType || '',
+      servedBy: p.servedBy || p.playerName || '',
+      gameMetadata: p.gameMetadata || {},
+      sequenceNumber: p.sequenceNumber || 0,
+      playerId: p.playerId || null
     }));
 
-    // Merge and sort by recordedAt DESC
-    const events = [...goals, ...penalties].sort((a, b) => (a.recordedAt < b.recordedAt ? 1 : -1));
+    // Merge and sort by sequenceNumber ASC (chronological order)
+    const events = [...goals, ...penalties].sort((a, b) => (a.sequenceNumber || 0) - (b.sequenceNumber || 0));
 
-    res.status(200).json(events);
+    res.status(200).json({
+      success: true,
+      events,
+      total: events.length,
+      gameId: gameId || null
+    });
   } catch (error) {
     console.error('Error fetching game events:', error);
-    res.status(500).json({ error: 'Failed to fetch game events' });
+    res.status(500).json({
+      error: 'Failed to fetch game events',
+      details: error.message
+    });
   }
 });
 
@@ -1196,23 +1250,56 @@ app.post('/api/game-events', async (req, res) => {
 // Add the `/api/goals` POST endpoint for creating goals
 app.post('/api/goals', async (req, res) => {
   console.log('🎯 Recording goal...');
-  
-  const { gameId, team, player, period, time, assist, shotType, goalType, breakaway, gameContext } = req.body;
 
-  if (!gameId || !team || !player || !period || !time) {
+  const {
+    gameId,
+    teamName,
+    playerName,
+    period,
+    timeRemaining,
+    assistedBy,
+    shotType,
+    goalType,
+    breakaway,
+    gameContext,
+    playerId
+  } = req.body;
+
+  // Input validation
+  if (!gameId || !teamName || !playerName || !period || !timeRemaining) {
     return res.status(400).json({
-      error: 'Invalid payload. Required: gameId, team, player, period, time.',
+      error: 'Invalid payload. Required: gameId, teamName, playerName, period, timeRemaining.',
       received: req.body
     });
   }
 
   try {
+    // Import validation functions
+    const { validateGoalEvent, getNextSequenceNumber, generatePlayerId } = await import('./eventValidation.js');
+
+    // Validate the goal event
+    const validationErrors = await validateGoalEvent({
+      gameId,
+      teamName,
+      playerName,
+      period,
+      timeRemaining
+    });
+
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationErrors
+      });
+    }
+
     const container = getGoalsContainer();
     const penaltiesContainer = getPenaltiesContainer();
     const gamesContainer = getGamesContainer();
-    
-    // Get game information for division context
-    let division = 'Unknown';
+    const rostersContainer = getRostersContainer();
+
+    // Get game information for embedded metadata
+    let gameMetadata = {};
     try {
       const gameInfoQuery = {
         query: 'SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId',
@@ -1221,140 +1308,130 @@ app.post('/api/goals', async (req, res) => {
       const { resources: gameInfo } = await gamesContainer.items.query(gameInfoQuery).fetchAll();
       if (gameInfo.length > 0) {
         const game = gameInfo[0];
-        division = game.division || game.league || 'Unknown';
+        gameMetadata = {
+          division: game.division || game.league || 'Unknown',
+          season: game.season || 'Unknown',
+          year: game.year || new Date().getFullYear(),
+          homeTeam: game.homeTeam,
+          awayTeam: game.awayTeam,
+          gameDate: game.gameDate || game.scheduledDate
+        };
       }
     } catch (error) {
-      console.warn('Could not fetch game division info:', error.message);
+      console.warn('Could not fetch game metadata:', error.message);
     }
-    
-    // Get existing goals for this game to calculate analytics
+
+    // Get player ID from roster if not provided
+    let finalPlayerId = playerId;
+    if (!finalPlayerId) {
+      try {
+        const rosterQuery = {
+          query: 'SELECT * FROM c WHERE c.teamName = @teamName',
+          parameters: [{ name: '@teamName', value: teamName }]
+        };
+        const { resources: rosters } = await rostersContainer.items.query(rosterQuery).fetchAll();
+
+        if (rosters.length > 0) {
+          const roster = rosters[0];
+          const player = roster.players.find(p => p.name === playerName);
+          if (player && player.playerId) {
+            finalPlayerId = player.playerId;
+          } else {
+            // Generate new player ID if not found
+            finalPlayerId = generatePlayerId(teamName, playerName);
+          }
+        }
+      } catch (error) {
+        console.warn('Could not get player ID from roster:', error.message);
+        finalPlayerId = generatePlayerId(teamName, playerName);
+      }
+    }
+
+    // Get sequence number for this game
+    const sequenceNumber = await getNextSequenceNumber(gameId);
+
+    // Get existing goals for analytics
     const existingGoalsQuery = {
-      query: 'SELECT * FROM c WHERE c.gameId = @gameId AND c.eventType = @eventType ORDER BY c.recordedAt ASC',
-      parameters: [
-        { name: '@gameId', value: gameId },
-        { name: '@eventType', value: 'goal' }
-      ]
-    };
-    const { resources: existingGoals } = await container.items.query(existingGoalsQuery).fetchAll();
-    
-    // Get recent penalties to determine previous events
-    const recentPenaltiesQuery = {
-      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt DESC OFFSET 0 LIMIT 5',
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt ASC',
       parameters: [{ name: '@gameId', value: gameId }]
     };
-    const { resources: recentPenalties } = await penaltiesContainer.items.query(recentPenaltiesQuery).fetchAll();
-    
-    // Calculate current score before this goal
+    const { resources: existingGoals } = await container.items.query(existingGoalsQuery).fetchAll();
+
+    // Calculate current score
     const scoreByTeam = {};
     existingGoals.forEach(goal => {
-      const team = goal.teamName || goal.scoringTeam; // Handle both new and legacy field names
+      const team = goal.teamName;
       scoreByTeam[team] = (scoreByTeam[team] || 0) + 1;
     });
-    
-    const awayTeam = Object.keys(scoreByTeam).find(t => t !== team) || 'Unknown';
-    const homeTeam = team;
+
+    const opponentTeam = gameMetadata.homeTeam === teamName ? gameMetadata.awayTeam : gameMetadata.homeTeam;
     const scoreBeforeGoal = {
-      [homeTeam]: scoreByTeam[homeTeam] || 0,
-      [awayTeam]: scoreByTeam[awayTeam] || 0
+      [teamName]: scoreByTeam[teamName] || 0,
+      [opponentTeam]: scoreByTeam[opponentTeam] || 0
     };
     const scoreAfterGoal = {
       ...scoreBeforeGoal,
-      [team]: scoreBeforeGoal[team] + 1
+      [teamName]: scoreBeforeGoal[teamName] + 1
     };
-    
+
     // Determine goal context
     const goalSequenceNumber = existingGoals.length + 1;
-    const teamScoreBefore = scoreBeforeGoal[team];
-    const opponentScoreBefore = scoreBeforeGoal[awayTeam] || scoreBeforeGoal[homeTeam === team ? awayTeam : homeTeam];
-    
     let goalContext = 'Regular goal';
     if (goalSequenceNumber === 1) {
       goalContext = 'First goal of game';
-    } else if (teamScoreBefore < opponentScoreBefore && scoreAfterGoal[team] === opponentScoreBefore) {
+    } else if (scoreBeforeGoal[teamName] < scoreBeforeGoal[opponentTeam] &&
+               scoreAfterGoal[teamName] === scoreBeforeGoal[opponentTeam]) {
       goalContext = 'Tying goal';
-    } else if (teamScoreBefore < opponentScoreBefore && scoreAfterGoal[team] > opponentScoreBefore) {
+    } else if (scoreBeforeGoal[teamName] <= scoreBeforeGoal[opponentTeam]) {
       goalContext = 'Go-ahead goal';
-    } else if (teamScoreBefore === opponentScoreBefore) {
-      goalContext = 'Go-ahead goal';
-    } else if (teamScoreBefore > opponentScoreBefore) {
+    } else if (scoreBeforeGoal[teamName] > scoreBeforeGoal[opponentTeam]) {
       goalContext = 'Insurance goal';
     }
-    
-    // Determine previous event context
-    let previousEvent = 'None';
-    if (recentPenalties.length > 0) {
-      const lastPenalty = recentPenalties[0];
-      const timeSinceLastEvent = Date.now() - new Date(lastPenalty.recordedAt).getTime();
-      if (timeSinceLastEvent < 300000) { // Within 5 minutes
-        previousEvent = `After ${lastPenalty.penaltyType} penalty`;
-      }
-    }
-    
-    // Determine strength situation (simplified - can be enhanced)
-    let strengthSituation = 'Even strength';
-    if (recentPenalties.length > 0) {
-      const activePenalties = recentPenalties.filter(p => {
-        const penaltyTime = new Date(p.recordedAt).getTime();
-        const penaltyDuration = parseInt(p.penaltyLength) * 60000; // Convert minutes to ms
-        return Date.now() - penaltyTime < penaltyDuration;
-      });
-      
-      if (activePenalties.length > 0) {
-        const teamPenalties = activePenalties.filter(p => p.penalizedTeam === team).length;
-        const opponentPenalties = activePenalties.filter(p => p.penalizedTeam !== team).length;
-        
-        if (teamPenalties > opponentPenalties) {
-          strengthSituation = 'Shorthanded';
-        } else if (opponentPenalties > teamPenalties) {
-          strengthSituation = 'Power play';
-        }
-      }
-    }
-    
+
     const goal = {
       id: `${gameId}-goal-${Date.now()}`,
       eventType: 'goal',
       gameId,
+      sequenceNumber,
+      gameMetadata,
+      teamName,
+      playerName,
+      playerId: finalPlayerId,
       period,
-      division,                    // Add division for consistency
-      teamName: team,              // Changed from scoringTeam to teamName (for announcer)
-      playerName: player,          // Changed from scorer to playerName (for announcer) 
-      assistedBy: assist ? [assist] : [], // Changed from assists to assistedBy (for announcer)
-      timeRemaining: time,         // Changed from time to timeRemaining (for announcer)
-      shotType: shotType || 'Wrist Shot',
-      goalType: goalType || 'even strength', // Changed default to match announcer expectations
+      timeRemaining,
+      assistedBy: Array.isArray(assistedBy) ? assistedBy : (assistedBy ? [assistedBy] : []),
+      shotType: shotType || 'wrist_shot',
+      goalType: goalType || 'even_strength',
       breakaway: breakaway || false,
       recordedAt: new Date().toISOString(),
-      gameStatus: 'in-progress', // Will be updated when game is submitted
-      // Fields standardized: playerName, teamName, timeRemaining, length
-      
-      // Advanced Analytics
+      gameStatus: 'in-progress',
+
+      // Enhanced analytics
       analytics: {
         goalSequenceNumber,
         goalContext,
         scoreBeforeGoal,
         scoreAfterGoal,
-        leadDeficitBefore: teamScoreBefore - opponentScoreBefore,
-        leadDeficitAfter: scoreAfterGoal[team] - (scoreAfterGoal[awayTeam] || scoreAfterGoal[homeTeam === team ? awayTeam : homeTeam]),
-        strengthSituation,
-        previousEvent,
+        leadDeficitBefore: scoreBeforeGoal[teamName] - scoreBeforeGoal[opponentTeam],
+        leadDeficitAfter: scoreAfterGoal[teamName] - scoreAfterGoal[opponentTeam],
         totalGoalsInGame: goalSequenceNumber,
         gameSituation: period > 3 ? 'Overtime' : 'Regular',
         absoluteTimestamp: new Date().toISOString(),
-        timeRemainingInPeriod: time, // Could be enhanced to calculate actual remaining time
-        
-        // Enhanced context from frontend (if provided)
         ...(gameContext || {})
       }
     };
-    
-  const { resource } = await container.items.create(goal);
-  console.log('✅ Goal recorded successfully with analytics');
-  // Kick off background pre-generation for announcer assets
-  preGenerateGoalAssets(gameId);
-  // Eager follow-up: also schedule an extra refresh 1.5s later in case immediate generation missed due to rate limits
-  setTimeout(() => preGenerateGoalAssets(gameId), 1500);
-  res.status(201).json(resource);
+
+    const { resource } = await container.items.create(goal);
+    console.log('✅ Goal recorded successfully with enhanced metadata');
+
+    // Kick off background pre-generation for announcer assets
+    preGenerateGoalAssets(gameId);
+    setTimeout(() => preGenerateGoalAssets(gameId), 1500);
+
+    res.status(201).json({
+      success: true,
+      goal: resource
+    });
   } catch (error) {
     console.error('❌ Error creating goal:', error.message);
     handleError(res, error);
@@ -1363,22 +1440,58 @@ app.post('/api/goals', async (req, res) => {
 
 // Add the `/api/penalties` POST endpoint for creating penalties
 app.post('/api/penalties', async (req, res) => {
-  console.log('⚠️ Recording penalty...');
-  const { gameId, period, team, player, penaltyType, penaltyLength, time, details } = req.body;
+  console.log('🚨 Recording penalty...');
 
-  if (!gameId || !team || !player || !period || !time || !penaltyType || !penaltyLength) {
+  const {
+    gameId,
+    teamName,
+    playerName,
+    period,
+    timeRemaining,
+    penaltyType,
+    penaltyLength,
+    infraction,
+    servedBy,
+    gameContext,
+    playerId
+  } = req.body;
+
+  // Input validation
+  if (!gameId || !teamName || !playerName || !period || !timeRemaining || !penaltyType || !penaltyLength) {
     return res.status(400).json({
-      error: 'Invalid payload. Required: gameId, team, player, period, time, penaltyType, penaltyLength.'
+      error: 'Invalid payload. Required: gameId, teamName, playerName, period, timeRemaining, penaltyType, penaltyLength.',
+      received: req.body
     });
   }
 
   try {
+    // Import validation functions
+    const { validatePenaltyEvent, getNextSequenceNumber, generatePlayerId } = await import('./eventValidation.js');
+
+    // Validate the penalty event
+    const validationErrors = await validatePenaltyEvent({
+      gameId,
+      teamName,
+      playerName,
+      period,
+      timeRemaining,
+      penaltyType,
+      penaltyLength
+    });
+
+    if (validationErrors.length > 0) {
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationErrors
+      });
+    }
+
     const container = getPenaltiesContainer();
-    const goalsContainer = getGoalsContainer();
     const gamesContainer = getGamesContainer();
-    
-    // Get game information for division context
-    let division = 'Unknown';
+    const rostersContainer = getRostersContainer();
+
+    // Get game information for embedded metadata
+    let gameMetadata = {};
     try {
       const gameInfoQuery = {
         query: 'SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId',
@@ -1387,134 +1500,106 @@ app.post('/api/penalties', async (req, res) => {
       const { resources: gameInfo } = await gamesContainer.items.query(gameInfoQuery).fetchAll();
       if (gameInfo.length > 0) {
         const game = gameInfo[0];
-        division = game.division || game.league || 'Unknown';
+        gameMetadata = {
+          division: game.division || game.league || 'Unknown',
+          season: game.season || 'Unknown',
+          year: game.year || new Date().getFullYear(),
+          homeTeam: game.homeTeam,
+          awayTeam: game.awayTeam,
+          gameDate: game.gameDate || game.scheduledDate
+        };
       }
     } catch (error) {
-      console.warn('Could not fetch game division info:', error.message);
+      console.warn('Could not fetch game metadata:', error.message);
     }
-    
-    // Get existing penalties for this game to calculate analytics
+
+    // Get player ID from roster if not provided
+    let finalPlayerId = playerId;
+    if (!finalPlayerId) {
+      try {
+        const rosterQuery = {
+          query: 'SELECT * FROM c WHERE c.teamName = @teamName',
+          parameters: [{ name: '@teamName', value: teamName }]
+        };
+        const { resources: rosters } = await rostersContainer.items.query(rosterQuery).fetchAll();
+
+        if (rosters.length > 0) {
+          const roster = rosters[0];
+          const player = roster.players.find(p => p.name === playerName);
+          if (player && player.playerId) {
+            finalPlayerId = player.playerId;
+          } else {
+            // Generate new player ID if not found
+            finalPlayerId = generatePlayerId(teamName, playerName);
+          }
+        }
+      } catch (error) {
+        console.warn('Could not get player ID from roster:', error.message);
+        finalPlayerId = generatePlayerId(teamName, playerName);
+      }
+    }
+
+    // Get sequence number for this game
+    const sequenceNumber = await getNextSequenceNumber(gameId);
+
+    // Get existing penalties for analytics
     const existingPenaltiesQuery = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt ASC',
       parameters: [{ name: '@gameId', value: gameId }]
     };
     const { resources: existingPenalties } = await container.items.query(existingPenaltiesQuery).fetchAll();
-    
-    // Get existing goals to determine current score
-    const existingGoalsQuery = {
-      query: 'SELECT * FROM c WHERE c.gameId = @gameId AND c.eventType = @eventType ORDER BY c.recordedAt ASC',
-      parameters: [
-        { name: '@gameId', value: gameId },
-        { name: '@eventType', value: 'goal' }
-      ]
-    };
-    const { resources: existingGoals } = await goalsContainer.items.query(existingGoalsQuery).fetchAll();
-    
-    // Calculate current score at time of penalty
-    const scoreByTeam = {};
-    existingGoals.forEach(goal => {
-      const team = goal.teamName; // Standardized field name
-      scoreByTeam[team] = (scoreByTeam[team] || 0) + 1;
-    });
-    
-    // Determine penalty context
+
+    // Calculate penalty analytics
     const penaltySequenceNumber = existingPenalties.length + 1;
-    const teamPenalties = existingPenalties.filter(p => p.teamName === team);
-    const playerPenalties = existingPenalties.filter(p => (p.playerName) === player);
-    
+    const teamPenalties = existingPenalties.filter(p => p.teamName === teamName).length + 1;
+
+    // Determine penalty context
     let penaltyContext = 'Regular penalty';
     if (penaltySequenceNumber === 1) {
       penaltyContext = 'First penalty of game';
-    } else if (penaltyType.includes('Major') || penaltyType.includes('Fighting')) {
-      penaltyContext = 'Major penalty';
-    } else if (penaltyType.includes('Misconduct')) {
-      penaltyContext = 'Misconduct penalty';
-    } else if (parseInt(penaltyLength) > 2) {
-      penaltyContext = 'Double minor penalty';
+    } else if (teamPenalties === 1) {
+      penaltyContext = 'First penalty for team';
     }
-    
-    // Determine current strength situation
-    const activePenalties = existingPenalties.filter(p => {
-      const penaltyTime = new Date(p.recordedAt).getTime();
-      const penaltyDuration = parseInt(p.length || p.penaltyLength) * 60000; // Handle both field names
-      return Date.now() - penaltyTime < penaltyDuration;
-    });
-    
-    let strengthSituationBefore = 'Even strength';
-    let strengthSituationAfter = 'Penalty kill';
-    
-    if (activePenalties.length > 0) {
-      const teamActivePenalties = activePenalties.filter(p => (p.teamName || p.penalizedTeam) === team).length;
-      const opponentActivePenalties = activePenalties.filter(p => (p.teamName || p.penalizedTeam) !== team).length;
-      
-      if (teamActivePenalties > opponentActivePenalties) {
-        strengthSituationBefore = 'Already shorthanded';
-        strengthSituationAfter = '5-on-3 or worse';
-      } else if (opponentActivePenalties > teamActivePenalties) {
-        strengthSituationBefore = 'Power play';
-        strengthSituationAfter = 'Even strength';
-      }
-    }
-    
-    // Determine previous event
-    let previousEvent = 'None';
-    if (existingGoals.length > 0) {
-      const lastGoal = existingGoals[existingGoals.length - 1];
-      const timeSinceLastGoal = Date.now() - new Date(lastGoal.recordedAt).getTime();
-      if (timeSinceLastGoal < 120000) { // Within 2 minutes
-        const teamName = lastGoal.teamName; // Standardized field name
-        previousEvent = `After goal by ${teamName}`;
-      }
-    }
-    
-    // Calculate team totals
-    const teamTotalPIM = teamPenalties.reduce((sum, p) => sum + parseInt(p.length || 0), 0);
-    const playerTotalPIM = playerPenalties.reduce((sum, p) => sum + parseInt(p.length || 0), 0);
-    
+
     const penalty = {
       id: `${gameId}-penalty-${Date.now()}`,
+      eventType: 'penalty',
       gameId,
+      sequenceNumber,
+      gameMetadata,
+      teamName,
+      playerName,
+      playerId: finalPlayerId,
       period,
-      division,                    // Added division field for consistency
-      teamName: team,              // Changed from penalizedTeam to teamName (for announcer)
-      playerName: player,          // Changed from penalizedPlayer to playerName (for announcer)
+      timeRemaining,
       penaltyType,
-      length: penaltyLength,       // Changed from penaltyLength to length (for announcer)
-      timeRemaining: time,         // Changed from time to timeRemaining (for announcer)
-      details: details || {},
+      penaltyLength,
+      infraction: infraction || penaltyType,
+      servedBy: servedBy || playerName,
       recordedAt: new Date().toISOString(),
-      gameStatus: 'in-progress', // Will be updated when game is submitted
-      // Fields standardized: playerName, teamName, timeRemaining, length
-      
-      // Advanced Analytics
+      gameStatus: 'in-progress',
+
+      // Enhanced analytics
       analytics: {
         penaltySequenceNumber,
         penaltyContext,
-        currentScore: scoreByTeam,
-        leadDeficitAtTime: (scoreByTeam[team] || 0) - (Object.values(scoreByTeam).reduce((sum, score) => sum + score, 0) - (scoreByTeam[team] || 0)),
-        strengthSituationBefore,
-        strengthSituationAfter,
-        previousEvent,
-        teamTotalPIM: teamTotalPIM + parseInt(penaltyLength),
-        playerTotalPIM: playerTotalPIM + parseInt(penaltyLength),
-        playerPenaltyCount: playerPenalties.length + 1,
-        teamPenaltyCount: teamPenalties.length + 1,
+        teamPenaltyCount: teamPenalties,
+        totalPenaltiesInGame: penaltySequenceNumber,
         gameSituation: period > 3 ? 'Overtime' : 'Regular',
         absoluteTimestamp: new Date().toISOString(),
-        
-        // Penalty impact analysis
-        penaltyImpact: strengthSituationBefore === 'Power play' ? 'Negates power play' : 
-                      strengthSituationAfter === '5-on-3 or worse' ? 'Creates 5-on-3' : 
-                      'Creates power play opportunity'
+        ...(gameContext || {})
       }
     };
-    
+
     const { resource } = await container.items.create(penalty);
-  console.log('✅ Penalty recorded successfully with analytics');
-  // Kick off background pre-generation for announcer assets
-  preGeneratePenaltyAssets(gameId);
-  res.json({ 
-      success: true, 
+    console.log('✅ Penalty recorded successfully with enhanced metadata');
+
+    // Kick off background pre-generation for announcer assets
+    preGeneratePenaltyAssets(gameId);
+    setTimeout(() => preGeneratePenaltyAssets(gameId), 1500);
+
+    res.status(201).json({
+      success: true,
       penalty: resource
     });
   } catch (error) {

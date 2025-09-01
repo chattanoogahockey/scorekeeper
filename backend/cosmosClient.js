@@ -120,7 +120,11 @@ const CONTAINER_DEFINITIONS = {
         { path: '/gameId/?' },
         { path: '/teamName/?' },
         { path: '/playerName/?' },
-        { path: '/recordedAt/?' }
+        { path: '/playerId/?' },
+        { path: '/recordedAt/?' },
+        { path: '/sequenceNumber/?' },
+        { path: '/gameMetadata/division/?' },
+        { path: '/gameMetadata/season/?' }
       ]
     }
   },
@@ -136,7 +140,11 @@ const CONTAINER_DEFINITIONS = {
         { path: '/gameId/?' },
         { path: '/teamName/?' },
         { path: '/playerName/?' },
-        { path: '/recordedAt/?' }
+        { path: '/playerId/?' },
+        { path: '/recordedAt/?' },
+        { path: '/sequenceNumber/?' },
+        { path: '/gameMetadata/division/?' },
+        { path: '/gameMetadata/season/?' }
       ]
     }
   },
@@ -151,7 +159,9 @@ const CONTAINER_DEFINITIONS = {
         { path: '/*' },
         { path: '/teamName/?' },
         { path: '/division/?' },
-        { path: '/season/?' }
+        { path: '/season/?' },
+        { path: '/players/[]/playerId/?' },
+        { path: '/players/[]/name/?' }
       ]
     }
   },

@@ -12,9 +12,7 @@
   ],
   "scripts": {
     "start": "node server-refactored.js",
-    "start:legacy": "node server.js",
     "dev": "nodemon server-refactored.js",
-    "dev:legacy": "nodemon server.js",
     "test": "mocha tests/**/*.test.js --timeout 10000",
     "test:watch": "mocha tests/**/*.test.js --watch --timeout 10000",
     "test:coverage": "nyc mocha tests/**/*.test.js --timeout 10000",

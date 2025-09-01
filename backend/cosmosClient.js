@@ -61,22 +61,6 @@ const CONTAINER_DEFINITIONS = {
     }
   },
   
-  // Game records and submissions (using 'games' container which has real data)
-  'game-records': {
-    name: containerNames.games, // This will now be 'games' instead of 'game-records'
-    partitionKey: '/division',
-    indexingPolicy: {
-      indexingMode: 'consistent',
-      includedPaths: [
-        { path: '/*' },
-        { path: '/division/?' },
-        { path: '/eventType/?' },
-        { path: '/submittedAt/?' },
-        { path: '/gameDate/?' }
-      ]
-    }
-  },
-  
   // Current season player statistics
   'player-stats': {
     name: containerNames.playerStats,
@@ -89,46 +73,6 @@ const CONTAINER_DEFINITIONS = {
         { path: '/teamName/?' },
         { path: '/playerName/?' },
         { path: '/season/?' }
-      ]
-    }
-  },
-  
-  // Goal events and scoring data
-  'goal-events': {
-    name: containerNames.goals,
-    partitionKey: '/gameId',
-    indexingPolicy: {
-      indexingMode: 'consistent',
-      includedPaths: [
-        { path: '/*' },
-        { path: '/gameId/?' },
-        { path: '/teamName/?' },
-        { path: '/playerName/?' },
-        { path: '/playerId/?' },
-        { path: '/recordedAt/?' },
-        { path: '/sequenceNumber/?' },
-        { path: '/gameMetadata/division/?' },
-        { path: '/gameMetadata/season/?' }
-      ]
-    }
-  },
-  
-  // Penalty events and infractions
-  'penalty-events': {
-    name: containerNames.penalties,
-    partitionKey: '/gameId',
-    indexingPolicy: {
-      indexingMode: 'consistent',
-      includedPaths: [
-        { path: '/*' },
-        { path: '/gameId/?' },
-        { path: '/teamName/?' },
-        { path: '/playerName/?' },
-        { path: '/playerId/?' },
-        { path: '/recordedAt/?' },
-        { path: '/sequenceNumber/?' },
-        { path: '/gameMetadata/division/?' },
-        { path: '/gameMetadata/season/?' }
       ]
     }
   },
@@ -159,21 +103,6 @@ const CONTAINER_DEFINITIONS = {
       includedPaths: [
         { path: '/*' },
         { path: '/gameId/?' },
-        { path: '/recordedAt/?' }
-      ]
-    }
-  },
-  
-  // Overtime and shootout results
-  'overtime-shootout': {
-    name: containerNames.otShootout,
-    partitionKey: '/gameId',
-    indexingPolicy: {
-      indexingMode: 'consistent',
-      includedPaths: [
-        { path: '/*' },
-        { path: '/gameId/?' },
-        { path: '/winner/?' },
         { path: '/recordedAt/?' }
       ]
     }
@@ -272,13 +201,13 @@ export function getPlayerStatsContainer() {
 // Goals container - Goal events and scoring data
 export function getGoalsContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS['goal-events'].name);
+  return database.container(CONTAINER_DEFINITIONS['goals'].name);
 }
 
 // Penalties container - Penalty events and infractions
 export function getPenaltiesContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS['penalty-events'].name);
+  return database.container(CONTAINER_DEFINITIONS['penalties'].name);
 }
 
 // Rosters container - Team rosters and player assignments
@@ -296,7 +225,7 @@ export function getAttendanceContainer() {
 // OT/Shootout container - Overtime and shootout results
 export function getOTShootoutContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS['overtime-shootout'].name);
+  return database.container(CONTAINER_DEFINITIONS['ot-shootout'].name);
 }
 
 // Shots on Goal container - Shots on goal tracking and analytics

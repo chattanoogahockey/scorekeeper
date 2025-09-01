@@ -967,6 +967,20 @@ FORMAT: Return ONLY a JSON array with exactly 4 lines alternating male-female-ma
           throw jsonErr;
         }
       }
+      // Support format: [{ "Al": "text" }, { "Linda": "text" }, ...]
+      if (Array.isArray(parsed) && parsed.length && typeof parsed[0] === 'object' && !parsed[0].speaker) {
+        parsed = parsed.map(line => {
+          if (line.Al) {
+            return { speaker: 'male', text: line.Al };
+          } else if (line.Linda) {
+            return { speaker: 'female', text: line.Linda };
+          } else {
+            // Fallback for unknown speaker
+            return { speaker: 'male', text: Object.values(line)[0] || 'Unknown text' };
+          }
+        });
+      }
+
       // Support format: ["Al: text", "Linda: text", ...]
       if (Array.isArray(parsed) && parsed.length && typeof parsed[0] === 'string') {
         parsed = parsed.map(line => {

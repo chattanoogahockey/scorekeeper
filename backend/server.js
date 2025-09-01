@@ -1114,11 +1114,14 @@ app.get('/api/games', async (req, res) => {
   try {
     // Check if database is configured - if not, return demo data
     const { getDatabase } = await import('./cosmosClient.js');
-    const db = await getDatabase().catch(() => null);
-    
+    let db = null;
+    try {
+      db = getDatabase();
+    } catch (error) {
+      logger.warn('Database not configured, returning demo games');
+    }
+
     if (!db) {
-      logger.warn('Database not available, returning demo games');
-      
       // Return demo games data
       const demoGames = [
         {
@@ -1133,7 +1136,7 @@ app.get('/api/games', async (req, res) => {
           submittedAt: new Date().toISOString()
         },
         {
-          id: "demo-game-2", 
+          id: "demo-game-2",
           division: "Silver",
           homeTeam: "Demo Team C",
           awayTeam: "Demo Team D",
@@ -1144,13 +1147,13 @@ app.get('/api/games', async (req, res) => {
           submittedAt: new Date().toISOString()
         }
       ];
-      
-      const filteredGames = division.toLowerCase() === 'all' ? demoGames : 
+
+      const filteredGames = division.toLowerCase() === 'all' ? demoGames :
                            demoGames.filter(game => game.division.toLowerCase() === division.toLowerCase());
-      
+
       return res.json(filteredGames);
     }
-    
+
     const container = getGamesContainer();
 
     
@@ -1272,8 +1275,13 @@ app.get('/api/rosters', async (req, res) => {
   try {
     // Check if database is configured - if not, return demo data
     const { getDatabase } = await import('./cosmosClient.js');
-    const db = await getDatabase().catch(() => null);
-    
+    let db = null;
+    try {
+      db = getDatabase();
+    } catch (error) {
+      logger.warn('Database not available, returning demo rosters');
+    }
+
     if (!db) {
       logger.warn('Database not available, returning demo rosters');
       
@@ -4082,9 +4090,15 @@ app.get('/api/player-stats', async (req, res) => {
   
   try {
   const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions, getRostersContainer } = await import('./cosmosClient.js');
-  
+
   // Check if database is configured - if not, return demo data
-  const db = await getDatabase().catch(() => null);
+  let db = null;
+  try {
+    db = getDatabase();
+  } catch (error) {
+    logger.warn('Database not available, returning demo player stats');
+  }
+
   if (!db) {
     logger.warn('Database not available, returning demo player stats');
     
@@ -4404,7 +4418,13 @@ app.get('/api/team-stats', async (req, res) => {
     const { getDatabase } = await import('./cosmosClient.js');
     
     // Check if database is configured - if not, return demo data
-    const db = await getDatabase().catch(() => null);
+    let db = null;
+    try {
+      db = getDatabase();
+    } catch (error) {
+      logger.warn('Database not available, returning demo team stats');
+    }
+
     if (!db) {
       logger.warn('Database not available, returning demo team stats');
       

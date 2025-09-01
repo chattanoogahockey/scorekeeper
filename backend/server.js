@@ -1194,7 +1194,11 @@ app.get('/api/games', async (req, res) => {
     };
     
     // Return games array directly for backward compatibility, but log structured response
-    logger.logApiResponse('Games API', games.length, requestId);
+    logger.info('Games API Response', { 
+      endpoint: '/api/games', 
+      count: games.length, 
+      requestId 
+    });
     res.status(200).json(games);
   } catch (error) {
     handleError(res, error, 'Games API');

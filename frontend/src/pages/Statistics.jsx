@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -13,6 +12,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
+import { statisticsService } from '../services/statisticsService.js';
 
 ChartJS.register(
   CategoryScale,
@@ -59,22 +59,13 @@ export default function Statistics() {
 
   const fetchSeasonalData = async () => {
     try {
-      const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
-      const params = new URLSearchParams();
-      if (selectedDivision !== 'All') params.append('division', selectedDivision);
-      params.append('scope', 'historical');
-      // Add cache-busting parameter
-      params.append('_t', Date.now().toString());
-      
-      const { data } = await axios.get(`${apiBase}/api/player-stats?${params.toString()}`, {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+      const data = await statisticsService.fetchSeasonalData({
+        division: selectedDivision
       });
-      setSeasonalData(Array.isArray(data) ? data : []);
+      setSeasonalData(data);
     } catch (e) {
       console.error('Failed to fetch seasonal data for charts:', e);
+      setSeasonalData([]);
     }
   };
 
@@ -82,46 +73,19 @@ export default function Statistics() {
     try {
       setLoading(true);
       setError(null);
-      const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
-      const params = new URLSearchParams();
-      if (selectedDivision !== 'All') params.append('division', selectedDivision);
-      if (selectedSeason && selectedSeason !== 'All') params.append('season', selectedSeason);
-      if (selectedYear && selectedYear !== 'All') params.append('year', selectedYear);
-      
-      // For 2025 Fall season specifically, only show players with GP > 0
-      const is2025Fall = selectedYear === '2025' && selectedSeason === 'Fall';
-      if (is2025Fall) {
-        params.append('minGamesPlayed', '1');
-      }
-      
-      // For current season stats (when no year/season filters are applied), only show rostered players
-      const isCurrentSeason = (!selectedYear || selectedYear === 'All') && (!selectedSeason || selectedSeason === 'All');
-      if (isCurrentSeason) {
-        params.append('rostered', 'true');
-      }
-      
-      // Add cache-busting parameter to ensure fresh data from Cosmos
-      params.append('_t', Date.now().toString());
-      
-      const { data } = await axios.get(`${apiBase}/api/player-stats?${params.toString()}`, {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+
+      const data = await statisticsService.fetchPlayerStats({
+        division: selectedDivision,
+        season: selectedSeason,
+        year: selectedYear
       });
-      const arr = Array.isArray(data.data) ? data.data : data; // support debug payload
-      setHistoricalStats(arr);
-      
+
+      setHistoricalStats(data);
+
       // If everything empty, run debug call
-      const empty = (!arr || arr.length === 0);
+      const empty = (!data || data.length === 0);
       if (empty) {
-        try {
-          const debugParams = new URLSearchParams(params.toString());
-          debugParams.append('debug', 'true');
-          debugParams.set('_t', Date.now().toString());
-          const dbg = await axios.get(`${apiBase}/api/player-stats?${debugParams.toString()}`);
-          console.log('Player stats debug diagnostics', dbg.data.debug || dbg.data);
-        } catch (dbgErr) { console.warn('Debug fetch failed', dbgErr); }
+        console.log('Player stats debug: No data returned from service');
       }
     } catch (err) {
       console.error('Error fetching player stats:', err);
@@ -133,62 +97,40 @@ export default function Statistics() {
 
   const fetchTeamStats = async () => {
     try {
-      const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
-      const params = new URLSearchParams();
-      if (selectedDivision !== 'All') params.append('division', selectedDivision);
-      // Add cache-busting parameter
-      params.append('_t', Date.now().toString());
-      
-      const { data } = await axios.get(`${apiBase}/api/team-stats?${params.toString()}`, {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
+      const data = await statisticsService.fetchTeamStats({
+        division: selectedDivision
       });
+
       // Ensure consistent fields
       const normalized = data.map(t => ({
         ...t,
         winPercentage: t.winPercentage ?? (t.gamesPlayed ? ((t.wins / t.gamesPlayed) * 100).toFixed(1) : '0.0')
       }));
       setTeamStats(normalized);
-    } catch (e) { console.error('Team stats fetch failed', e); }
+    } catch (e) {
+      console.error('Team stats fetch failed', e);
+    }
   };
 
   const fetchMeta = async () => {
     try {
-      const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
-      // Add cache-busting parameter
-      const params = new URLSearchParams();
-      params.append('_t', Date.now().toString());
-      
-      const { data } = await axios.get(`${apiBase}/api/player-stats/meta?${params.toString()}`, {
-        headers: {
-          'Cache-Control': 'no-cache',
-          'Pragma': 'no-cache'
-        }
-      });
-      
-      if (data?.seasons) {
-        // Only show real seasons (Fall, Winter, Spring, Summer)
-        const realSeasons = data.seasons.filter(season => 
-          ['Fall', 'Winter', 'Spring', 'Summer'].includes(season)
-        );
-        setSeasonOptions(['All', ...realSeasons]);
+      const meta = await statisticsService.fetchMeta();
+
+      if (meta.seasons && meta.seasons.length > 0) {
+        setSeasonOptions(meta.seasons);
       }
-      
-      if (data?.years) {
-        // Only show years up to current year (filter out future placeholder years)
-        const currentYear = new Date().getFullYear();
-        const realYears = data.years.filter(year => parseInt(year) <= currentYear);
-        const years = ['All', ...realYears.sort((a, b) => b - a)]; // Sort newest first
-        setYearOptions(years);
+
+      if (meta.years && meta.years.length > 0) {
+        setYearOptions(meta.years);
         // Set 2025 as default if available, otherwise use the most recent year
-        const defaultYear = realYears.includes('2025') ? '2025' : realYears[0];
-        if (defaultYear && selectedYear === '2025') {
+        const defaultYear = meta.years.includes('2025') ? '2025' : meta.years.find(y => y !== 'All') || '2025';
+        if (selectedYear === '2025') {
           setSelectedYear(defaultYear);
         }
       }
-    } catch (e) { console.error('Failed to load meta', e); }
+    } catch (e) {
+      console.error('Failed to load meta', e);
+    }
   };
 
   const divisions = ['All', 'Gold', 'Silver', 'Bronze'];

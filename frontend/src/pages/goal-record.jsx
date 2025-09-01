@@ -1,7 +1,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { GameContext } from '../contexts/game-context.jsx';
+import { goalRecordingService } from '../services/goalRecordingService.js';
 
 /**
  * Goal Recording Page - Mobile-friendly goal entry form
@@ -32,21 +32,14 @@ export default function GoalRecord() {
   useEffect(() => {
     const fetchExistingGoals = async () => {
       try {
-        const apiUrl = import.meta.env.DEV 
-          ? '/api/goals' 
-          : `${import.meta.env.VITE_API_BASE_URL}/api/goals`;
-        
-        const response = await axios.get(apiUrl, {
-          params: { gameId: selectedGame.id || selectedGame.gameId }
-        });
-        
-        const goals = response.data || [];
+        const goals = await goalRecordingService.fetchExistingGoals(
+          selectedGame.id || selectedGame.gameId
+        );
         setExistingGoals(goals);
-        
-        // Calculate current score
-        const awayScore = goals.filter(g => g.scoringTeam === selectedGame.awayTeam).length;
-        const homeScore = goals.filter(g => g.scoringTeam === selectedGame.homeTeam).length;
-        setCurrentScore({ away: awayScore, home: homeScore });
+
+        // Calculate current score using service
+        const score = goalRecordingService.calculateCurrentScore(goals, selectedGame);
+        setCurrentScore(score);
         
       } catch (error) {
         console.error('Error fetching existing goals:', error);
@@ -62,49 +55,7 @@ export default function GoalRecord() {
 
   // Function to determine goal context for AI announcer
   const determineGoalContext = (scoringTeam) => {
-    const awayTeam = selectedGame.awayTeam;
-    const homeTeam = selectedGame.homeTeam;
-    const isAwayTeamScoring = scoringTeam === awayTeam;
-    
-    // Calculate score after this goal
-    const newAwayScore = currentScore.away + (isAwayTeamScoring ? 1 : 0);
-    const newHomeScore = currentScore.home + (isAwayTeamScoring ? 0 : 1);
-    
-    // Total goals before this one
-    const totalGoals = currentScore.away + currentScore.home;
-    
-    // First goal of the game
-    if (totalGoals === 0) {
-      return "First goal of game";
-    }
-    
-    // Tying goal (score becomes tied)
-    if (newAwayScore === newHomeScore) {
-      return "Tying goal";
-    }
-    
-    // Go-ahead goal (from tied to leading)
-    if (currentScore.away === currentScore.home) {
-      return "Go-ahead goal";
-    }
-    
-    // Game-winning goal scenarios (extending lead significantly)
-    const leadDifference = Math.abs(newAwayScore - newHomeScore);
-    if (leadDifference >= 3) {
-      return "Insurance goal";
-    }
-    
-    // Comeback goal (reducing opponent's lead)
-    const previousLead = Math.abs(currentScore.away - currentScore.home);
-    const newLead = Math.abs(newAwayScore - newHomeScore);
-    if (previousLead > newLead && previousLead >= 2) {
-      return "Comeback goal";
-    }
-    
-    // Power play goal or short-handed goal could be determined here with more context
-    
-    // Default case
-    return leadDifference === 1 ? "Go-ahead goal" : "Goal";
+    return goalRecordingService.determineGoalContext(scoringTeam, currentScore, selectedGame);
   };
 
   // Initialize with first team (away team) by default
@@ -617,7 +568,7 @@ export default function GoalRecord() {
                   : `${import.meta.env.VITE_API_BASE_URL}/api/goals`;
                   
                 const goalContext = determineGoalContext(formData.team);
-                
+
                 const goalPayload = {
                   gameId: selectedGame.id || selectedGame.gameId,
                   team: formData.team,
@@ -648,14 +599,13 @@ export default function GoalRecord() {
                     timeInPeriod: formData.time
                   }
                 };
-                
-                console.log('📦 Goal Payload:', JSON.stringify(goalPayload, null, 2));
-                console.log('🔗 Submitting to:', apiUrl);
-                console.log('🌍 Environment mode:', import.meta.env.DEV ? 'Development' : 'Production');
-                
-                const response = await axios.post(apiUrl, goalPayload);
 
-                console.log('✅ SUCCESS! Response:', response.data);
+                console.log('📦 Goal Payload:', JSON.stringify(goalPayload, null, 2));
+                console.log('🔗 Submitting to service');
+
+                await goalRecordingService.submitGoal(goalPayload);
+
+                console.log('✅ SUCCESS! Goal submitted via service');
 
                 // Create user-friendly goal summary using the response data
                 const assistText = formData.assist ? ` (assist: ${formData.assist})` : '';

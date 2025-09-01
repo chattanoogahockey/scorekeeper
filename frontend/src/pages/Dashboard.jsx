@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { GameContext } from '../contexts/game-context.jsx';
+import { dashboardService } from '../services/dashboardService.js';
 
 import AnnouncerControls from '../components/announcer-controls.jsx';
 import DJPanel from '../components/dj-panel.jsx';
@@ -27,11 +27,11 @@ export default function Dashboard() {
   // Fetch events when game is selected and after user actions
   useEffect(() => {
     if (!selectedGame) return;
-    
+
     const fetchEvents = async () => {
       try {
-        const res = await axios.get('/api/events', { params: { gameId: selectedGame.id || selectedGame.gameId } });
-        setEvents(res.data);
+        const data = await dashboardService.fetchEvents(selectedGame.id || selectedGame.gameId);
+        setEvents(data);
       } catch (err) {
         console.error('Failed to fetch events', err);
         setEventsError('Error loading events');
@@ -80,8 +80,8 @@ export default function Dashboard() {
   const refreshEvents = async () => {
     if (!selectedGame) return;
     try {
-      const res = await axios.get('/api/events', { params: { gameId: selectedGame.id || selectedGame.gameId } });
-      setEvents(res.data);
+      const events = await dashboardService.fetchEvents(selectedGame.id || selectedGame.gameId);
+      setEvents(events);
     } catch (err) {
       console.error('Failed to refresh events', err);
     }
@@ -100,15 +100,15 @@ export default function Dashboard() {
     setGoalSubmitting(true);
     setGoalError(null);
     try {
-      await axios.post('/api/goals', {
-  gameId: selectedGame.id || selectedGame.gameId,
-  period: goalForm.period,
-  team: goalForm.team,
-  player: goalForm.player,
-  assist: [goalForm.assist1, goalForm.assist2].filter(Boolean)[0] || null, // backend currently supports single assist
-  time: goalForm.time,
-  shotType: goalForm.shotType,
-  goalType: goalForm.goalType,
+      await dashboardService.submitGoal({
+        gameId: selectedGame.id || selectedGame.gameId,
+        period: goalForm.period,
+        team: goalForm.team,
+        player: goalForm.player,
+        assist: [goalForm.assist1, goalForm.assist2].filter(Boolean)[0] || null, // backend currently supports single assist
+        time: goalForm.time,
+        shotType: goalForm.shotType,
+        goalType: goalForm.goalType,
       });
       // Reset form
       setGoalForm({
@@ -143,7 +143,7 @@ export default function Dashboard() {
     setPenaltySubmitting(true);
     setPenaltyError(null);
     try {
-      await axios.post('/api/penalties', {
+      await dashboardService.submitPenalty({
         gameId: selectedGame.id || selectedGame.gameId,
         period: penaltyForm.period,
         team: penaltyForm.team,

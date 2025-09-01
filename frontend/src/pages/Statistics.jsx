@@ -29,9 +29,7 @@ export default function Statistics() {
   const navigate = useNavigate();
   
   // State for data
-  const [mergedStats, setMergedStats] = useState([]); // merged totals
   const [historicalStats, setHistoricalStats] = useState([]);
-  const [liveStats, setLiveStats] = useState([]);
   const [teamStats, setTeamStats] = useState([]);
   const [seasonalData, setSeasonalData] = useState([]); // For charts
   const [loading, setLoading] = useState(true);
@@ -39,21 +37,25 @@ export default function Statistics() {
   
   // State for filters and sorting
   const [selectedDivision, setSelectedDivision] = useState('All');
-  const [selectedSeason, setSelectedSeason] = useState('All');
-  const [selectedYear, setSelectedYear] = useState('All');
-  const [careerSeasonFilter, setCareerSeasonFilter] = useState('All'); // Separate filter for career table
-  const [seasonOptions, setSeasonOptions] = useState(['All']);
-  const [yearOptions, setYearOptions] = useState(['All']);
-  const [statScope, setStatScope] = useState('live'); // Default to current season
+  const [selectedSeason, setSelectedSeason] = useState('Fall'); // Default to Fall
+  const [selectedYear, setSelectedYear] = useState('2025'); // Default to 2025
+  const [seasonOptions, setSeasonOptions] = useState(['All', 'Fall', 'Winter']);
+  const [yearOptions, setYearOptions] = useState(['All', '2025', '2024', '2023']);
   const [playerSortField, setPlayerSortField] = useState('goals');
   const [playerSortDirection, setPlayerSortDirection] = useState('desc');
   const [teamSortField, setTeamSortField] = useState('wins');
   const [teamSortDirection, setTeamSortDirection] = useState('desc');
 
-  useEffect(() => { fetchPlayerStats(); }, [selectedDivision, selectedSeason, selectedYear, statScope]);
+  useEffect(() => { fetchPlayerStats(); }, [selectedDivision, selectedSeason, selectedYear]);
   useEffect(() => { fetchTeamStats(); }, [selectedDivision]);
   useEffect(() => { fetchMeta(); }, []);
   useEffect(() => { fetchSeasonalData(); }, [selectedDivision]); // For charts
+  useEffect(() => { 
+    // Initial load with defaults after meta data is loaded
+    if (seasonOptions.length > 1 && yearOptions.length > 1) {
+      fetchPlayerStats();
+    }
+  }, [seasonOptions, yearOptions]); // Trigger when meta data is loaded
 
   const fetchSeasonalData = async () => {
     try {
@@ -83,12 +85,17 @@ export default function Statistics() {
       const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
       const params = new URLSearchParams();
       if (selectedDivision !== 'All') params.append('division', selectedDivision);
-  if (selectedSeason && selectedSeason !== 'All') params.append('season', selectedSeason);
-  if (selectedYear && selectedYear !== 'All') params.append('year', selectedYear);
-      if (statScope) params.append('scope', statScope);
+      if (selectedSeason && selectedSeason !== 'All') params.append('season', selectedSeason);
+      if (selectedYear && selectedYear !== 'All') params.append('year', selectedYear);
       
-      // For current season stats (live scope or no year/season filters), only show rostered players
-      const isCurrentSeason = statScope === 'live' || (!selectedYear || selectedYear === 'All') && (!selectedSeason || selectedSeason === 'All');
+      // For 2025 Fall season specifically, only show players with GP > 0
+      const is2025Fall = selectedYear === '2025' && selectedSeason === 'Fall';
+      if (is2025Fall) {
+        params.append('minGamesPlayed', '1');
+      }
+      
+      // For current season stats (when no year/season filters are applied), only show rostered players
+      const isCurrentSeason = (!selectedYear || selectedYear === 'All') && (!selectedSeason || selectedSeason === 'All');
       if (isCurrentSeason) {
         params.append('rostered', 'true');
       }
@@ -103,25 +110,10 @@ export default function Statistics() {
         }
       });
       const arr = Array.isArray(data.data) ? data.data : data; // support debug payload
-      if (statScope === 'totals') setMergedStats(arr);
-      if (statScope === 'historical') setHistoricalStats(arr);
-      if (statScope === 'live') setLiveStats(arr);
-      if (statScope !== 'totals') {
-        try {
-          const totalsParams = new URLSearchParams(params.toString().replace(`scope=${statScope}`, 'scope=totals'));
-          totalsParams.set('_t', Date.now().toString());
-          const totalsResp = await axios.get(`${apiBase}/api/player-stats?${totalsParams.toString()}`, {
-            headers: {
-              'Cache-Control': 'no-cache',
-              'Pragma': 'no-cache'
-            }
-          });
-          const totalsArr = Array.isArray(totalsResp.data.data) ? totalsResp.data.data : totalsResp.data;
-          setMergedStats(totalsArr);
-        } catch (e) { console.warn('Totals fallback failed', e); }
-      }
+      setHistoricalStats(arr);
+      
       // If everything empty, run debug call
-      const empty = (!arr || arr.length === 0) && mergedStats.length === 0;
+      const empty = (!arr || arr.length === 0);
       if (empty) {
         try {
           const debugParams = new URLSearchParams(params.toString());
@@ -188,11 +180,11 @@ export default function Statistics() {
         // Only show years up to current year (filter out future placeholder years)
         const currentYear = new Date().getFullYear();
         const realYears = data.years.filter(year => parseInt(year) <= currentYear);
-        const years = ['All', ...realYears];
+        const years = ['All', ...realYears.sort((a, b) => b - a)]; // Sort newest first
         setYearOptions(years);
-        // Set current year as default (assuming years are sorted newest first)
-        const defaultYear = realYears[0];
-        if (defaultYear && selectedYear === 'All') {
+        // Set 2025 as default if available, otherwise use the most recent year
+        const defaultYear = realYears.includes('2025') ? '2025' : realYears[0];
+        if (defaultYear && selectedYear === '2025') {
           setSelectedYear(defaultYear);
         }
       }
@@ -201,15 +193,8 @@ export default function Statistics() {
 
   const divisions = ['All', 'Gold', 'Silver', 'Bronze'];
 
-  const activeList = statScope === 'historical' ? historicalStats : statScope === 'live' ? liveStats : mergedStats;
+  const activeList = historicalStats;
   const filteredPlayerStats = activeList.filter(p => selectedDivision === 'All' || p.division === selectedDivision);
-  
-  // Filter career leaders separately - for now use the same filters since historical data is aggregated
-  const careerFilteredStats = mergedStats.filter(p => {
-    const divisionMatch = selectedDivision === 'All' || p.division === selectedDivision;
-    // Note: since historical API aggregates data, season filtering isn't available for career table
-    return divisionMatch;
-  });
 
   // Analytics derivations
   const topScorer = filteredPlayerStats[0];
@@ -364,37 +349,75 @@ export default function Statistics() {
             </button>
           </div>
           
-          {/* Division Filter */}
-          <div className="flex items-center space-x-4">
-            <label className="font-medium text-gray-700">Division:</label>
-            <select
-              value={selectedDivision}
-              onChange={(e) => setSelectedDivision(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          {/* Filters */}  
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <label className="font-medium text-gray-700">Division:</label>
+              <select
+                value={selectedDivision}
+                onChange={(e) => setSelectedDivision(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {divisions.map(division => (
+                  <option key={division} value={division}>{division}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <label className="font-medium text-gray-700">Season:</label>
+              <select
+                value={selectedSeason}
+                onChange={(e) => setSelectedSeason(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {seasonOptions.map(season => (
+                  <option key={season} value={season}>{season}</option>
+                ))}
+              </select>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <label className="font-medium text-gray-700">Year:</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {yearOptions.map(year => (
+                  <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
+            
+            <button 
+              onClick={() => fetchPlayerStats()} 
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors text-sm"
             >
-              {divisions.map(division => (
-                <option key={division} value={division}>{division}</option>
-              ))}
-            </select>
-            <select value={selectedSeason} onChange={e=>setSelectedSeason(e.target.value)} className="px-2 py-2 border rounded-md text-sm">
-              {seasonOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-            <select value={selectedYear} onChange={e=>setSelectedYear(e.target.value)} className="px-2 py-2 border rounded-md text-sm w-28">
-              {yearOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
-            <select value={statScope} onChange={e=>setStatScope(e.target.value)} className="px-2 py-2 border rounded-md text-sm">
-              <option value="live">Current Season</option>
-              <option value="historical">Historical Only</option>
-              <option value="totals">Career Totals</option>
-            </select>
-            <button onClick={()=>fetchPlayerStats()} className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors text-sm">🔄 Refresh</button>
+              🔄 Refresh
+            </button>
           </div>
         </div>
 
-        {/* Player Statistics Table (Scoped) */}
+        {/* Player Statistics Table */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">👤 Player Statistics ({statScope})</h2>
-          <p className="text-xs text-gray-500 mb-4">Scope controls whether you see historical, live current season, or merged totals (career-like).</p>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            👤 Player Statistics 
+            {selectedYear !== 'All' && selectedSeason !== 'All' 
+              ? ` - ${selectedYear} ${selectedSeason}`
+              : selectedYear !== 'All' 
+                ? ` - ${selectedYear}`
+                : selectedSeason !== 'All'
+                  ? ` - ${selectedSeason}`
+                  : ''
+            }
+          </h2>
+          <p className="text-xs text-gray-500 mb-4">
+            {selectedYear === '2025' && selectedSeason === 'Fall' 
+              ? 'Showing players with games played (GP > 0) for the current season.'
+              : 'Filter by year, season, and division to view specific statistics.'
+            }
+          </p>
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4 text-sm">
             <div className="bg-blue-50 p-3 rounded border border-blue-200">
               <div className="text-[10px] text-blue-700 uppercase tracking-wide">Top Scorer</div>
@@ -507,7 +530,17 @@ export default function Statistics() {
 
             {/* Top Scorers Chart */}
             <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Top 10 Scorers ({statScope})</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                Top 10 Scorers 
+                {selectedYear !== 'All' && selectedSeason !== 'All' 
+                  ? ` - ${selectedYear} ${selectedSeason}`
+                  : selectedYear !== 'All' 
+                    ? ` - ${selectedYear}`
+                    : selectedSeason !== 'All'
+                      ? ` - ${selectedSeason}`
+                      : ''
+                }
+              </h3>
               {generateTopScorersChart() ? (
                 <Bar
                   data={generateTopScorersChart()}

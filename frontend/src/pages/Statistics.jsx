@@ -46,16 +46,16 @@ const Statistics = React.memo(() => {
   const [teamSortField, setTeamSortField] = useState('wins');
   const [teamSortDirection, setTeamSortDirection] = useState('desc');
 
-  useEffect(() => { fetchPlayerStats(); }, [selectedDivision, selectedSeason, selectedYear]);
-  useEffect(() => { fetchTeamStats(); }, [selectedDivision]);
   useEffect(() => { fetchMeta(); }, []);
-  useEffect(() => { fetchSeasonalData(); }, [selectedDivision]); // For charts
+  
   useEffect(() => { 
-    // Initial load with defaults after meta data is loaded
-    if (seasonOptions.length > 1 && yearOptions.length > 1) {
-      fetchPlayerStats();
+    // Only fetch data after meta is loaded and we have valid options
+    if (seasonOptions.length > 1 && yearOptions.length > 0) {
+      fetchPlayerStats(); 
+      fetchTeamStats();
+      fetchSeasonalData();
     }
-  }, [seasonOptions, yearOptions]); // Trigger when meta data is loaded
+  }, [selectedDivision, selectedSeason, selectedYear, seasonOptions, yearOptions]);
 
   const fetchSeasonalData = async () => {
     try {
@@ -80,16 +80,18 @@ const Statistics = React.memo(() => {
         year: selectedYear
       });
 
-      setHistoricalStats(data);
+      // Ensure data is an array
+      const safeData = Array.isArray(data) ? data : [];
+      setHistoricalStats(safeData);
 
       // If everything empty, run debug call
-      const empty = (!data || data.length === 0);
-      if (empty) {
+      if (safeData.length === 0) {
         console.log('Player stats debug: No data returned from service');
       }
     } catch (err) {
       console.error('Error fetching player stats:', err);
       setError('Failed to load player statistics.');
+      setHistoricalStats([]);
     } finally {
       setLoading(false);
     }
@@ -101,14 +103,16 @@ const Statistics = React.memo(() => {
         division: selectedDivision
       });
 
-      // Ensure consistent fields
-      const normalized = data.map(t => ({
+      // Ensure data is an array and normalize fields
+      const safeData = Array.isArray(data) ? data : [];
+      const normalized = safeData.map(t => ({
         ...t,
-        winPercentage: t.winPercentage ?? (t.gamesPlayed ? ((t.wins / t.gamesPlayed) * 100).toFixed(1) : '0.0')
+        winPercentage: t?.winPercentage ?? (t?.gamesPlayed ? ((t.wins / t.gamesPlayed) * 100).toFixed(1) : '0.0')
       }));
       setTeamStats(normalized);
     } catch (e) {
       console.error('Team stats fetch failed', e);
+      setTeamStats([]);
     }
   };
 
@@ -135,31 +139,44 @@ const Statistics = React.memo(() => {
 
   const divisions = ['All', 'Gold', 'Silver', 'Bronze'];
 
-  const activeList = historicalStats;
+  const activeList = historicalStats || [];
   const filteredPlayerStats = useMemo(() => 
-    activeList.filter(p => selectedDivision === 'All' || p.division === selectedDivision),
+    activeList.filter(p => selectedDivision === 'All' || p?.division === selectedDivision),
     [activeList, selectedDivision]
   );
 
   // Memoized analytics derivations
   const analytics = useMemo(() => {
+    if (!filteredPlayerStats || !Array.isArray(filteredPlayerStats) || filteredPlayerStats.length === 0) {
+      return {
+        topScorer: null,
+        totalGoals: 0,
+        totalAssists: 0,
+        totalPoints: 0,
+        avgPoints: '0.0',
+        medianPoints: '0',
+        goalsPerGameAgg: '0.0',
+        pointsPerPlayerPerGame: '0.0'
+      };
+    }
+
     const topScorer = filteredPlayerStats[0];
-    const totalGoals = filteredPlayerStats.reduce((s,p)=> s + (p.goals||0),0);
-    const totalAssists = filteredPlayerStats.reduce((s,p)=> s + (p.assists||0),0);
-    const totalPoints = filteredPlayerStats.reduce((s,p)=> s + (p.points||0),0);
+    const totalGoals = filteredPlayerStats.reduce((s,p)=> s + (p?.goals||0),0);
+    const totalAssists = filteredPlayerStats.reduce((s,p)=> s + (p?.assists||0),0);
+    const totalPoints = filteredPlayerStats.reduce((s,p)=> s + (p?.points||0),0);
     const avgPoints = filteredPlayerStats.length ? (totalPoints / filteredPlayerStats.length).toFixed(1) : '0.0';
     const medianPoints = (() => { 
       if(!filteredPlayerStats.length) return '0'; 
-      const pts = filteredPlayerStats.map(p=>p.points||0).sort((a,b)=>a-b); 
+      const pts = filteredPlayerStats.map(p=>p?.points||0).sort((a,b)=>a-b); 
       const mid = Math.floor(pts.length/2); 
       return pts.length%2? String(pts[mid]) : ((pts[mid-1]+pts[mid])/2).toFixed(1); 
     })();
     const goalsPerGameAgg = (() => { 
-      const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); 
+      const gp = filteredPlayerStats.reduce((s,p)=> s + (p?.gp||0),0); 
       return gp? (totalGoals / gp).toFixed(1) : '0.0'; 
     })();
     const pointsPerPlayerPerGame = (() => { 
-      const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); 
+      const gp = filteredPlayerStats.reduce((s,p)=> s + (p?.gp||0),0); 
       return gp? (totalPoints / gp).toFixed(1):'0.0'; 
     })();
 

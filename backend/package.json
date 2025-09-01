@@ -37,12 +37,12 @@
     "openai": "^4.52.7"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22",
-    "mocha": "^10.2.0",
     "chai": "^4.3.7",
-    "sinon": "^15.0.1",
-    "nyc": "^15.1.0",
     "eslint": "^8.45.0",
+    "mocha": "^10.2.0",
+    "nodemon": "^3.1.10",
+    "nyc": "^15.1.0",
+    "sinon": "^15.0.1",
     "supertest": "^6.3.3"
   },
   "engines": {
@@ -64,8 +64,15 @@
     "url": "https://github.com/your-org/hockey-scorekeeper"
   },
   "nyc": {
-    "reporter": ["text", "html", "lcov"],
-    "exclude": ["tests/**", "node_modules/**"],
+    "reporter": [
+      "text",
+      "html",
+      "lcov"
+    ],
+    "exclude": [
+      "tests/**",
+      "node_modules/**"
+    ],
     "check-coverage": true,
     "branches": 80,
     "lines": 80,

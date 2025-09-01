@@ -79,19 +79,109 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(express.json({ limit: '10mb' }));
-app.use(cors());
 
-// Simple in-memory announcer cache and helpers
-// Structure:
-// announcerCache.goals: Map<gameId, { lastGoalId, single: { male?: {text,audioPath,voice}, female?: {text,audioPath,voice} }, dual?: { conversation, updatedAt } }>
-// announcerCache.penalties: Map<gameId, { lastPenaltyId, single: { male?: {...}, female?: {...} }, dual?: { conversation, updatedAt } }>
-// announcerCache.randomDual: Map<key, { conversation, updatedAt }>
-const announcerCache = {
-  goals: new Map(),
-  penalties: new Map(),
-  randomDual: new Map()
+// Security middleware - Add before other middleware
+app.use((req, res, next) => {
+  // Security headers
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  // Remove server information
+  res.removeHeader('X-Powered-By');
+  
+  next();
+});
+
+// Configure CORS with restrictions
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, etc.)
+    if (!origin) return callback(null, true);
+    
+    // In development, allow localhost
+    if (process.env.NODE_ENV === 'development') {
+      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        return callback(null, true);
+      }
+    }
+    
+    // In production, you should specify allowed origins
+    // For now, we'll be restrictive
+    const allowedOrigins = process.env.ALLOWED_ORIGINS ? 
+      process.env.ALLOWED_ORIGINS.split(',') : [];
+    
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 };
+
+app.use(cors(corsOptions));
+
+// Input validation middleware
+app.use(express.json({ 
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    // Basic JSON validation
+    try {
+      JSON.parse(buf);
+    } catch (e) {
+      res.status(400).json({ error: 'Invalid JSON payload' });
+      throw new Error('Invalid JSON');
+    }
+  }
+}));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+
+// Rate limiting for AI endpoints
+const aiRateLimit = {};
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const RATE_LIMIT_MAX = 10; // 10 requests per minute for AI endpoints
+
+function checkRateLimit(endpoint, identifier) {
+  const key = `${endpoint}:${identifier}`;
+  const now = Date.now();
+  
+  if (!aiRateLimit[key]) {
+    aiRateLimit[key] = { count: 1, resetTime: now + RATE_LIMIT_WINDOW };
+    return true;
+  }
+  
+  if (now > aiRateLimit[key].resetTime) {
+    aiRateLimit[key] = { count: 1, resetTime: now + RATE_LIMIT_WINDOW };
+    return true;
+  }
+  
+  if (aiRateLimit[key].count >= RATE_LIMIT_MAX) {
+    return false;
+  }
+  
+  aiRateLimit[key].count++;
+  return true;
+}
+
+// Middleware to check rate limits on AI endpoints
+function aiRateLimitMiddleware(req, res, next) {
+  const identifier = req.ip || req.connection.remoteAddress || 'unknown';
+  const endpoint = req.path;
+  
+  if (!checkRateLimit(endpoint, identifier)) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      message: 'Rate limit exceeded. Please try again later.',
+      retryAfter: Math.ceil((aiRateLimit[`${endpoint}:${identifier}`].resetTime - Date.now()) / 1000)
+    });
+  }
+  
+  next();
+}
 
 // In-memory announcer metrics (non-persistent)
 const announcerMetrics = {
@@ -107,6 +197,70 @@ const announcerMetrics = {
 };
 // Expose for announcerService (non-breaking if not used)
 globalThis.__ANNOUNCER_METRICS__ = announcerMetrics;
+
+// Authentication middleware for admin endpoints
+function requireAdminAuth(req, res, next) {
+  const authHeader = req.headers.authorization;
+  const adminToken = process.env.ADMIN_TOKEN;
+  
+  if (!adminToken) {
+    return res.status(500).json({ error: 'Admin authentication not configured' });
+  }
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ 
+      error: 'Authentication required',
+      message: 'Admin token required for this endpoint'
+    });
+  }
+  
+  const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+  
+  if (token !== adminToken) {
+    return res.status(403).json({ 
+      error: 'Authentication failed',
+      message: 'Invalid admin token'
+    });
+  }
+  
+  next();
+}
+
+// Input sanitization middleware
+function sanitizeInput(req, res, next) {
+  // Recursively sanitize string inputs
+  function sanitize(obj) {
+    if (typeof obj === 'string') {
+      // Remove potentially dangerous characters and scripts
+      return obj.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+                .replace(/javascript:/gi, '')
+                .replace(/on\w+\s*=/gi, '')
+                .trim();
+    } else if (Array.isArray(obj)) {
+      return obj.map(sanitize);
+    } else if (obj && typeof obj === 'object') {
+      const sanitized = {};
+      for (const [key, value] of Object.entries(obj)) {
+        sanitized[key] = sanitize(value);
+      }
+      return sanitized;
+    }
+    return obj;
+  }
+  
+  if (req.body) {
+    req.body = sanitize(req.body);
+  }
+  
+  if (req.query) {
+    req.query = sanitize(req.query);
+  }
+  
+  next();
+}
+
+// Apply input sanitization to all routes
+app.use(sanitizeInput);
 
 function recordTiming(kind, ms) {
   const arr = announcerMetrics.timings[kind];
@@ -645,7 +799,7 @@ app.get('/api/version', (req, res) => {
 });
 
 // ADMIN ENDPOINT to update deployment timestamp after deployment completes
-app.post('/api/admin/update-deployment-time', (req, res) => {
+app.post('/api/admin/update-deployment-time', requireAdminAuth, (req, res) => {
   try {
     const { deploymentTimestamp, githubSha } = req.body;
     
@@ -1680,7 +1834,7 @@ app.delete('/api/goals/:id', async (req, res) => {
 });
 
 // Announce last goal endpoint
-app.post('/api/goals/announce-last', async (req, res) => {
+app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => {
   const requestLogger = logger.withRequest(req);
   requestLogger.info('Goal announcement request', { 
     gameId: req.body.gameId, 
@@ -2002,7 +2156,7 @@ app.post('/api/goals/announce-last', async (req, res) => {
 });
 
 // Penalty announcement endpoint
-app.post('/api/penalties/announce-last', async (req, res) => {
+app.post('/api/penalties/announce-last', aiRateLimitMiddleware, async (req, res) => {
   const requestLogger = logger.withRequest(req);
   requestLogger.info('Penalty announcement request', { 
     gameId: req.body.gameId, 
@@ -2220,7 +2374,7 @@ app.post('/api/penalties/announce-last', async (req, res) => {
 
 // Random Commentary endpoint
 // Random Commentary endpoint
-app.post('/api/randomCommentary', async (req, res) => {
+app.post('/api/randomCommentary', aiRateLimitMiddleware, async (req, res) => {
   const requestLogger = logger.withRequest(req);
   requestLogger.info('Random commentary request', { 
     gameId: req.body.gameId, 

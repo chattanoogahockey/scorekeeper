@@ -252,30 +252,31 @@ const Statistics = React.memo(() => {
     setTeamSortDirection(direction);
   };
 
-  const sortedPlayerStats = [...filteredPlayerStats].sort((a, b) => {
+  const sortedPlayerStats = [...(filteredPlayerStats || [])].sort((a, b) => {
     const fieldMap = (obj, field) => {
-      if (field === 'playerName') return obj.playerName;
-      if (field === 'gp') return obj.gp;
-      if (field === 'pim') return obj.pim;
-      return obj[field];
+      if (!obj) return '';
+      if (field === 'playerName') return obj.playerName || '';
+      if (field === 'gp') return obj.gp || 0;
+      if (field === 'pim') return obj.pim || 0;
+      return obj[field] || 0;
     };
     const aVal = fieldMap(a, playerSortField);
     const bVal = fieldMap(b, playerSortField);
     const modifier = playerSortDirection === 'desc' ? -1 : 1;
     
     if (typeof aVal === 'string') {
-      return aVal.localeCompare(bVal) * modifier;
+      return (aVal || '').localeCompare(bVal || '') * modifier;
     }
     return (aVal - bVal) * modifier;
   });
 
-  const sortedTeamStats = [...filteredTeamStats].sort((a, b) => {
-    const aVal = a[teamSortField];
-    const bVal = b[teamSortField];
+  const sortedTeamStats = [...(filteredTeamStats || [])].sort((a, b) => {
+    const aVal = a?.[teamSortField] || 0;
+    const bVal = b?.[teamSortField] || 0;
     const modifier = teamSortDirection === 'desc' ? -1 : 1;
     
     if (typeof aVal === 'string') {
-      return aVal.localeCompare(bVal) * modifier;
+      return (aVal || '').localeCompare(bVal || '') * modifier;
     }
     return (aVal - bVal) * modifier;
   });
@@ -427,7 +428,7 @@ const Statistics = React.memo(() => {
             </div>
             <div className="bg-rose-50 p-3 rounded border border-rose-200">
               <div className="text-[10px] text-rose-700 uppercase tracking-wide">Points / Player GP</div>
-              <div className="font-semibold text-rose-900">{pointsPerPlayerPerGame}</div>
+              <div className="font-semibold text-rose-900">{analytics.pointsPerPlayerPerGame}</div>
             </div>
           </div>
           

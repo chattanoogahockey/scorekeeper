@@ -8,8 +8,8 @@ import RosterAttendance from './pages/roster-attendance.jsx';
 import InGameMenu from './pages/in-game-menu.jsx';
 import GoalRecord from './pages/goal-record.jsx';
 import PenaltyRecord from './pages/penalty-record.jsx';
-import Dashboard from './pages/dashboard.jsx';
-import Statistics from './pages/statistics.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import Statistics from './pages/Statistics.jsx';
 import RinkReport from './pages/rink-report.jsx';
 import { GameProvider } from './contexts/game-context.jsx';
 

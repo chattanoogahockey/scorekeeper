@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Chart as ChartJS,
@@ -25,7 +25,7 @@ ChartJS.register(
   Legend
 );
 
-export default function Statistics() {
+const Statistics = React.memo(() => {
   const navigate = useNavigate();
   
   // State for data
@@ -136,17 +136,44 @@ export default function Statistics() {
   const divisions = ['All', 'Gold', 'Silver', 'Bronze'];
 
   const activeList = historicalStats;
-  const filteredPlayerStats = activeList.filter(p => selectedDivision === 'All' || p.division === selectedDivision);
+  const filteredPlayerStats = useMemo(() => 
+    activeList.filter(p => selectedDivision === 'All' || p.division === selectedDivision),
+    [activeList, selectedDivision]
+  );
 
-  // Analytics derivations
-  const topScorer = filteredPlayerStats[0];
-  const totalGoals = filteredPlayerStats.reduce((s,p)=> s + (p.goals||0),0);
-  const totalAssists = filteredPlayerStats.reduce((s,p)=> s + (p.assists||0),0);
-  const totalPoints = filteredPlayerStats.reduce((s,p)=> s + (p.points||0),0);
-  const avgPoints = filteredPlayerStats.length ? (totalPoints / filteredPlayerStats.length).toFixed(1) : '0.0';
-  const medianPoints = (() => { if(!filteredPlayerStats.length) return '0'; const pts = filteredPlayerStats.map(p=>p.points||0).sort((a,b)=>a-b); const mid = Math.floor(pts.length/2); return pts.length%2? String(pts[mid]) : ((pts[mid-1]+pts[mid])/2).toFixed(1); })();
-  const goalsPerGameAgg = (()=> { const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); return gp? (totalGoals / gp).toFixed(1) : '0.0'; })();
-  const pointsPerPlayerPerGame = (()=> { const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); return gp? (totalPoints / gp).toFixed(1):'0.0'; })();
+  // Memoized analytics derivations
+  const analytics = useMemo(() => {
+    const topScorer = filteredPlayerStats[0];
+    const totalGoals = filteredPlayerStats.reduce((s,p)=> s + (p.goals||0),0);
+    const totalAssists = filteredPlayerStats.reduce((s,p)=> s + (p.assists||0),0);
+    const totalPoints = filteredPlayerStats.reduce((s,p)=> s + (p.points||0),0);
+    const avgPoints = filteredPlayerStats.length ? (totalPoints / filteredPlayerStats.length).toFixed(1) : '0.0';
+    const medianPoints = (() => { 
+      if(!filteredPlayerStats.length) return '0'; 
+      const pts = filteredPlayerStats.map(p=>p.points||0).sort((a,b)=>a-b); 
+      const mid = Math.floor(pts.length/2); 
+      return pts.length%2? String(pts[mid]) : ((pts[mid-1]+pts[mid])/2).toFixed(1); 
+    })();
+    const goalsPerGameAgg = (() => { 
+      const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); 
+      return gp? (totalGoals / gp).toFixed(1) : '0.0'; 
+    })();
+    const pointsPerPlayerPerGame = (() => { 
+      const gp = filteredPlayerStats.reduce((s,p)=> s + (p.gp||0),0); 
+      return gp? (totalPoints / gp).toFixed(1):'0.0'; 
+    })();
+
+    return {
+      topScorer,
+      totalGoals,
+      totalAssists,
+      totalPoints,
+      avgPoints,
+      medianPoints,
+      goalsPerGameAgg,
+      pointsPerPlayerPerGame
+    };
+  }, [filteredPlayerStats]);
 
   const filteredTeamStats = teamStats.filter(team => selectedDivision === 'All' || team.division === selectedDivision);
 
@@ -363,23 +390,23 @@ export default function Statistics() {
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4 text-sm">
             <div className="bg-blue-50 p-3 rounded border border-blue-200">
               <div className="text-[10px] text-blue-700 uppercase tracking-wide">Top Scorer</div>
-              <div className="font-semibold text-blue-900 truncate" title={topScorer?.playerName}>{topScorer? topScorer.playerName : '—'}</div>
+              <div className="font-semibold text-blue-900 truncate" title={analytics.topScorer?.playerName}>{analytics.topScorer? analytics.topScorer.playerName : '—'}</div>
             </div>
             <div className="bg-green-50 p-3 rounded border border-green-200">
               <div className="text-[10px] text-green-700 uppercase tracking-wide">Avg Points/Player</div>
-              <div className="font-semibold text-green-900">{avgPoints}</div>
+              <div className="font-semibold text-green-900">{analytics.avgPoints}</div>
             </div>
             <div className="bg-purple-50 p-3 rounded border border-purple-200">
               <div className="text-[10px] text-purple-700 uppercase tracking-wide">Median Points</div>
-              <div className="font-semibold text-purple-900">{medianPoints}</div>
+              <div className="font-semibold text-purple-900">{analytics.medianPoints}</div>
             </div>
             <div className="bg-orange-50 p-3 rounded border border-orange-200">
               <div className="text-[10px] text-orange-700 uppercase tracking-wide">Total Goals</div>
-              <div className="font-semibold text-orange-900">{totalGoals}</div>
+              <div className="font-semibold text-orange-900">{analytics.totalGoals}</div>
             </div>
             <div className="bg-teal-50 p-3 rounded border border-teal-200">
               <div className="text-[10px] text-teal-700 uppercase tracking-wide">Goals / Game (Agg)</div>
-              <div className="font-semibold text-teal-900">{goalsPerGameAgg}</div>
+              <div className="font-semibold text-teal-900">{analytics.goalsPerGameAgg}</div>
             </div>
             <div className="bg-rose-50 p-3 rounded border border-rose-200">
               <div className="text-[10px] text-rose-700 uppercase tracking-wide">Points / Player GP</div>
@@ -607,4 +634,8 @@ export default function Statistics() {
       </div>
     </div>
   );
-}
+});
+
+Statistics.displayName = 'Statistics';
+
+export default Statistics;

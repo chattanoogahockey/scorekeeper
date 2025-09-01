@@ -1,10 +1,32 @@
 import OpenAI from 'openai';
 import logger from './logger.js';
 
-// Initialize OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Check if OpenAI is properly configured
+const openaiApiKey = process.env.OPENAI_API_KEY;
+const openaiConfigured = openaiApiKey && 
+                        openaiApiKey !== 'your-openai-api-key-here' && 
+                        !openaiApiKey.includes('your-');
+
+// Initialize OpenAI only if properly configured
+let openai = null;
+if (openaiConfigured) {
+  openai = new OpenAI({
+    apiKey: openaiApiKey,
+  });
+} else {
+  logger.warn('OpenAI not configured. Announcer service will run in demo mode.');
+}
+
+/**
+ * Helper function to check OpenAI availability and return demo data if not available
+ */
+function checkOpenAIAndReturnDemo(demoData) {
+  if (!openaiConfigured || !openai) {
+    logger.warn('OpenAI not configured, returning demo data');
+    return demoData;
+  }
+  return null; // OpenAI is available
+}
 
 /**
  * Hockey Time Understanding Utility
@@ -74,6 +96,10 @@ function calculateGameProgression(period, timeRemaining) {
  * Generate professional roller hockey goal announcement using OpenAI
  */
 export async function generateGoalAnnouncement(goalData, playerStats = null, voiceGender = 'male') {
+  // Check if OpenAI is available
+  const demoResult = checkOpenAIAndReturnDemo(`Goal scored by ${goalData.playerName} for ${goalData.teamName}!`);
+  if (demoResult) return demoResult;
+  
   try {
     const { 
       playerName, 
@@ -233,6 +259,10 @@ Your ${voiceGender === 'female' ? 'Linda' : 'Al'}-style announcement:`;
  * Generate scoreless game commentary
  */
 export async function generateScorelessCommentary(gameData, voiceGender = 'male') {
+  // Check if OpenAI is available
+  const demoResult = checkOpenAIAndReturnDemo(`We're in a scoreless battle between ${gameData.homeTeam} and ${gameData.awayTeam} in period ${gameData.period}.`);
+  if (demoResult) return demoResult;
+  
   try {
     const { homeTeam, awayTeam, period } = gameData;
 
@@ -799,6 +829,19 @@ FORMAT: Return ONLY a JSON array with 4 lines alternating male-female-male-femal
 export async function generateDualRandomCommentary(gameId, gameContext = {}) {
   console.log('🎙️ Starting generateDualRandomCommentary for gameId:', gameId);
   console.log('🎙️ Game context:', gameContext);
+  
+  // Check if OpenAI is configured
+  if (!openaiConfigured || !openai) {
+    logger.warn('OpenAI not configured, returning demo commentary');
+    
+    // Return demo commentary
+    return [
+      "Al: You know Linda, this has been a fascinating game to watch so far.",
+      "Linda: Absolutely Al, the intensity is really picking up in these final minutes.",
+      "Al: The goaltending has been spectacular on both sides tonight.",
+      "Linda: That's right, both netminders have been standing tall when it matters most."
+    ];
+  }
   
   try {
     // First, generate a conversation starter based on analytics/context

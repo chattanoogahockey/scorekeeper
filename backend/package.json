@@ -11,7 +11,8 @@
     "audio-cache/"
   ],
   "scripts": {
-    "start": "node server-refactored.js",
+    "start": "node server.js",
+    "start:refactored": "node server-refactored.js",
     "dev": "nodemon server-refactored.js",
     "test": "mocha tests/**/*.test.js --timeout 10000",
     "test:watch": "mocha tests/**/*.test.js --watch --timeout 10000",
@@ -28,6 +29,7 @@
     "@azure/cosmos": "^4.1.1",
     "@google-cloud/text-to-speech": "^6.2.0",
     "axios": "^1.11.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
     "express": "^4.18.2",

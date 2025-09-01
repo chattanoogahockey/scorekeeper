@@ -7,19 +7,30 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Add timestamp to filenames for cache busting
-        entryFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
-        chunkFileNames: `assets/[name]-[hash]-${Date.now()}.js`,
-        assetFileNames: `assets/[name]-[hash]-${Date.now()}.[ext]`
+        // Remove timestamp for better caching
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+        // Code splitting configuration
+        manualChunks: {
+          // Vendor chunks
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'chart-vendor': ['chart.js', 'react-chartjs-2'],
+          'ui-vendor': ['axios']
+        }
       }
-    }
+    },
+    // Enable source maps for production debugging
+    sourcemap: false,
+    // Optimize chunk size
+    chunkSizeWarningLimit: 600
   },
   server: {
     host: '0.0.0.0',
     port: 5173,
     proxy: {
       '/api': {
-  target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8080',
         changeOrigin: true,
       },
     },

@@ -150,6 +150,17 @@ class Logger {
   }
 
   /**
+   * Log security events for monitoring
+   */
+  logSecurityEvent(eventType, metadata = {}) {
+    this.warn(`Security Event: ${eventType}`, {
+      security: true,
+      eventType,
+      ...metadata
+    });
+  }
+
+  /**
    * Log announcer service availability
    */
   logAnnouncerAvailability(available, features = []) {

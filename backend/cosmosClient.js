@@ -36,7 +36,7 @@ const containerNames = config.cosmos.containers;
 
 const CONTAINER_DEFINITIONS = {
   // Global application settings
-  'app-settings': {
+  'settings': {
     name: containerNames.settings,
     partitionKey: '/type',
     indexingPolicy: {
@@ -90,20 +90,6 @@ const CONTAINER_DEFINITIONS = {
         { path: '/season/?' },
         { path: '/players/[]/playerId/?' },
         { path: '/players/[]/name/?' }
-      ]
-    }
-  },
-  
-  // Game attendance tracking
-  'game-attendance': {
-    name: containerNames.attendance,
-    partitionKey: '/gameId',
-    indexingPolicy: {
-      indexingMode: 'consistent',
-      includedPaths: [
-        { path: '/*' },
-        { path: '/gameId/?' },
-        { path: '/recordedAt/?' }
       ]
     }
   },
@@ -177,7 +163,7 @@ export function getDatabase() {
 // Settings container - Global application settings
 export function getSettingsContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS['app-settings'].name);
+  return database.container(CONTAINER_DEFINITIONS['settings'].name);
 }
 
 // Rink reports container - Weekly division summaries
@@ -189,7 +175,7 @@ export function getRinkReportsContainer() {
 // Games container - Game records and submissions
 export function getGamesContainer() {
   if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
-  return database.container(CONTAINER_DEFINITIONS['game-records'].name);
+  return database.container(containerNames.games);
 }
 
 // Player-stats container - Current season player statistics

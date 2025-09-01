@@ -6,7 +6,8 @@ import axios from 'axios';
  */
 class GoalRecordingService {
   constructor() {
-    this.apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL || '';
+    // In production on Azure, frontend and backend are on the same domain, so use relative URLs
+    this.apiBase = '';
   }
 
   /**

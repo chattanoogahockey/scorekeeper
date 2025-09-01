@@ -7,7 +7,8 @@ import axios from 'axios';
  */
 
 export async function announce(type, gameId, selectedVoice) {
-  const apiBase = import.meta.env.DEV ? '' : import.meta.env.VITE_API_BASE_URL;
+  // In production on Azure, frontend and backend are on the same domain, so use relative URLs
+  const apiBase = '';
   const endpointMap = {
     goal: '/api/goals/announce-last',
     penalty: '/api/penalties/announce-last',

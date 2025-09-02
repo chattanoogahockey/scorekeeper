@@ -5832,6 +5832,387 @@ app.get('/api/admin/available-voices', (req, res) => {
   }
 });
 
+// Chat API endpoint for analytical agent
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    // Set headers for SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
+
+    // Import OpenAI
+    const { OpenAI } = await import('openai');
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+
+    // Define tools for the agent
+    const tools = [
+      {
+        type: 'function',
+        function: {
+          name: 'get_top_players',
+          description: 'Get top players by a specific metric (goals, assists, points, etc.)',
+          parameters: {
+            type: 'object',
+            properties: {
+              metric: { type: 'string', enum: ['goals', 'assists', 'points', 'pim', 'gp'] },
+              season: { type: 'string' },
+              leagueId: { type: 'string' },
+              limit: { type: 'number', default: 10 }
+            },
+            required: ['metric']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'get_team_stats',
+          description: 'Get team statistics and performance data',
+          parameters: {
+            type: 'object',
+            properties: {
+              teamId: { type: 'string' },
+              metric: { type: 'string' },
+              season: { type: 'string' },
+              dateFrom: { type: 'string' },
+              dateTo: { type: 'string' }
+            }
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'get_game_summary',
+          description: 'Get summary of a specific game',
+          parameters: {
+            type: 'object',
+            properties: {
+              gameId: { type: 'string' }
+            },
+            required: ['gameId']
+          }
+        }
+      },
+      {
+        type: 'function',
+        function: {
+          name: 'aggregate_stats',
+          description: 'Aggregate statistics with custom filters and groupings',
+          parameters: {
+            type: 'object',
+            properties: {
+              entity: { type: 'string', enum: ['players', 'teams', 'games'] },
+              metrics: { type: 'array', items: { type: 'string' } },
+              filters: { type: 'object' },
+              groupBy: { type: 'array', items: { type: 'string' } },
+              limit: { type: 'number', default: 10 }
+            },
+            required: ['entity', 'metrics']
+          }
+        }
+      }
+    ];
+
+    // Create streaming response
+    const stream = await openai.chat.completions.create({
+      model: 'gpt-4o-mini', // Use gpt-4o-mini for faster responses
+      messages: [
+        {
+          role: 'system',
+          content: `You are the Scorekeeper Analytical Agent. You help users analyze hockey statistics and game data.
+
+Your capabilities:
+- Answer questions about player statistics, team performance, and game results
+- Provide insights on trends, comparisons, and leaderboards
+- Use the available tools to fetch accurate data from the database
+- Always provide concise, factual answers with data provenance
+- If data is not available, clearly state what information is missing
+
+Available data includes:
+- Player stats: goals, assists, points, PIM, games played
+- Team stats: wins, losses, goals for/against, win percentage
+- Game results and summaries
+- Historical data across multiple seasons
+
+Always use tools when you need to fetch specific data. Answer in plain text only - no tables, charts, or formatting.`
+        },
+        {
+          role: 'user',
+          content: message
+        }
+      ],
+      tools: tools,
+      tool_choice: 'auto',
+      stream: true,
+      max_tokens: 1000,
+      temperature: 0.3
+    });
+
+    let accumulatedResponse = '';
+    let currentToolCall = null;
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta;
+
+      if (delta?.tool_calls) {
+        // Handle tool calls
+        for (const toolCall of delta.tool_calls) {
+          if (toolCall.function) {
+            if (!currentToolCall) {
+              currentToolCall = {
+                id: toolCall.id,
+                function: {
+                  name: toolCall.function.name,
+                  arguments: ''
+                }
+              };
+            }
+            if (toolCall.function.arguments) {
+              currentToolCall.function.arguments += toolCall.function.arguments;
+            }
+          }
+        }
+      } else if (delta?.content) {
+        // Send content chunks
+        accumulatedResponse += delta.content;
+        res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
+      }
+
+      // If we have a complete tool call, execute it
+      if (currentToolCall && currentToolCall.function.arguments) {
+        try {
+          const args = JSON.parse(currentToolCall.function.arguments);
+          let toolResult = null;
+
+          // Execute the appropriate tool
+          switch (currentToolCall.function.name) {
+            case 'get_top_players':
+              toolResult = await executeGetTopPlayers(args);
+              break;
+            case 'get_team_stats':
+              toolResult = await executeGetTeamStats(args);
+              break;
+            case 'get_game_summary':
+              toolResult = await executeGetGameSummary(args);
+              break;
+            case 'aggregate_stats':
+              toolResult = await executeAggregateStats(args);
+              break;
+            default:
+              toolResult = { error: 'Unknown tool' };
+          }
+
+          // Continue the conversation with tool result
+          const toolStream = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'system',
+                content: `You are the Scorekeeper Analytical Agent. Use the tool results to provide a concise answer.`
+              },
+              {
+                role: 'user',
+                content: message
+              },
+              {
+                role: 'assistant',
+                content: accumulatedResponse,
+                tool_calls: [currentToolCall]
+              },
+              {
+                role: 'tool',
+                tool_call_id: currentToolCall.id,
+                content: JSON.stringify(toolResult)
+              }
+            ],
+            stream: true,
+            max_tokens: 1000,
+            temperature: 0.3
+          });
+
+          for await (const toolChunk of toolStream) {
+            const toolDelta = toolChunk.choices[0]?.delta;
+            if (toolDelta?.content) {
+              accumulatedResponse += toolDelta.content;
+              res.write(`data: ${JSON.stringify({ content: toolDelta.content })}\n\n`);
+            }
+          }
+
+          currentToolCall = null;
+        } catch (error) {
+          console.error('Tool execution error:', error);
+          res.write(`data: ${JSON.stringify({ content: 'Sorry, I encountered an error processing your request.' })}\n\n`);
+        }
+      }
+    }
+
+    // Send completion signal
+    res.write('data: [DONE]\n\n');
+    res.end();
+
+  } catch (error) {
+    console.error('Chat API error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Tool execution functions
+async function executeGetTopPlayers(args) {
+  try {
+    const { getDatabase } = await import('./cosmosClient.js');
+    const db = getDatabase();
+    const playerStatsContainer = db.container('player-stats');
+
+    const { resources } = await playerStatsContainer.items
+      .query({
+        query: `SELECT TOP @limit * FROM c WHERE c.source = 'live' ORDER BY c.${args.metric} DESC`,
+        parameters: [
+          { name: '@limit', value: args.limit || 10 }
+        ]
+      })
+      .fetchAll();
+
+    return resources.map(player => ({
+      playerName: player.playerName,
+      teamName: player.teamName,
+      division: player.division,
+      goals: player.goals || 0,
+      assists: player.assists || 0,
+      points: player.points || 0,
+      pim: player.pim || 0,
+      gp: player.gamesPlayed || 0
+    }));
+  } catch (error) {
+    console.error('get_top_players error:', error);
+    return { error: 'Failed to fetch player data' };
+  }
+}
+
+async function executeGetTeamStats(args) {
+  try {
+    const { getDatabase } = await import('./cosmosClient.js');
+    const db = getDatabase();
+    const gamesContainer = db.container('games');
+
+    const { resources } = await gamesContainer.items
+      .query({
+        query: 'SELECT * FROM c WHERE c.eventType = \'game-submission\'',
+        parameters: []
+      })
+      .fetchAll();
+
+    // Aggregate team stats from games
+    const teamStats = {};
+    for (const game of resources) {
+      const homeTeam = game.homeTeam;
+      const awayTeam = game.awayTeam;
+      const finalScore = game.finalScore || {};
+
+      // Initialize teams
+      if (!teamStats[homeTeam]) {
+        teamStats[homeTeam] = { teamName: homeTeam, gamesPlayed: 0, wins: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 };
+      }
+      if (!teamStats[awayTeam]) {
+        teamStats[awayTeam] = { teamName: awayTeam, gamesPlayed: 0, wins: 0, losses: 0, goalsFor: 0, goalsAgainst: 0 };
+      }
+
+      // Update stats
+      teamStats[homeTeam].gamesPlayed++;
+      teamStats[awayTeam].gamesPlayed++;
+
+      const homeScore = finalScore[homeTeam] || 0;
+      const awayScore = finalScore[awayTeam] || 0;
+
+      teamStats[homeTeam].goalsFor += homeScore;
+      teamStats[homeTeam].goalsAgainst += awayScore;
+      teamStats[awayTeam].goalsFor += awayScore;
+      teamStats[awayTeam].goalsAgainst += homeScore;
+
+      if (homeScore > awayScore) {
+        teamStats[homeTeam].wins++;
+        teamStats[awayTeam].losses++;
+      } else if (awayScore > homeScore) {
+        teamStats[awayTeam].wins++;
+        teamStats[homeTeam].losses++;
+      }
+    }
+
+    return Object.values(teamStats);
+  } catch (error) {
+    console.error('get_team_stats error:', error);
+    return { error: 'Failed to fetch team data' };
+  }
+}
+
+async function executeGetGameSummary(args) {
+  try {
+    const { getDatabase } = await import('./cosmosClient.js');
+    const db = getDatabase();
+    const gamesContainer = db.container('games');
+
+    const { resources } = await gamesContainer.items
+      .query({
+        query: 'SELECT * FROM c WHERE c.id = @gameId',
+        parameters: [{ name: '@gameId', value: args.gameId }]
+      })
+      .fetchAll();
+
+    if (resources.length === 0) {
+      return { error: 'Game not found' };
+    }
+
+    const game = resources[0];
+    return {
+      gameId: game.id,
+      homeTeam: game.homeTeam,
+      awayTeam: game.awayTeam,
+      finalScore: game.finalScore,
+      division: game.division,
+      gameDate: game.gameDate,
+      status: game.status
+    };
+  } catch (error) {
+    console.error('get_game_summary error:', error);
+    return { error: 'Failed to fetch game data' };
+  }
+}
+
+async function executeAggregateStats(args) {
+  try {
+    // This is a simplified implementation - in a real scenario you'd build complex queries
+    const { getDatabase } = await import('./cosmosClient.js');
+    const db = getDatabase();
+
+    if (args.entity === 'players') {
+      const playerStatsContainer = db.container('player-stats');
+      const { resources } = await playerStatsContainer.items
+        .query({
+          query: 'SELECT TOP @limit * FROM c WHERE c.source = \'live\'',
+          parameters: [{ name: '@limit', value: args.limit || 10 }]
+        })
+        .fetchAll();
+
+      return resources;
+    }
+
+    return { message: 'Aggregation completed', count: 0 };
+  } catch (error) {
+    console.error('aggregate_stats error:', error);
+    return { error: 'Failed to aggregate data' };
+  }
+}
+
 // Serve static frontend files only in production (after all API routes)
 if (config.isProduction) {
   const frontendDist = path.resolve(__dirname, 'frontend');

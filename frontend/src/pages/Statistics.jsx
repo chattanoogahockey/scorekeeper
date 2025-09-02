@@ -14,6 +14,110 @@ import {
 import { Line, Bar } from 'react-chartjs-2';
 import { statisticsService } from '../services/statisticsService.js';
 
+// Chat components
+const ChatMessage = ({ message, isUser }) => (
+  <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
+    <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+      isUser 
+        ? 'bg-blue-500 text-white' 
+        : 'bg-gray-200 text-gray-800'
+    }`}>
+      <p className="text-sm whitespace-pre-wrap">{message}</p>
+    </div>
+  </div>
+);
+
+const ChatInput = ({ onSend, disabled }) => {
+  const [input, setInput] = useState('');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (input.trim() && !disabled) {
+      onSend(input.trim());
+      setInput('');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="flex gap-2">
+      <input
+        type="text"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Ask about stats..."
+        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        disabled={disabled}
+      />
+      <button
+        type="submit"
+        disabled={!input.trim() || disabled}
+        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+      >
+        Send
+      </button>
+    </form>
+  );
+};
+
+const ChatPanel = ({ isOpen, onClose, messages, onSendMessage, isTyping }) => {
+  const messagesEndRef = React.useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(scrollToBottom, [messages]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end justify-end p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md h-96 flex flex-col">
+        {/* Header */}
+        <div className="flex justify-between items-center p-4 border-b">
+          <h3 className="text-lg font-semibold text-gray-800">📊 Stats Assistant</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {messages.length === 0 && (
+            <div className="text-center text-gray-500 mt-8">
+              <p>👋 Hi! I'm your stats assistant.</p>
+              <p className="text-sm mt-2">Ask me anything about player stats, team performance, or game history!</p>
+            </div>
+          )}
+          {messages.map((msg, index) => (
+            <ChatMessage key={index} message={msg.text} isUser={msg.isUser} />
+          ))}
+          {isTyping && (
+            <div className="flex justify-start mb-4">
+              <div className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                  <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="p-4 border-t">
+          <ChatInput onSend={onSendMessage} disabled={isTyping} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -45,6 +149,11 @@ const Statistics = React.memo(() => {
   const [playerSortDirection, setPlayerSortDirection] = useState('desc');
   const [teamSortField, setTeamSortField] = useState('wins');
   const [teamSortDirection, setTeamSortDirection] = useState('desc');
+
+  // Chat state
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => { 
     fetchMeta(); 
@@ -392,6 +501,78 @@ const Statistics = React.memo(() => {
   const getSortIcon = (field, currentField, direction) => {
     if (field !== currentField) return '↕️';
     return direction === 'desc' ? '⬇️' : '⬆️';
+  };
+
+  // Chat functions
+  const handleSendMessage = async (message) => {
+    // Add user message
+    setChatMessages(prev => [...prev, { text: message, isUser: true }]);
+    setIsTyping(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response');
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedResponse = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') {
+              setIsTyping(false);
+              return;
+            }
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.content) {
+                accumulatedResponse += parsed.content;
+                setChatMessages(prev => {
+                  const newMessages = [...prev];
+                  if (newMessages.length > 0 && !newMessages[newMessages.length - 1].isUser) {
+                    newMessages[newMessages.length - 1].text = accumulatedResponse;
+                  } else {
+                    newMessages.push({ text: accumulatedResponse, isUser: false });
+                  }
+                  return newMessages;
+                });
+              }
+            } catch (e) {
+              // Ignore parsing errors for now
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      setChatMessages(prev => [...prev, { 
+        text: 'Sorry, I encountered an error. Please try again.', 
+        isUser: false 
+      }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleNewChat = () => {
+    setChatMessages([]);
   };
 
   if (loading) {
@@ -777,6 +958,24 @@ const Statistics = React.memo(() => {
           </div>
         </div>
       </div>
+
+      {/* Floating Chat Button */}
+      <button
+        onClick={() => setChatOpen(true)}
+        className="fixed bottom-6 right-6 bg-blue-500 hover:bg-blue-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-colors z-40"
+        title="Ask about stats"
+      >
+        💬
+      </button>
+
+      {/* Chat Panel */}
+      <ChatPanel
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+        messages={chatMessages}
+        onSendMessage={handleSendMessage}
+        isTyping={isTyping}
+      />
     </div>
   );
 });

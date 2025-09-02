@@ -11,8 +11,8 @@ const RosterAttendance = React.lazy(() => import('./pages/roster-attendance.jsx'
 const InGameMenu = React.lazy(() => import('./pages/in-game-menu.jsx'));
 const GoalRecord = React.lazy(() => import('./pages/goal-record.jsx'));
 const PenaltyRecord = React.lazy(() => import('./pages/penalty-record.jsx'));
-const Dashboard = React.lazy(() => import('./pages/Dashboard.jsx'));
-const Statistics = React.lazy(() => import('./pages/Statistics.jsx'));
+const Dashboard = React.lazy(() => import('./pages/dashboard.jsx'));
+const Statistics = React.lazy(() => import('./pages/statistics.jsx'));
 const RinkReport = React.lazy(() => import('./pages/rink-report.jsx'));
 
 // Loading component

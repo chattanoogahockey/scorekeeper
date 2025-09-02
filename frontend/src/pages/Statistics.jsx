@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Chart as ChartJS,
@@ -46,7 +46,9 @@ const Statistics = React.memo(() => {
   const [teamSortField, setTeamSortField] = useState('wins');
   const [teamSortDirection, setTeamSortDirection] = useState('desc');
 
-  useEffect(() => { fetchMeta(); }, []);
+  useEffect(() => { 
+    fetchMeta(); 
+  }, []); // Only run once on mount
   
   useEffect(() => { 
     // Only fetch data after meta is loaded and we have valid options
@@ -55,7 +57,7 @@ const Statistics = React.memo(() => {
       fetchTeamStats();
       fetchSeasonalData();
     }
-  }, [selectedDivisions, selectedSeasons, selectedYears, seasonOptions, yearOptions]);
+  }, [selectedDivisions, selectedSeasons, selectedYears]); // Remove seasonOptions and yearOptions from dependencies
 
   const fetchSeasonalData = async () => {
     try {
@@ -80,15 +82,21 @@ const Statistics = React.memo(() => {
       const season = selectedSeasons.includes('All') ? null : selectedSeasons[0];
       const year = selectedYears.includes('All') ? null : selectedYears[0];
 
+      console.log('Fetching player stats with filters:', { division, season, year });
+
       const data = await statisticsService.fetchPlayerStats({
         division,
         season,
         year
       });
 
+      console.log('Player stats response:', data);
+
       // Ensure data is an array
       const safeData = Array.isArray(data) ? data : [];
       setHistoricalStats(safeData);
+
+      console.log('Setting historical stats:', safeData.length, 'players');
 
       // If everything empty, run debug call
       if (safeData.length === 0) {
@@ -136,6 +144,9 @@ const Statistics = React.memo(() => {
           return 0;
         });
         setSeasonOptions(sortedSeasons);
+      } else {
+        // Default seasons if none found
+        setSeasonOptions(['Winter', 'Fall']);
       }
 
       if (meta.years && meta.years.length > 0) {
@@ -148,12 +159,18 @@ const Statistics = React.memo(() => {
           setSelectedYears(['2025']);
           setSelectedSeasons(['Fall']);
         }
+      } else {
+        // Default years if none found in database
+        const defaultYears = ['2025', '2024', '2023', '2022', '2021'];
+        setYearOptions(defaultYears);
+        setSelectedYears(['2025']);
+        setSelectedSeasons(['Fall']);
       }
     } catch (e) {
       console.error('Failed to load meta', e);
       // Set defaults
       setSeasonOptions(['Winter', 'Fall']);
-      setYearOptions(['2025', '2024', '2023']);
+      setYearOptions(['2025', '2024', '2023', '2022', '2021']);
       setSelectedYears(['2025']);
       setSelectedSeasons(['Fall']);
     }
@@ -224,47 +241,53 @@ const Statistics = React.memo(() => {
   );
 
   // Helper functions for checkbox handling
-  const handleDivisionChange = (division) => {
-    if (division === 'All') {
-      setSelectedDivisions(['All']);
-    } else {
-      const newSelections = selectedDivisions.filter(d => d !== 'All');
-      if (newSelections.includes(division)) {
-        const filtered = newSelections.filter(d => d !== division);
-        setSelectedDivisions(filtered.length === 0 ? ['All'] : filtered);
+  const handleDivisionChange = useCallback((division) => {
+    setSelectedDivisions(prev => {
+      if (division === 'All') {
+        return ['All'];
       } else {
-        setSelectedDivisions([...newSelections, division]);
+        const newSelections = prev.filter(d => d !== 'All');
+        if (newSelections.includes(division)) {
+          const filtered = newSelections.filter(d => d !== division);
+          return filtered.length === 0 ? ['All'] : filtered;
+        } else {
+          return [...newSelections, division];
+        }
       }
-    }
-  };
+    });
+  }, []);
 
-  const handleSeasonChange = (season) => {
-    if (season === 'All') {
-      setSelectedSeasons(['All']);
-    } else {
-      const newSelections = selectedSeasons.filter(s => s !== 'All');
-      if (newSelections.includes(season)) {
-        const filtered = newSelections.filter(s => s !== season);
-        setSelectedSeasons(filtered.length === 0 ? ['All'] : filtered);
+  const handleSeasonChange = useCallback((season) => {
+    setSelectedSeasons(prev => {
+      if (season === 'All') {
+        return ['All'];
       } else {
-        setSelectedSeasons([...newSelections, season]);
+        const newSelections = prev.filter(s => s !== 'All');
+        if (newSelections.includes(season)) {
+          const filtered = newSelections.filter(s => s !== season);
+          return filtered.length === 0 ? ['All'] : filtered;
+        } else {
+          return [...newSelections, season];
+        }
       }
-    }
-  };
+    });
+  }, []);
 
-  const handleYearChange = (year) => {
-    if (year === 'All') {
-      setSelectedYears(['All']);
-    } else {
-      const newSelections = selectedYears.filter(y => y !== 'All');
-      if (newSelections.includes(year)) {
-        const filtered = newSelections.filter(y => y !== year);
-        setSelectedYears(filtered.length === 0 ? ['All'] : filtered);
+  const handleYearChange = useCallback((year) => {
+    setSelectedYears(prev => {
+      if (year === 'All') {
+        return ['All'];
       } else {
-        setSelectedYears([...newSelections, year]);
+        const newSelections = prev.filter(y => y !== 'All');
+        if (newSelections.includes(year)) {
+          const filtered = newSelections.filter(y => y !== year);
+          return filtered.length === 0 ? ['All'] : filtered;
+        } else {
+          return [...newSelections, year];
+        }
       }
-    }
-  };
+    });
+  }, []);
 
   const handleApplyFilters = () => {
     fetchPlayerStats();
@@ -479,14 +502,15 @@ const Statistics = React.memo(() => {
               </div>
             </div>
             
-            <div className="flex justify-end">
+            {/* Remove Apply Filters button - filters should auto-refresh */}
+            {/* <div className="flex justify-end">
               <button 
                 onClick={handleApplyFilters} 
                 className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors font-medium"
               >
                 Apply Filters
               </button>
-            </div>
+            </div> */}
           </div>
         </div>
 

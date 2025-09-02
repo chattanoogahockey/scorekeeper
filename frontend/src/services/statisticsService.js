@@ -50,7 +50,17 @@ class StatisticsService {
         }
       });
 
-      return Array.isArray(data.data) ? data.data : data;
+      // Handle different response formats from backend
+      let playerData = [];
+      if (data.data && Array.isArray(data.data)) {
+        playerData = data.data;
+      } else if (Array.isArray(data)) {
+        playerData = data;
+      } else if (data.data) {
+        playerData = Array.isArray(data.data) ? data.data : [];
+      }
+
+      return playerData;
     } catch (error) {
       console.error('Error fetching player stats:', error);
       throw new Error('Failed to load player statistics');
@@ -78,7 +88,15 @@ class StatisticsService {
         }
       });
 
-      return Array.isArray(data) ? data : [];
+      // Handle different response formats from backend
+      let teamData = [];
+      if (Array.isArray(data)) {
+        teamData = data;
+      } else if (data.data && Array.isArray(data.data)) {
+        teamData = data.data;
+      }
+
+      return teamData;
     } catch (error) {
       console.error('Error fetching team stats:', error);
       throw new Error('Failed to load team statistics');
@@ -106,7 +124,15 @@ class StatisticsService {
         }
       });
 
-      return Array.isArray(data) ? data : [];
+      // Handle different response formats from backend
+      let seasonalData = [];
+      if (Array.isArray(data)) {
+        seasonalData = data;
+      } else if (data.data && Array.isArray(data.data)) {
+        seasonalData = data.data;
+      }
+
+      return seasonalData;
     } catch (error) {
       console.error('Error fetching seasonal data:', error);
       return [];

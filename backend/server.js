@@ -4414,11 +4414,20 @@ app.get('/api/player-stats', async (req, res) => {
       }, { goals: 0, assists: 0, points: 0, pim: 0, gp: 0 });
       const liveRec = entry.live ? { goals: entry.live.goals, assists: entry.live.assists, points: entry.live.points, pim: entry.live.pim, gp: entry.live.gamesPlayed } : { goals: 0, assists: 0, points: 0, pim: 0, gp: 0 };
       const totals = { goals: histTotals.goals + liveRec.goals, assists: histTotals.assists + liveRec.assists, points: histTotals.points + liveRec.points, pim: histTotals.pim + liveRec.pim, gp: histTotals.gp + liveRec.gp };
-      const base = { playerName: entry.playerName, division: entry.division };
+      
+      // Get year/season from most recent historical data or default to current
+      const latestHistorical = entry.historical.sort((a,b) => {
+        if (a.year !== b.year) return b.year - a.year;
+        return a.season === 'Winter' ? -1 : 1;
+      })[0];
+      const year = latestHistorical?.year || '2025';
+      const season = latestHistorical?.season || 'Fall';
+      
+      const base = { playerName: entry.playerName, division: entry.division, year, season };
       if (scope === 'historical') {
         response.push({ ...base, ...histTotals, scope: 'historical' });
       } else if (scope === 'live') {
-        response.push({ ...base, ...liveRec, scope: 'live' });
+        response.push({ ...base, ...liveRec, year: '2025', season: 'Fall', scope: 'live' });
       } else {
         response.push({ ...base, ...totals, historical: histTotals, live: liveRec, scope: 'totals' });
       }

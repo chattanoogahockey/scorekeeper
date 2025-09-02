@@ -148,51 +148,67 @@ export default function LeagueGameSelection() {
   };
 
   const handleGameSelect = async (game) => {
-
-    
     try {
       const gameId = game.id || game.gameId;
       console.log('📋 Checking game status for gameId:', gameId);
       
       // Check for existing game data to determine if this is a new game or continuation
       console.log('🥅 Checking for existing goals...');
-      const goalsResponse = await axios.get('/api/goals', { 
-        params: { gameId },
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
-      const goals = goalsResponse.data || [];
+      let goals = [];
+      try {
+        const goalsResponse = await axios.get('/api/goals', { 
+          params: { gameId },
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        goals = goalsResponse.data || [];
+      } catch (goalsError) {
+        console.warn('⚠️ Could not check existing goals, assuming none:', goalsError.message);
+        goals = [];
+      }
       console.log(`Found ${goals.length} existing goals`);
       
       // Check for existing penalties
       console.log('🚫 Checking for existing penalties...');
-      const penaltiesResponse = await axios.get('/api/penalties', { 
-        params: { gameId },
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
-      const penalties = penaltiesResponse.data || [];
+      let penalties = [];
+      try {
+        const penaltiesResponse = await axios.get('/api/penalties', { 
+          params: { gameId },
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        penalties = penaltiesResponse.data || [];
+      } catch (penaltiesError) {
+        console.warn('⚠️ Could not check existing penalties, assuming none:', penaltiesError.message);
+        penalties = [];
+      }
       console.log(`Found ${penalties.length} existing penalties`);
       
       // Check for existing shots on goal
       console.log('🎯 Checking for existing shots on goal...');
-      const shotsUrl = import.meta.env.DEV 
-        ? `/api/shots-on-goal/game/${gameId}` 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal/game/${gameId}`;
-      const shotsResponse = await axios.get(shotsUrl, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        }
-      });
-      const shots = shotsResponse.data || { home: 0, away: 0 };
+      let shots = { home: 0, away: 0 };
+      try {
+        const shotsUrl = import.meta.env.DEV 
+          ? `/api/shots-on-goal/game/${gameId}` 
+          : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal/game/${gameId}`;
+        const shotsResponse = await axios.get(shotsUrl, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+          }
+        });
+        shots = shotsResponse.data || { home: 0, away: 0 };
+      } catch (shotsError) {
+        console.warn('⚠️ Could not check existing shots, assuming none:', shotsError.message);
+        shots = { home: 0, away: 0 };
+      }
       const totalShots = (shots.home || 0) + (shots.away || 0);
       console.log(`Found ${totalShots} existing shots on goal (home: ${shots.home}, away: ${shots.away})`);
       
@@ -319,7 +335,7 @@ export default function LeagueGameSelection() {
       // If we reach here, this is either a new game OR user chose to start over
       console.log('🆕 Starting new game or fresh start - proceeding to roster attendance');
       setSelectedGame(game);
-  setSelectedDivision(game.division);
+      setSelectedDivision(game.division);
 
       // Preload rosters so the roster page renders immediately
       try {
@@ -354,8 +370,15 @@ export default function LeagueGameSelection() {
       navigate('/roster');
       
     } catch (error) {
-      console.error('Error checking game data:', error);
-      alert('Failed to load game data. Please try again.');
+      console.error('❌ Error during game selection:', error);
+      // More specific error message
+      if (error.response?.status === 404) {
+        alert('Game not found. Please try selecting a different game.');
+      } else if (error.response?.status >= 500) {
+        alert('Server error. Please try again in a moment.');
+      } else {
+        alert('Failed to load game data. Please try again.');
+      }
     }
   };
 

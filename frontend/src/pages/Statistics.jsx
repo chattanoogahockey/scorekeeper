@@ -36,11 +36,11 @@ const Statistics = React.memo(() => {
   const [error, setError] = useState(null);
   
   // State for filters and sorting
-  const [selectedDivision, setSelectedDivision] = useState('All');
-  const [selectedSeason, setSelectedSeason] = useState('Fall'); // Default to Fall
-  const [selectedYear, setSelectedYear] = useState('2025'); // Default to 2025
-  const [seasonOptions, setSeasonOptions] = useState(['All', 'Fall', 'Winter']);
-  const [yearOptions, setYearOptions] = useState(['All', '2025', '2024', '2023']);
+  const [selectedDivisions, setSelectedDivisions] = useState(['All']);
+  const [selectedSeasons, setSelectedSeasons] = useState(['Fall']);
+  const [selectedYears, setSelectedYears] = useState(['2025']);
+  const [seasonOptions, setSeasonOptions] = useState(['Fall', 'Winter']);
+  const [yearOptions, setYearOptions] = useState(['2025', '2024', '2023']);
   const [playerSortField, setPlayerSortField] = useState('goals');
   const [playerSortDirection, setPlayerSortDirection] = useState('desc');
   const [teamSortField, setTeamSortField] = useState('wins');
@@ -50,17 +50,18 @@ const Statistics = React.memo(() => {
   
   useEffect(() => { 
     // Only fetch data after meta is loaded and we have valid options
-    if (seasonOptions.length > 1 && yearOptions.length > 0) {
+    if (seasonOptions.length > 0 && yearOptions.length > 0) {
       fetchPlayerStats(); 
       fetchTeamStats();
       fetchSeasonalData();
     }
-  }, [selectedDivision, selectedSeason, selectedYear, seasonOptions, yearOptions]);
+  }, [selectedDivisions, selectedSeasons, selectedYears, seasonOptions, yearOptions]);
 
   const fetchSeasonalData = async () => {
     try {
+      const division = selectedDivisions.includes('All') ? null : selectedDivisions[0];
       const data = await statisticsService.fetchSeasonalData({
-        division: selectedDivision
+        division
       });
       setSeasonalData(data);
     } catch (e) {
@@ -74,10 +75,15 @@ const Statistics = React.memo(() => {
       setLoading(true);
       setError(null);
 
+      // Use the first selected values for API calls (for now, we'll handle multiple selections in the filtering)
+      const division = selectedDivisions.includes('All') ? null : selectedDivisions[0];
+      const season = selectedSeasons.includes('All') ? null : selectedSeasons[0];
+      const year = selectedYears.includes('All') ? null : selectedYears[0];
+
       const data = await statisticsService.fetchPlayerStats({
-        division: selectedDivision,
-        season: selectedSeason,
-        year: selectedYear
+        division,
+        season,
+        year
       });
 
       // Ensure data is an array
@@ -99,8 +105,9 @@ const Statistics = React.memo(() => {
 
   const fetchTeamStats = async () => {
     try {
+      const division = selectedDivisions.includes('All') ? null : selectedDivisions[0];
       const data = await statisticsService.fetchTeamStats({
-        division: selectedDivision
+        division
       });
 
       // Ensure data is an array and normalize fields
@@ -121,19 +128,34 @@ const Statistics = React.memo(() => {
       const meta = await statisticsService.fetchMeta();
 
       if (meta.seasons && meta.seasons.length > 0) {
-        setSeasonOptions(meta.seasons);
+        // Remove 'All' from seasons and sort with Winter first, then Fall
+        const filteredSeasons = meta.seasons.filter(s => s !== 'All');
+        const sortedSeasons = filteredSeasons.sort((a, b) => {
+          if (a === 'Winter') return -1;
+          if (b === 'Winter') return 1;
+          return 0;
+        });
+        setSeasonOptions(sortedSeasons);
       }
 
       if (meta.years && meta.years.length > 0) {
-        setYearOptions(meta.years);
-        // Set 2025 as default if available, otherwise use the most recent year
-        const defaultYear = meta.years.includes('2025') ? '2025' : meta.years.find(y => y !== 'All') || '2025';
-        if (selectedYear === '2025') {
-          setSelectedYear(defaultYear);
+        // Remove 'All' from years and sort in descending order
+        const filteredYears = meta.years.filter(y => y !== 'All').sort((a, b) => b - a);
+        setYearOptions(filteredYears);
+        
+        // Set default to Fall 2025 if available
+        if (filteredYears.includes('2025')) {
+          setSelectedYears(['2025']);
+          setSelectedSeasons(['Fall']);
         }
       }
     } catch (e) {
       console.error('Failed to load meta', e);
+      // Set defaults
+      setSeasonOptions(['Winter', 'Fall']);
+      setYearOptions(['2025', '2024', '2023']);
+      setSelectedYears(['2025']);
+      setSelectedSeasons(['Fall']);
     }
   };
 
@@ -141,8 +163,13 @@ const Statistics = React.memo(() => {
 
   const activeList = historicalStats || [];
   const filteredPlayerStats = useMemo(() => 
-    activeList.filter(p => selectedDivision === 'All' || p?.division === selectedDivision),
-    [activeList, selectedDivision]
+    activeList.filter(p => {
+      const divisionMatch = selectedDivisions.includes('All') || selectedDivisions.includes(p?.division);
+      const seasonMatch = selectedSeasons.includes('All') || selectedSeasons.includes(p?.season);
+      const yearMatch = selectedYears.includes('All') || selectedYears.includes(p?.year?.toString());
+      return divisionMatch && seasonMatch && yearMatch;
+    }),
+    [activeList, selectedDivisions, selectedSeasons, selectedYears]
   );
 
   // Memoized analytics derivations
@@ -192,9 +219,67 @@ const Statistics = React.memo(() => {
     };
   }, [filteredPlayerStats]);
 
-  const filteredTeamStats = teamStats.filter(team => selectedDivision === 'All' || team.division === selectedDivision);
+  const filteredTeamStats = teamStats.filter(team => 
+    selectedDivisions.includes('All') || selectedDivisions.includes(team.division)
+  );
 
-  // Chart data generation
+  // Helper functions for checkbox handling
+  const handleDivisionChange = (division) => {
+    if (division === 'All') {
+      setSelectedDivisions(['All']);
+    } else {
+      const newSelections = selectedDivisions.filter(d => d !== 'All');
+      if (newSelections.includes(division)) {
+        const filtered = newSelections.filter(d => d !== division);
+        setSelectedDivisions(filtered.length === 0 ? ['All'] : filtered);
+      } else {
+        setSelectedDivisions([...newSelections, division]);
+      }
+    }
+  };
+
+  const handleSeasonChange = (season) => {
+    if (season === 'All') {
+      setSelectedSeasons(['All']);
+    } else {
+      const newSelections = selectedSeasons.filter(s => s !== 'All');
+      if (newSelections.includes(season)) {
+        const filtered = newSelections.filter(s => s !== season);
+        setSelectedSeasons(filtered.length === 0 ? ['All'] : filtered);
+      } else {
+        setSelectedSeasons([...newSelections, season]);
+      }
+    }
+  };
+
+  const handleYearChange = (year) => {
+    if (year === 'All') {
+      setSelectedYears(['All']);
+    } else {
+      const newSelections = selectedYears.filter(y => y !== 'All');
+      if (newSelections.includes(year)) {
+        const filtered = newSelections.filter(y => y !== year);
+        setSelectedYears(filtered.length === 0 ? ['All'] : filtered);
+      } else {
+        setSelectedYears([...newSelections, year]);
+      }
+    }
+  };
+
+  const handleApplyFilters = () => {
+    fetchPlayerStats();
+    fetchTeamStats();
+    fetchSeasonalData();
+  };
+
+  // Generate dynamic title for top scorers
+  const getTopScorersTitle = () => {
+    const divisions = selectedDivisions.includes('All') ? ['All Divisions'] : selectedDivisions;
+    const seasons = selectedSeasons.includes('All') ? ['All Seasons'] : selectedSeasons;
+    const years = selectedYears.includes('All') ? ['All Years'] : selectedYears;
+    
+    return `Top 10 Scorers - ${divisions.join(', ')} | ${seasons.join(', ')} | ${years.join(', ')}`;
+  };
   const generateSeasonalTrendsChart = () => {
     // Since historical data is aggregated, we'll create a simple comparison chart instead
     if (!seasonalData.length) return null;
@@ -336,71 +421,90 @@ const Statistics = React.memo(() => {
             </button>
           </div>
           
-          {/* Filters */}  
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <label className="font-medium text-gray-700">Division:</label>
-              <select
-                value={selectedDivision}
-                onChange={(e) => setSelectedDivision(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+          {/* Filters - Select All That Apply */}  
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-800">Select All That Apply</h3>
+            
+            {/* Division Filters */}
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="font-medium text-gray-700 min-w-[80px]">Division:</label>
+              <div className="flex flex-wrap gap-3">
                 {divisions.map(division => (
-                  <option key={division} value={division}>{division}</option>
+                  <label key={division} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedDivisions.includes(division)}
+                      onChange={() => handleDivisionChange(division)}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">{division}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
             
-            <div className="flex items-center space-x-2">
-              <label className="font-medium text-gray-700">Season:</label>
-              <select
-                value={selectedSeason}
-                onChange={(e) => setSelectedSeason(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {seasonOptions.map(season => (
-                  <option key={season} value={season}>{season}</option>
-                ))}
-              </select>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <label className="font-medium text-gray-700">Year:</label>
-              <select
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
+            {/* Year Filters */}
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="font-medium text-gray-700 min-w-[80px]">Year:</label>
+              <div className="flex flex-wrap gap-3">
                 {yearOptions.map(year => (
-                  <option key={year} value={year}>{year}</option>
+                  <label key={year} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedYears.includes(year)}
+                      onChange={() => handleYearChange(year)}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">{year}</span>
+                  </label>
                 ))}
-              </select>
+              </div>
             </div>
             
-            <button 
-              onClick={() => fetchPlayerStats()} 
-              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors text-sm"
-            >
-              🔄 Refresh
-            </button>
+            {/* Season Filters */}
+            <div className="flex flex-wrap items-center gap-4">
+              <label className="font-medium text-gray-700 min-w-[80px]">Season:</label>
+              <div className="flex flex-wrap gap-3">
+                {seasonOptions.map(season => (
+                  <label key={season} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedSeasons.includes(season)}
+                      onChange={() => handleSeasonChange(season)}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">{season}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            
+            <div className="flex justify-end">
+              <button 
+                onClick={handleApplyFilters} 
+                className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition-colors font-medium"
+              >
+                Apply Filters
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Player Statistics Table */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            👤 Player Statistics 
-            {selectedYear !== 'All' && selectedSeason !== 'All' 
-              ? ` - ${selectedYear} ${selectedSeason}`
-              : selectedYear !== 'All' 
-                ? ` - ${selectedYear}`
-                : selectedSeason !== 'All'
-                  ? ` - ${selectedSeason}`
+            Player Statistics 
+            {selectedYears.length === 1 && selectedSeasons.length === 1 && selectedYears[0] !== 'All' && selectedSeasons[0] !== 'All'
+              ? ` - ${selectedYears[0]} ${selectedSeasons[0]}`
+              : selectedYears.length === 1 && selectedYears[0] !== 'All'
+                ? ` - ${selectedYears[0]}`
+                : selectedSeasons.length === 1 && selectedSeasons[0] !== 'All'
+                  ? ` - ${selectedSeasons[0]}`
                   : ''
             }
           </h2>
           <p className="text-xs text-gray-500 mb-4">
-            {selectedYear === '2025' && selectedSeason === 'Fall' 
+            {selectedYears.includes('2025') && selectedSeasons.includes('Fall') 
               ? 'Showing players with games played (GP > 0) for the current season.'
               : 'Filter by year, season, and division to view specific statistics.'
             }
@@ -488,54 +592,127 @@ const Statistics = React.memo(() => {
           )}
         </div>
 
-        {/* Analytics Charts - Always Show */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">📈 Analytics & Trends</h2>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Seasonal Trends Chart */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">Historical Career Leaders</h3>
-              {generateSeasonalTrendsChart() ? (
-                <Bar
-                  data={generateSeasonalTrendsChart()}
-                  options={{
-                    responsive: true,
-                    plugins: {
-                      legend: { position: 'top' },
-                      title: { display: true, text: 'Top Historical Performers by Career Points' }
-                    },
-                    scales: {
-                      y: { beginAtZero: true }
-                    }
-                  }}
-                />
-              ) : (
-                <p className="text-gray-500 text-center py-8">No historical data available for trends</p>
-              )}
-            </div>
+        {/* Team Statistics and Top Scorers - Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Team Statistics Table */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">Team Statistics</h2>
+            
+            {sortedTeamStats.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full table-auto">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th 
+                        className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
+                        onClick={() => sortTeams('teamName')}
+                      >
+                        Team Name {getSortIcon('teamName', teamSortField, teamSortDirection)}
+                      </th>
+                      <th 
+                        className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
+                        onClick={() => sortTeams('gamesPlayed')}
+                      >
+                        GP {getSortIcon('gamesPlayed', teamSortField, teamSortDirection)}
+                      </th>
+                      <th 
+                        className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
+                        onClick={() => sortTeams('wins')}
+                      >
+                        Wins {getSortIcon('wins', teamSortField, teamSortDirection)}
+                      </th>
+                      <th 
+                        className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
+                        onClick={() => sortTeams('losses')}
+                      >
+                        Losses {getSortIcon('losses', teamSortField, teamSortDirection)}
+                      </th>
+                      <th 
+                        className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
+                        onClick={() => sortTeams('winPercentage')}
+                      >
+                        Win % {getSortIcon('winPercentage', teamSortField, teamSortDirection)}
+                      </th>
+                      <th 
+                        className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
+                        onClick={() => sortTeams('goalsFor')}
+                      >
+                        Goals For {getSortIcon('goalsFor', teamSortField, teamSortDirection)}
+                      </th>
+                      <th 
+                        className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
+                        onClick={() => sortTeams('goalsAgainst')}
+                      >
+                        Goals Against {getSortIcon('goalsAgainst', teamSortField, teamSortDirection)}
+                      </th>
+                      <th 
+                        className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
+                        onClick={() => sortTeams('shotsFor')}
+                      >
+                        Shots For {getSortIcon('shotsFor', teamSortField, teamSortDirection)}
+                      </th>
+                      <th 
+                        className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
+                        onClick={() => sortTeams('shotsAgainst')}
+                      >
+                        Shots Against {getSortIcon('shotsAgainst', teamSortField, teamSortDirection)}
+                      </th>
+                      <th 
+                        className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
+                        onClick={() => sortTeams('goalDifferential')}
+                      >
+                        +/- {getSortIcon('goalDifferential', teamSortField, teamSortDirection)}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sortedTeamStats.map((team, index) => (
+                      <tr key={team.teamName} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                        <td className="px-4 py-3 font-medium text-gray-900">{team.teamName}</td>
+                        <td className="px-4 py-3 text-center text-gray-700">{team.gamesPlayed}</td>
+                        <td className="px-4 py-3 text-center font-bold text-green-600">{team.wins}</td>
+                        <td className="px-4 py-3 text-center font-bold text-red-600">{team.losses}</td>
+                        <td className="px-4 py-3 text-center font-bold text-blue-600">{team.winPercentage}%</td>
+                        <td className="px-4 py-3 text-center text-gray-700">{team.goalsFor}</td>
+                        <td className="px-4 py-3 text-center text-gray-700">{team.goalsAgainst}</td>
+                        <td className="px-4 py-3 text-center text-gray-700">{team.shotsFor || 0}</td>
+                        <td className="px-4 py-3 text-center text-gray-700">{team.shotsAgainst || 0}</td>
+                        <td className={`px-4 py-3 text-center font-bold ${team.goalDifferential >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {team.goalDifferential >= 0 ? '+' : ''}{team.goalDifferential}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">No team statistics available for the selected division.</p>
+            )}
+          </div>
 
-            {/* Top Scorers Chart */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                Top 10 Scorers 
-                {selectedYear !== 'All' && selectedSeason !== 'All' 
-                  ? ` - ${selectedYear} ${selectedSeason}`
-                  : selectedYear !== 'All' 
-                    ? ` - ${selectedYear}`
-                    : selectedSeason !== 'All'
-                      ? ` - ${selectedSeason}`
-                      : ''
-                }
-              </h3>
-              {generateTopScorersChart() ? (
+          {/* Top 10 Scorers Chart */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">{getTopScorersTitle()}</h2>
+            {generateTopScorersChart() ? (
+              <div className="space-y-4">
+                {/* Legend */}
+                <div className="flex justify-center space-x-6">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-blue-500 rounded"></div>
+                    <span className="text-sm font-medium text-gray-700">Goals</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 bg-green-500 rounded"></div>
+                    <span className="text-sm font-medium text-gray-700">Assists</span>
+                  </div>
+                </div>
                 <Bar
                   data={generateTopScorersChart()}
                   options={{
                     responsive: true,
                     plugins: {
-                      legend: { position: 'top' },
-                      title: { display: true, text: 'Goals vs Assists Breakdown' }
+                      legend: { display: false },
+                      title: { display: false }
                     },
                     scales: {
                       x: { stacked: true },
@@ -543,110 +720,36 @@ const Statistics = React.memo(() => {
                     }
                   }}
                 />
-              ) : (
-                <p className="text-gray-500 text-center py-8">No data available for chart</p>
-              )}
-            </div>
+              </div>
+            ) : (
+              <p className="text-gray-500 text-center py-8">No data available for chart</p>
+            )}
           </div>
         </div>
 
-        {/* Team Statistics Table (unchanged calculation) */}
+        {/* Analytics Charts - Historical Data */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">🏒 Team Statistics</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-4">Analytics & Trends</h2>
           
-          {sortedTeamStats.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full table-auto">
-                <thead>
-                  <tr className="bg-gray-100">
-                    <th 
-                      className="px-4 py-3 text-left font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortTeams('teamName')}
-                    >
-                      Team Name {getSortIcon('teamName', teamSortField, teamSortDirection)}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortTeams('gamesPlayed')}
-                    >
-                      GP {getSortIcon('gamesPlayed', teamSortField, teamSortDirection)}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortTeams('wins')}
-                    >
-                      Wins {getSortIcon('wins', teamSortField, teamSortDirection)}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortTeams('losses')}
-                    >
-                      Losses {getSortIcon('losses', teamSortField, teamSortDirection)}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortTeams('winPercentage')}
-                    >
-                      Win % {getSortIcon('winPercentage', teamSortField, teamSortDirection)}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortTeams('goalsFor')}
-                    >
-                      Goals For {getSortIcon('goalsFor', teamSortField, teamSortDirection)}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortTeams('goalsAgainst')}
-                    >
-                      Goals Against {getSortIcon('goalsAgainst', teamSortField, teamSortDirection)}
-                    </th>
-                    <th 
-                      className="px-4 py-3 text-center font-medium text-gray-700 cursor-pointer hover:bg-gray-200"
-                      onClick={() => sortTeams('goalDifferential')}
-                    >
-                      +/- {getSortIcon('goalDifferential', teamSortField, teamSortDirection)}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedTeamStats.map((team, index) => (
-                    <tr key={team.teamName} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                      <td className="px-4 py-3 font-medium text-gray-900">{team.teamName}</td>
-                      <td className="px-4 py-3 text-center text-gray-700">{team.gamesPlayed}</td>
-                      <td className="px-4 py-3 text-center font-bold text-green-600">{team.wins}</td>
-                      <td className="px-4 py-3 text-center font-bold text-red-600">{team.losses}</td>
-                      <td className="px-4 py-3 text-center font-bold text-blue-600">{team.winPercentage}%</td>
-                      <td className="px-4 py-3 text-center text-gray-700">{team.goalsFor}</td>
-                      <td className="px-4 py-3 text-center text-gray-700">{team.goalsAgainst}</td>
-                      <td className={`px-4 py-3 text-center font-bold ${team.goalDifferential >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {team.goalDifferential >= 0 ? '+' : ''}{team.goalDifferential}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="text-gray-500 text-center py-8">No team statistics available for the selected division.</p>
-          )}
-        </div>
-
-        {/* Summary Stats */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-            <h3 className="font-semibold text-blue-800 mb-1">Total Players</h3>
-            <p className="text-2xl font-bold text-blue-600">{filteredPlayerStats.length}</p>
-          </div>
-          <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-            <h3 className="font-semibold text-green-800 mb-1">Total Teams</h3>
-            <p className="text-2xl font-bold text-green-600">{filteredTeamStats.length}</p>
-          </div>
-          <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-            <h3 className="font-semibold text-purple-800 mb-1">Total Goals</h3>
-            <p className="text-2xl font-bold text-purple-600">
-              {filteredPlayerStats.reduce((sum, player) => sum + (player.goals||0), 0)}
-            </p>
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-800 mb-3">Historical Career Leaders</h3>
+            {generateSeasonalTrendsChart() ? (
+              <Bar
+                data={generateSeasonalTrendsChart()}
+                options={{
+                  responsive: true,
+                  plugins: {
+                    legend: { position: 'top' },
+                    title: { display: true, text: 'Top Historical Performers by Career Points' }
+                  },
+                  scales: {
+                    y: { beginAtZero: true }
+                  }
+                }}
+              />
+            ) : (
+              <p className="text-gray-500 text-center py-8">No historical data available for trends</p>
+            )}
           </div>
         </div>
       </div>

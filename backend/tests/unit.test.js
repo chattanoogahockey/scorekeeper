@@ -30,7 +30,7 @@ describe('DatabaseService', () => {
       const result = await DatabaseService.getGames();
 
       expect(result).to.deep.equal(mockGames);
-      expect(DatabaseService.query.calledWith('game-records', { query: 'SELECT * FROM c' })).to.be.true;
+      expect(DatabaseService.query.calledWith('games', { query: 'SELECT * FROM c' })).to.be.true;
     });
 
     it('should filter games by division', async () => {
@@ -42,7 +42,7 @@ describe('DatabaseService', () => {
       const result = await DatabaseService.getGames(filters);
 
       expect(result).to.deep.equal(mockGames);
-      expect(DatabaseService.query.calledWith('game-records', {
+      expect(DatabaseService.query.calledWith('games', {
         query: 'SELECT * FROM c WHERE LOWER(c.division) = LOWER(@division)',
         parameters: [{ name: '@division', value: 'Gold' }]
       })).to.be.true;

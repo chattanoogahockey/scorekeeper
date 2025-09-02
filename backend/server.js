@@ -1245,7 +1245,6 @@ app.get('/api/games/submitted', async (req, res) => {
           });
         } else {
           // Game was deleted but submission record still exists - clean it up
-          console.log(`🗑️ Cleaning up orphaned submission record for deleted game ${submission.gameId}`);
           try {
             await gamesContainer.item(submission.id, submission.gameId).delete();
           } catch (cleanupError) {
@@ -1328,8 +1327,6 @@ app.get('/api/rosters', async (req, res) => {
 
     // If gameId is provided, look up the game and fetch the rosters for its teams
     if (gameId) {
-      console.log('Fetching rosters for gameId:', gameId);
-      
       const gameQuery = {
         query: 'SELECT * FROM c WHERE c.id = @id OR c.gameId = @id',
         parameters: [{ name: '@id', value: gameId }]
@@ -1337,15 +1334,12 @@ app.get('/api/rosters', async (req, res) => {
       
       const { resources: games } = await gamesContainer.items.query(gameQuery).fetchAll();
       if (games.length === 0) {
-        console.log('Game not found for gameId:', gameId);
         return res.status(404).json({ error: 'Game not found' });
       }
       
       const game = games[0];
       const homeTeam = game.homeTeam || game.homeTeamId;
       const awayTeam = game.awayTeam || game.awayTeamId;
-      
-      console.log('Looking for rosters for teams:', homeTeam, 'vs', awayTeam);
       
       // Use case-insensitive query for team names
       const rosterQuery = {
@@ -1357,11 +1351,9 @@ app.get('/api/rosters', async (req, res) => {
       };
       
       const { resources: rosterResults } = await rostersContainer.items.query(rosterQuery).fetchAll();
-      console.log('Found rosters:', rosterResults.length, 'teams');
       
       // Return 404 with helpful message if rosters are missing
       if (rosterResults.length === 0) {
-        console.log(`⚠️ No rosters found for teams: ${homeTeam} vs ${awayTeam}`);
         return res.status(404).json({ 
           error: 'No rosters found for game teams',
           gameId: gameId,
@@ -1375,7 +1367,6 @@ app.get('/api/rosters', async (req, res) => {
         const missingTeams = [homeTeam, awayTeam].filter(t => 
           !foundTeams.some(f => f.toLowerCase() === t.toLowerCase())
         );
-        console.log(`⚠️ Missing rosters for teams: ${missingTeams.join(', ')}`);
         return res.status(404).json({ 
           error: 'Incomplete roster data',
           gameId: gameId,
@@ -1498,7 +1489,6 @@ app.post('/api/rosters', async (req, res) => {
     };
 
     const { resource } = await container.items.create(rosterDoc);
-    console.log('✅ Roster created successfully with player IDs');
 
     res.status(201).json({
       success: true,
@@ -1655,8 +1645,6 @@ app.post('/api/game-events', async (req, res) => {
 
 // Add the `/api/goals` POST endpoint for creating goals
 app.post('/api/goals', async (req, res) => {
-  console.log('🎯 Recording goal...');
-
   const {
     gameId,
     teamName,
@@ -1828,7 +1816,6 @@ app.post('/api/goals', async (req, res) => {
     };
 
     const { resource } = await container.items.create(goal);
-    console.log('✅ Goal recorded successfully with enhanced metadata');
 
     // Kick off background pre-generation for announcer assets
     preGenerateGoalAssets(gameId);

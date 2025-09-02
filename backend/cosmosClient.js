@@ -19,7 +19,7 @@ const containerNames = config.cosmos.containers;
 
 /**
  * Production Cosmos DB Container Definitions
- * 
+ *
  * Container Schema:
  * 1. settings - Global application settings (voice config, etc.)
  * 2. rink-reports - Weekly division summaries and articles
@@ -45,7 +45,7 @@ const CONTAINER_DEFINITIONS = {
       excludedPaths: [{ path: '/"_etag"/?' }]
     }
   },
-  
+
   // Weekly rink reports and articles
   'rink-reports': {
     name: containerNames.rinkReports,
@@ -60,7 +60,7 @@ const CONTAINER_DEFINITIONS = {
       ]
     }
   },
-  
+
   // Current season player statistics
   'player-stats': {
     name: containerNames.playerStats,
@@ -76,7 +76,7 @@ const CONTAINER_DEFINITIONS = {
       ]
     }
   },
-  
+
   // Team rosters and player assignments
   'team-rosters': {
     name: containerNames.rosters,
@@ -93,7 +93,7 @@ const CONTAINER_DEFINITIONS = {
       ]
     }
   },
-  
+
   // Shots on goal tracking
   'shots-on-goal': {
     name: containerNames.shotsOnGoal,
@@ -162,67 +162,89 @@ export function getDatabase() {
 
 // Settings container - Global application settings
 export function getSettingsContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database.container(CONTAINER_DEFINITIONS['settings'].name);
 }
 
 // Rink reports container - Weekly division summaries
 export function getRinkReportsContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database.container(CONTAINER_DEFINITIONS['rink-reports'].name);
 }
 
 // Games container - Game records and submissions
 export function getGamesContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database.container(containerNames.games);
 }
 
 // Player-stats container - Current season player statistics
 export function getPlayerStatsContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database.container(CONTAINER_DEFINITIONS['player-stats'].name);
 }
 
 // Goals container - Goal events and scoring data
 export function getGoalsContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database.container(CONTAINER_DEFINITIONS['goals'].name);
 }
 
 // Penalties container - Penalty events and infractions
 export function getPenaltiesContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database.container(CONTAINER_DEFINITIONS['penalties'].name);
 }
 
 // Rosters container - Team rosters and player assignments
 export function getRostersContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database.container(CONTAINER_DEFINITIONS['team-rosters'].name);
 }
 
 // Attendance container - Game attendance tracking
 export function getAttendanceContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database.container(CONTAINER_DEFINITIONS['game-attendance'].name);
 }
 
 // OT/Shootout container - Overtime and shootout results
 export function getOTShootoutContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database.container(CONTAINER_DEFINITIONS['ot-shootout'].name);
 }
 
 // Shots on Goal container - Shots on goal tracking and analytics
 export function getShotsOnGoalContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database.container(CONTAINER_DEFINITIONS['shots-on-goal'].name);
 }
 
 // Historical player stats container
 export function getHistoricalPlayerStatsContainer() {
-  if (!cosmosConfigured || !database) throw new Error('Cosmos DB not configured');
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
   return database.container(CONTAINER_DEFINITIONS['historical-player-stats'].name);
 }
 

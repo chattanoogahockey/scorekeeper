@@ -19,13 +19,13 @@ if (!process.env.COSMOS_DB_URI || !process.env.COSMOS_DB_KEY) {
   process.exit(1);
 }
 
-import { 
-  getGamesContainer, 
-  getAttendanceContainer, 
-  getRostersContainer, 
-  getGoalsContainer, 
-  getPenaltiesContainer, 
-  getOTShootoutContainer, 
+import {
+  getGamesContainer,
+  getAttendanceContainer,
+  getRostersContainer,
+  getGoalsContainer,
+  getPenaltiesContainer,
+  getOTShootoutContainer,
   getRinkReportsContainer,
   getSettingsContainer,
   getPlayerStatsContainer,
@@ -44,7 +44,7 @@ import ttsService from './ttsService.js';
 import { generateRinkReport } from './rinkReportGenerator.js';
 
 // Conditionally import announcer service to prevent startup failures
-let createGoalAnnouncement = null;
+const createGoalAnnouncement = null;
 let generateGoalAnnouncement = null;
 let generateScorelessCommentary = null;
 let generateGoalFeedDescription = null;
@@ -64,10 +64,10 @@ try {
   generateDualGoalAnnouncement = announcerModule.generateDualGoalAnnouncement;
   generateDualPenaltyAnnouncement = announcerModule.generateDualPenaltyAnnouncement;
   generateDualRandomCommentary = announcerModule.generateDualRandomCommentary;
-  
+
   logger.logAnnouncerAvailability(true, [
     'single-mode-announcements',
-    'dual-mode-conversations', 
+    'dual-mode-conversations',
     'goal-announcements',
     'penalty-announcements',
     'scoreless-commentary'
@@ -88,10 +88,10 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  
+
   // Remove server information
   res.removeHeader('X-Powered-By');
-  
+
   next();
 });
 
@@ -111,9 +111,11 @@ app.use(compression({
 
 // Configure CORS with restrictions
 const corsOptions = {
-  origin: function (origin, callback) {
+  origin (origin, callback) {
     // Allow requests with no origin (mobile apps, curl requests, etc.)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      return callback(null, true);
+    }
 
     // In development, allow localhost
     if (process.env.NODE_ENV === 'development') {
@@ -185,13 +187,13 @@ app.use((req, res, next) => {
   if (req.method === 'GET' && req.url.startsWith('/api/')) {
     const cacheKey = getCacheKey(req);
     const cachedResponse = getCachedResponse(cacheKey);
-    
+
     if (cachedResponse) {
       res.setHeader('X-Cache', 'HIT');
       // Use res.send instead of res.json to ensure performance monitoring works
       return res.send(JSON.stringify(cachedResponse));
     }
-    
+
     // Intercept response to cache it
     const originalJson = res.json;
     res.json = function(data) {
@@ -202,7 +204,7 @@ app.use((req, res, next) => {
       return originalJson.call(this, data);
     };
   }
-  
+
   next();
 });
 
@@ -211,11 +213,11 @@ app.use((req, res, next) => {
   const start = Date.now();
   const originalSend = res.send;
   const originalJson = res.json;
-  
+
   res.send = function(data) {
     const duration = Date.now() - start;
     const size = Buffer.isBuffer(data) ? data.length : (data ? data.length : 0);
-    
+
     // Log slow requests (>500ms)
     if (duration > 500) {
       logger.warn('Slow API Request', {
@@ -226,19 +228,19 @@ app.use((req, res, next) => {
         userAgent: req.get('User-Agent')
       });
     }
-    
+
     // Add performance headers
     res.setHeader('X-Response-Time', `${duration}ms`);
     res.setHeader('X-Response-Size', `${size} bytes`);
-    
+
     originalSend.call(this, data);
   };
-  
+
   // Also intercept res.json for consistency
   res.json = function(data) {
     const duration = Date.now() - start;
     const size = JSON.stringify(data).length;
-    
+
     // Log slow requests (>500ms)
     if (duration > 500) {
       logger.warn('Slow API Request', {
@@ -249,19 +251,19 @@ app.use((req, res, next) => {
         userAgent: req.get('User-Agent')
       });
     }
-    
+
     // Add performance headers
     res.setHeader('X-Response-Time', `${duration}ms`);
     res.setHeader('X-Response-Size', `${size} bytes`);
-    
+
     originalJson.call(this, data);
   };
-  
+
   next();
 });
 
 // Input validation middleware
-app.use(express.json({ 
+app.use(express.json({
   limit: '10mb',
   verify: (req, res, buf) => {
     // Basic JSON validation
@@ -283,21 +285,21 @@ const RATE_LIMIT_MAX = 10; // 10 requests per minute for AI endpoints
 function checkRateLimit(endpoint, identifier) {
   const key = `${endpoint}:${identifier}`;
   const now = Date.now();
-  
+
   if (!aiRateLimit[key]) {
     aiRateLimit[key] = { count: 1, resetTime: now + RATE_LIMIT_WINDOW };
     return true;
   }
-  
+
   if (now > aiRateLimit[key].resetTime) {
     aiRateLimit[key] = { count: 1, resetTime: now + RATE_LIMIT_WINDOW };
     return true;
   }
-  
+
   if (aiRateLimit[key].count >= RATE_LIMIT_MAX) {
     return false;
   }
-  
+
   aiRateLimit[key].count++;
   return true;
 }
@@ -306,7 +308,7 @@ function checkRateLimit(endpoint, identifier) {
 function aiRateLimitMiddleware(req, res, next) {
   const identifier = req.ip || req.connection.remoteAddress || 'unknown';
   const endpoint = req.path;
-  
+
   if (!checkRateLimit(endpoint, identifier)) {
     logger.logSecurityEvent('RATE_LIMIT_EXCEEDED', {
       endpoint,
@@ -322,7 +324,7 @@ function aiRateLimitMiddleware(req, res, next) {
       retryAfter: Math.ceil((aiRateLimit[`${endpoint}:${identifier}`].resetTime - Date.now()) / 1000)
     });
   }
-  
+
   next();
 }
 
@@ -345,44 +347,44 @@ globalThis.__ANNOUNCER_METRICS__ = announcerMetrics;
 function requireAdminAuth(req, res, next) {
   const authHeader = req.headers.authorization;
   const adminToken = process.env.ADMIN_TOKEN;
-  
+
   if (!adminToken) {
-    logger.logSecurityEvent('ADMIN_AUTH_CONFIG_ERROR', { 
+    logger.logSecurityEvent('ADMIN_AUTH_CONFIG_ERROR', {
       endpoint: req.path,
       ip: req.ip,
       userAgent: req.get('User-Agent')
     });
     return res.status(500).json({ error: 'Admin authentication not configured' });
   }
-  
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    logger.logSecurityEvent('ADMIN_AUTH_MISSING_TOKEN', { 
+    logger.logSecurityEvent('ADMIN_AUTH_MISSING_TOKEN', {
       endpoint: req.path,
       ip: req.ip,
       userAgent: req.get('User-Agent'),
       hasAuthHeader: !!authHeader
     });
-    return res.status(401).json({ 
+    return res.status(401).json({
       error: 'Authentication required',
       message: 'Admin token required for this endpoint'
     });
   }
-  
+
   const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-  
+
   if (token !== adminToken) {
-    logger.logSecurityEvent('ADMIN_AUTH_INVALID_TOKEN', { 
+    logger.logSecurityEvent('ADMIN_AUTH_INVALID_TOKEN', {
       endpoint: req.path,
       ip: req.ip,
       userAgent: req.get('User-Agent'),
       tokenLength: token.length
     });
-    return res.status(403).json({ 
+    return res.status(403).json({
       error: 'Authentication failed',
       message: 'Invalid admin token'
     });
   }
-  
+
   next();
 }
 
@@ -393,9 +395,9 @@ function sanitizeInput(req, res, next) {
     if (typeof obj === 'string') {
       // Remove potentially dangerous characters and scripts
       return obj.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-                .replace(/javascript:/gi, '')
-                .replace(/on\w+\s*=/gi, '')
-                .trim();
+        .replace(/javascript:/gi, '')
+        .replace(/on\w+\s*=/gi, '')
+        .trim();
     } else if (Array.isArray(obj)) {
       return obj.map(sanitize);
     } else if (obj && typeof obj === 'object') {
@@ -407,15 +409,15 @@ function sanitizeInput(req, res, next) {
     }
     return obj;
   }
-  
+
   if (req.body) {
     req.body = sanitize(req.body);
   }
-  
+
   if (req.query) {
     req.query = sanitize(req.query);
   }
-  
+
   next();
 }
 
@@ -424,34 +426,58 @@ app.use(sanitizeInput);
 
 function recordTiming(kind, ms) {
   const arr = announcerMetrics.timings[kind];
-  if (!arr) return;
+  if (!arr) {
+    return;
+  }
   arr.push(ms);
-  if (arr.length > 250) arr.shift();
+  if (arr.length > 250) {
+    arr.shift();
+  }
 }
-function average(arr) { return arr.length ? +(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(1) : 0; }
+function average(arr) {
+  return arr.length ? +(arr.reduce((a,b) => a + b,0) / arr.length).toFixed(1) : 0;
+}
 
 // Adaptive line gap heuristic for dual lines (ms)
 function computeAdaptiveLineGap({ period, timeRemaining, homeScore, awayScore, contextType } = {}) {
   let base = 180;
-  if (contextType === 'random') base = 200;
-  if (contextType === 'penalty') base = 190;
+  if (contextType === 'random') {
+    base = 200;
+  }
+  if (contextType === 'penalty') {
+    base = 190;
+  }
   // Parse timeRemaining (MM:SS) -> seconds
   let secondsRem = 0;
   if (typeof timeRemaining === 'string' && /:\d{2}$/.test(timeRemaining)) {
     const [m, s] = timeRemaining.split(':').map(n => parseInt(n, 10));
-    if (!isNaN(m) && !isNaN(s)) secondsRem = m * 60 + s;
+    if (!isNaN(m) && !isNaN(s)) {
+      secondsRem = m * 60 + s;
+    }
   }
   const scoreDiff = (typeof homeScore === 'number' && typeof awayScore === 'number') ? Math.abs(homeScore - awayScore) : 99;
-  if (period === 3 && secondsRem <= 300 && scoreDiff <= 1) base -= 30; // late & very close
-  else if (period === 3 && secondsRem <= 600 && scoreDiff <= 2) base -= 20; // mid-late close
-  if (base < 140) base = 140;
-  if (base > 260) base = 260;
+  if (period === 3 && secondsRem <= 300 && scoreDiff <= 1) {
+    base -= 30;
+  } // late & very close
+  else if (period === 3 && secondsRem <= 600 && scoreDiff <= 2) {
+    base -= 20;
+  } // mid-late close
+  if (base < 140) {
+    base = 140;
+  }
+  if (base > 260) {
+    base = 260;
+  }
   return base;
 }
 
 function trimConversationLines(conversation, maxLines = 4) {
-  if (!Array.isArray(conversation)) return conversation;
-  if (conversation.length <= maxLines) return conversation;
+  if (!Array.isArray(conversation)) {
+    return conversation;
+  }
+  if (conversation.length <= maxLines) {
+    return conversation;
+  }
   announcerMetrics.hygiene.conversationsTrimmed++;
   return conversation.slice(0, maxLines);
 }
@@ -490,21 +516,25 @@ async function preGenerateGoalAssets(gameId) {
   try {
     const goalsContainer = getGoalsContainer();
     const gamesContainer = getGamesContainer();
-  let historicalContainer = null;
-  try { const mod = await import('./cosmosClient.js'); historicalContainer = mod.getHistoricalPlayerStatsContainer?.(); } catch(_) {}
+    let historicalContainer = null;
+    try {
+      const mod = await import('./cosmosClient.js'); historicalContainer = mod.getHistoricalPlayerStatsContainer?.();
+    } catch (_) {}
 
     const [{ resources: goals }, { resources: gamesByQuery }] = await Promise.all([
       goalsContainer.items.query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC',
+        parameters: [{ name: '@gameId', value: gameId }]
       }).fetchAll(),
       gamesContainer.items.query({
-        query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
       }).fetchAll()
     ]);
 
-    if (!gamesByQuery || gamesByQuery.length === 0 || !goals || goals.length === 0) return;
+    if (!gamesByQuery || gamesByQuery.length === 0 || !goals || goals.length === 0) {
+      return;
+    }
     const game = gamesByQuery[0];
     const lastGoal = goals[0];
 
@@ -536,17 +566,21 @@ async function preGenerateGoalAssets(gameId) {
     };
 
     // In-memory caches for career lookups (per process)
-    if (!globalThis.__CAREER_GOAL_CACHE__) globalThis.__CAREER_GOAL_CACHE__ = new Map();
-    if (!globalThis.__CAREER_MENTION_CACHE__) globalThis.__CAREER_MENTION_CACHE__ = new Map(); // key: gameId|player
+    if (!globalThis.__CAREER_GOAL_CACHE__) {
+      globalThis.__CAREER_GOAL_CACHE__ = new Map();
+    }
+    if (!globalThis.__CAREER_MENTION_CACHE__) {
+      globalThis.__CAREER_MENTION_CACHE__ = new Map();
+    } // key: gameId|player
     try {
-      const cacheKey = (goalData.playerName||'').toLowerCase();
+      const cacheKey = (goalData.playerName || '').toLowerCase();
       let careerBaseline = globalThis.__CAREER_GOAL_CACHE__.get(cacheKey);
       if (careerBaseline == null && historicalContainer) {
         const { resources: histRows } = await historicalContainer.items.query({
           query: 'SELECT c.goals FROM c WHERE c.playerName = @p',
           parameters: [{ name: '@p', value: goalData.playerName }]
         }).fetchAll();
-        careerBaseline = histRows.reduce((a,r)=>a+(r.goals||0),0);
+        careerBaseline = histRows.reduce((a,r) => a + (r.goals || 0),0);
         globalThis.__CAREER_GOAL_CACHE__.set(cacheKey, careerBaseline);
       }
       if (careerBaseline != null) {
@@ -558,12 +592,12 @@ async function preGenerateGoalAssets(gameId) {
           globalThis.__CAREER_MENTION_CACHE__.set(mentionKey, true);
         }
       }
-    } catch(_) { /* ignore career enrichment errors */ }
+    } catch (_) { /* ignore career enrichment errors */ }
 
     const entry = announcerCache.goals.get(gameId) || { single: {} };
     entry.lastGoalId = lastGoal.id || lastGoal._rid || String(Date.now());
 
-  // Prepare single announcer male/female (text + audio)
+    // Prepare single announcer male/female (text + audio)
     const { getAnnouncerVoices } = await import('./voice-config.js');
     const voices = await getAnnouncerVoices();
 
@@ -599,7 +633,7 @@ async function preGenerateGoalAssets(gameId) {
       });
       entry.dual = { conversation: trimConversationLines(convo, 4), updatedAt: Date.now(), lineGapMs: gap };
       logger.info('Pre-generated dual goal conversation', { gameId, lineGapMs: gap, lines: entry.dual.conversation.length });
-  announcerMetrics.generation.goals++;
+      announcerMetrics.generation.goals++;
     } catch (_) { /* ignore */ }
 
     // Opportunistically pre-generate a fresh random dual commentary (used if user triggers random)
@@ -607,11 +641,11 @@ async function preGenerateGoalAssets(gameId) {
       if (generateDualRandomCommentary) {
         const randomKey = `${gameId}-random-${Date.now()}`;
         const randomConvo = await generateDualRandomCommentary(gameId, { context: 'post-goal', homeTeam: game.homeTeam, awayTeam: game.awayTeam });
-  const randomGap = computeAdaptiveLineGap({ contextType: 'random', period: goalData.period, timeRemaining: goalData.timeRemaining });
-  announcerCache.randomDual.set(randomKey, { conversation: trimConversationLines(randomConvo, 4), updatedAt: Date.now(), lineGapMs: randomGap });
+        const randomGap = computeAdaptiveLineGap({ contextType: 'random', period: goalData.period, timeRemaining: goalData.timeRemaining });
+        announcerCache.randomDual.set(randomKey, { conversation: trimConversationLines(randomConvo, 4), updatedAt: Date.now(), lineGapMs: randomGap });
         // Keep the map from growing unbounded: prune oldest after 10
         if (announcerCache.randomDual.size > 10) {
-          const oldestKey = Array.from(announcerCache.randomDual.entries()).sort((a,b)=>a[1].updatedAt-b[1].updatedAt)[0][0];
+          const oldestKey = Array.from(announcerCache.randomDual.entries()).sort((a,b) => a[1].updatedAt - b[1].updatedAt)[0][0];
           announcerCache.randomDual.delete(oldestKey);
         }
       }
@@ -631,20 +665,22 @@ async function preGeneratePenaltyAssets(gameId) {
 
     const [{ resources: penalties }, { resources: gamesByQuery }, { resources: goals }] = await Promise.all([
       penaltiesContainer.items.query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC',
+        parameters: [{ name: '@gameId', value: gameId }]
       }).fetchAll(),
       gamesContainer.items.query({
-        query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
       }).fetchAll(),
       goalsContainer.items.query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
       }).fetchAll()
     ]);
 
-    if (!gamesByQuery || gamesByQuery.length === 0 || !penalties || penalties.length === 0) return;
+    if (!gamesByQuery || gamesByQuery.length === 0 || !penalties || penalties.length === 0) {
+      return;
+    }
     const game = gamesByQuery[0];
     const lastPenalty = penalties[0];
 
@@ -724,7 +760,9 @@ async function preGeneratePenaltyAssets(gameId) {
 
 async function preGenerateRandomDual(key, gameContext) {
   try {
-    if (!generateDualRandomCommentary) return;
+    if (!generateDualRandomCommentary) {
+      return;
+    }
     const convo = await generateDualRandomCommentary(gameContext?.gameId || key, gameContext || {});
     announcerCache.randomDual.set(key, { conversation: trimConversationLines(convo, 4), updatedAt: Date.now() });
   } catch (_) { /* ignore */ }
@@ -733,13 +771,13 @@ async function preGenerateRandomDual(key, gameContext) {
 // Production middleware for request tracking and logging
 app.use((req, res, next) => {
   const startTime = Date.now();
-  
+
   // Generate request ID for tracking
   req.requestId = req.headers['x-request-id'] || logger.generateRequestId();
-  
+
   // Add request ID to response headers
   res.set('X-Request-ID', req.requestId);
-  
+
   // Log API requests (exclude health checks to reduce noise)
   if (req.path.startsWith('/api/') && !req.path.includes('/health')) {
     logger.info('API Request', {
@@ -750,21 +788,21 @@ app.use((req, res, next) => {
       ip: req.ip
     });
   }
-  
+
   // Override res.json to track response time and log completion
   const originalJson = res.json;
   res.json = function(data) {
     const duration = Date.now() - startTime;
-    
+
     if (req.path.startsWith('/api/') && !req.path.includes('/health')) {
       logger.logApiMetrics(req.path, req.method, res.statusCode, duration, {
         requestId: req.requestId
       });
     }
-    
+
     return originalJson.call(this, data);
   };
-  
+
   next();
 });
 
@@ -843,7 +881,7 @@ app.get('/health', (req, res) => {
   const allServicesHealthy = services.database.available && services.announcer.available && services.tts.available;
   const status = allServicesHealthy ? 'healthy' : 'degraded';
 
-  res.json({ 
+  res.json({
     status,
     message: `Hockey Scorekeeper API is running in ${status} mode`,
     timestamp: new Date().toISOString(),
@@ -866,14 +904,14 @@ app.get('/api/version', (req, res) => {
     'Expires': '0',
     'Last-Modified': new Date().toUTCString()
   });
-  
+
   try {
     // Read package.json for version
     const packagePath = path.join(path.dirname(fileURLToPath(import.meta.url)), 'package.json');
     const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
-    
+
     let gitInfo = {};
-    
+
     // First try environment variables (production deployment)
     if (process.env.BUILD_SOURCEVERSION || process.env.GITHUB_SHA) {
       gitInfo = {
@@ -902,7 +940,7 @@ app.get('/api/version', (req, res) => {
     // Prefer explicit deployment timestamp if provided (set by workflow or admin endpoint)
     let deploymentTime;
     let buildTimeSource = 'fallback';
-    
+
     if (process.env.DEPLOYMENT_TIMESTAMP) {
       try {
         deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
@@ -919,10 +957,10 @@ app.get('/api/version', (req, res) => {
       buildTimeSource = 'current-time';
       console.log('Using current time for local build');
     }
-    
+
     // Format the time in Eastern timezone with explicit formatting
-    const buildTime = deploymentTime.toLocaleString("en-US", {
-      timeZone: "America/New_York",
+    const buildTime = deploymentTime.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -931,29 +969,29 @@ app.get('/api/version', (req, res) => {
       second: '2-digit',
       timeZoneName: 'short'
     });
-    
+
     console.log(`Final backend buildTime: ${buildTime} (source: ${buildTimeSource})`);
 
-    
+
     const responseData = {
       version: packageJson.version,
       name: packageJson.name,
       ...gitInfo,
-      buildTime: buildTime,
+      buildTime,
       timestamp: deploymentTime.toISOString(),
       serverTime: new Date().toISOString(),
       uptime: process.uptime(),
       nodeVersion: process.version,
       deploymentEnv: process.env.GITHUB_ACTIONS ? 'GitHub Actions' : 'Local'
     };
-    
+
 
     res.json(responseData);
   } catch (error) {
     console.error('Error getting version info:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Unable to retrieve version information',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -962,40 +1000,40 @@ app.get('/api/version', (req, res) => {
 app.post('/api/admin/update-deployment-time', requireAdminAuth, (req, res) => {
   try {
     const { deploymentTimestamp, githubSha } = req.body;
-    
+
     console.log('🔄 Deployment timestamp update request:', { deploymentTimestamp, githubSha });
-    
+
     if (!deploymentTimestamp) {
       return res.status(400).json({ error: 'Missing deploymentTimestamp' });
     }
-    
+
     // Verify this is a valid GitHub deployment by checking SHA (lenient check)
     if (githubSha && process.env.BUILD_SOURCEVERSION) {
       if (githubSha !== process.env.BUILD_SOURCEVERSION) {
-        console.log('ℹ️ GitHub SHA differs (common during concurrent deployments):', { 
-          provided: githubSha.substring(0, 8), 
-          expected: process.env.BUILD_SOURCEVERSION.substring(0, 8) 
+        console.log('ℹ️ GitHub SHA differs (common during concurrent deployments):', {
+          provided: githubSha.substring(0, 8),
+          expected: process.env.BUILD_SOURCEVERSION.substring(0, 8)
         });
       } else {
         console.log('✅ GitHub SHA matches deployment');
       }
     }
-    
+
     // Update the environment variable for this process instance
     process.env.DEPLOYMENT_TIMESTAMP = deploymentTimestamp;
     console.log('✅ Updated deployment timestamp to:', deploymentTimestamp);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Deployment timestamp updated',
       timestamp: deploymentTimestamp,
       updatedAt: new Date().toISOString()
     });
   } catch (error) {
     console.error('❌ Error updating deployment timestamp:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to update deployment timestamp',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -1008,9 +1046,9 @@ function handleError(res, error, context = 'API', requestId = null) {
     requestId,
     stack: config.isProduction ? undefined : error.stack
   };
-  
+
   logger.error(`${context} Error`, logData);
-  
+
   // Structured error response
   const errorResponse = {
     error: true,
@@ -1019,7 +1057,7 @@ function handleError(res, error, context = 'API', requestId = null) {
     canRetry: true,
     requestId
   };
-  
+
   // Specific error handling
   if (error.message?.includes('not configured') || error.message?.includes('Cosmos')) {
     errorResponse.message = 'Database temporarily unavailable. Please try again later.';
@@ -1027,7 +1065,7 @@ function handleError(res, error, context = 'API', requestId = null) {
     errorResponse.userMessage = 'The scorekeeper database is temporarily unavailable. Your data is safe - please try again in a moment.';
     return res.status(503).json(errorResponse);
   }
-  
+
   if (error.message?.includes('Announcer service not available')) {
     errorResponse.message = 'Voice announcements temporarily unavailable';
     errorResponse.code = 'ANNOUNCER_UNAVAILABLE';
@@ -1035,13 +1073,13 @@ function handleError(res, error, context = 'API', requestId = null) {
     errorResponse.fallback = 'Text mode available';
     return res.status(503).json(errorResponse);
   }
-  
+
   if (error.code === 11000) {
     errorResponse.message = 'Duplicate entry';
     errorResponse.canRetry = false;
     return res.status(409).json(errorResponse);
   }
-  
+
   // Generic server error
   errorResponse.message = error.message || 'Internal server error';
   res.status(500).json(errorResponse);
@@ -1052,14 +1090,14 @@ app.post('/api/attendance', async (req, res) => {
   const { gameId, attendance, totalRoster } = req.body;
   if (!gameId || !attendance || !totalRoster) {
     console.error('❌ Invalid attendance payload:', JSON.stringify(req.body, null, 2));
-    return res.status(400).json({ 
+    return res.status(400).json({
       error: 'Invalid payload. Expected: { gameId, attendance, totalRoster }',
       received: req.body
     });
   }
   try {
     const container = getAttendanceContainer();
-    
+
     // Use a consistent ID to ensure we upsert the same record for multiple submissions
     const attendanceRecord = {
       id: `${gameId}-attendance`,
@@ -1083,7 +1121,7 @@ app.post('/api/attendance', async (req, res) => {
         totalPresent: Object.values(attendance).reduce((sum, players) => sum + players.length, 0)
       }
     };
-    
+
     // Use upsert to replace any existing attendance record for this game
     const { resource } = await container.items.upsert(attendanceRecord);
     res.status(201).json(resource);
@@ -1099,9 +1137,9 @@ app.get('/api/games', async (req, res) => {
   // Provide default division to prevent undefined issues
   const division = (req.query.division || 'all').toLowerCase();
   const requestId = rid || Math.random().toString(36).substr(2, 9);
-  
 
-  
+
+
   // Add aggressive cache-busting headers
   res.set({
     'Cache-Control': 'no-cache, no-store, must-revalidate, private',
@@ -1125,45 +1163,45 @@ app.get('/api/games', async (req, res) => {
       // Return demo games data
       const demoGames = [
         {
-          id: "demo-game-1",
-          division: "Gold",
-          homeTeam: "Demo Team A",
-          awayTeam: "Demo Team B",
+          id: 'demo-game-1',
+          division: 'Gold',
+          homeTeam: 'Demo Team A',
+          awayTeam: 'Demo Team B',
           homeScore: 3,
           awayScore: 2,
           gameDate: new Date().toISOString(),
-          status: "completed",
+          status: 'completed',
           submittedAt: new Date().toISOString()
         },
         {
-          id: "demo-game-2",
-          division: "Silver",
-          homeTeam: "Demo Team C",
-          awayTeam: "Demo Team D",
+          id: 'demo-game-2',
+          division: 'Silver',
+          homeTeam: 'Demo Team C',
+          awayTeam: 'Demo Team D',
           homeScore: 1,
           awayScore: 1,
           gameDate: new Date().toISOString(),
-          status: "completed",
+          status: 'completed',
           submittedAt: new Date().toISOString()
         }
       ];
 
       const filteredGames = division.toLowerCase() === 'all' ? demoGames :
-                           demoGames.filter(game => game.division.toLowerCase() === division.toLowerCase());
+        demoGames.filter(game => game.division.toLowerCase() === division.toLowerCase());
 
       return res.json(filteredGames);
     }
 
     const container = getGamesContainer();
 
-    
+
     let querySpec;
-    
+
     if (division.toLowerCase() === 'all') {
       // Return all games
       querySpec = {
         query: 'SELECT * FROM c',
-        parameters: [],
+        parameters: []
       };
       // Query for all games
     } else {
@@ -1172,7 +1210,7 @@ app.get('/api/games', async (req, res) => {
         query: 'SELECT * FROM c WHERE LOWER(c.division) = LOWER(@division)',
         parameters: [
           { name: '@division', value: division }
-        ],
+        ]
       };
       // Query for specific division
     }
@@ -1182,22 +1220,22 @@ app.get('/api/games', async (req, res) => {
     // Enhanced response with metadata for production
     const responseData = {
       success: true,
-      games: games,
+      games,
       meta: {
         count: games.length,
-        division: division,
-        requestId: requestId,
+        division,
+        requestId,
         timestamp: new Date().toISOString(),
         queryVersion: v || '1',
         serverVersion: pkg.version
       }
     };
-    
+
     // Return games array directly for backward compatibility, but log structured response
-    logger.info('Games API Response', { 
-      endpoint: '/api/games', 
-      count: games.length, 
-      requestId 
+    logger.info('Games API Response', {
+      endpoint: '/api/games',
+      count: games.length,
+      requestId
     });
     res.status(200).json(games);
   } catch (error) {
@@ -1209,29 +1247,29 @@ app.get('/api/games', async (req, res) => {
 app.get('/api/games/submitted', async (req, res) => {
   try {
     const gamesContainer = getGamesContainer();
-    
+
     // Get all submission documents
     const { resources: submissions } = await gamesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.eventType = 'game-submission'",
+        query: 'SELECT * FROM c WHERE c.eventType = \'game-submission\'',
         parameters: []
       })
       .fetchAll();
-    
+
     // For each submission, get the corresponding game data
     const submittedGames = [];
     for (const submission of submissions) {
       try {
         const { resources: gameQuery } = await gamesContainer.items
           .query({
-            query: "SELECT * FROM c WHERE c.id = @gameId",
-            parameters: [{ name: "@gameId", value: submission.gameId }]
+            query: 'SELECT * FROM c WHERE c.id = @gameId',
+            parameters: [{ name: '@gameId', value: submission.gameId }]
           })
           .fetchAll();
-        
+
         if (gameQuery.length > 0) {
           const game = gameQuery[0];
-          
+
           // Add submission info to the game (no division filtering)
           submittedGames.push({
             ...game,
@@ -1258,7 +1296,7 @@ app.get('/api/games/submitted', async (req, res) => {
         console.error(`Error fetching game ${submission.gameId}:`, error);
       }
     }
-    
+
     res.status(200).json(submittedGames);
   } catch (error) {
     console.error('Error fetching submitted games:', error);
@@ -1282,33 +1320,33 @@ app.get('/api/rosters', async (req, res) => {
 
     if (!db) {
       logger.warn('Database not available, returning demo rosters');
-      
+
       // Return demo rosters data
       const demoRosters = [
         {
-          teamName: "Demo Team A",
-          division: "Gold",
-          season: "2024",
+          teamName: 'Demo Team A',
+          division: 'Gold',
+          season: '2024',
           players: [
-            { playerId: "p1", name: "Player One", position: "Forward" },
-            { playerId: "p2", name: "Player Two", position: "Defense" },
-            { playerId: "p3", name: "Player Three", position: "Goalie" }
+            { playerId: 'p1', name: 'Player One', position: 'Forward' },
+            { playerId: 'p2', name: 'Player Two', position: 'Defense' },
+            { playerId: 'p3', name: 'Player Three', position: 'Goalie' }
           ]
         },
         {
-          teamName: "Demo Team B", 
-          division: "Silver",
-          season: "2024",
+          teamName: 'Demo Team B',
+          division: 'Silver',
+          season: '2024',
           players: [
-            { playerId: "p4", name: "Player Four", position: "Forward" },
-            { playerId: "p5", name: "Player Five", position: "Defense" },
-            { playerId: "p6", name: "Player Six", position: "Goalie" }
+            { playerId: 'p4', name: 'Player Four', position: 'Forward' },
+            { playerId: 'p5', name: 'Player Five', position: 'Defense' },
+            { playerId: 'p6', name: 'Player Six', position: 'Goalie' }
           ]
         }
       ];
-      
+
       let filteredRosters = demoRosters;
-      
+
       if (teamName) {
         filteredRosters = filteredRosters.filter(roster => roster.teamName === teamName);
       }
@@ -1318,10 +1356,10 @@ app.get('/api/rosters', async (req, res) => {
       if (season) {
         filteredRosters = filteredRosters.filter(roster => roster.season === season);
       }
-      
+
       return res.json(filteredRosters);
     }
-    
+
     const rostersContainer = getRostersContainer();
     const gamesContainer = getGamesContainer();
 
@@ -1331,16 +1369,16 @@ app.get('/api/rosters', async (req, res) => {
         query: 'SELECT * FROM c WHERE c.id = @id OR c.gameId = @id',
         parameters: [{ name: '@id', value: gameId }]
       };
-      
+
       const { resources: games } = await gamesContainer.items.query(gameQuery).fetchAll();
       if (games.length === 0) {
         return res.status(404).json({ error: 'Game not found' });
       }
-      
+
       const game = games[0];
       const homeTeam = game.homeTeam || game.homeTeamId;
       const awayTeam = game.awayTeam || game.awayTeamId;
-      
+
       // Use case-insensitive query for team names
       const rosterQuery = {
         query: 'SELECT * FROM c WHERE LOWER(c.teamName) IN (LOWER(@home), LOWER(@away))',
@@ -1349,55 +1387,55 @@ app.get('/api/rosters', async (req, res) => {
           { name: '@away', value: awayTeam }
         ]
       };
-      
+
       const { resources: rosterResults } = await rostersContainer.items.query(rosterQuery).fetchAll();
-      
+
       // Return 404 with helpful message if rosters are missing
       if (rosterResults.length === 0) {
-        return res.status(404).json({ 
+        return res.status(404).json({
           error: 'No rosters found for game teams',
-          gameId: gameId,
+          gameId,
           teams: { home: homeTeam, away: awayTeam },
           message: 'Check that roster data exists for both teams'
         });
       }
-      
+
       if (rosterResults.length < 2) {
         const foundTeams = rosterResults.map(r => r.teamName);
-        const missingTeams = [homeTeam, awayTeam].filter(t => 
+        const missingTeams = [homeTeam, awayTeam].filter(t =>
           !foundTeams.some(f => f.toLowerCase() === t.toLowerCase())
         );
-        return res.status(404).json({ 
+        return res.status(404).json({
           error: 'Incomplete roster data',
-          gameId: gameId,
-          foundTeams: foundTeams,
-          missingTeams: missingTeams,
+          gameId,
+          foundTeams,
+          missingTeams,
           message: `Missing roster data for: ${missingTeams.join(', ')}`
         });
       }
-      
+
       return res.status(200).json(rosterResults);
     }
 
     // Original filtering by teamName, season, division
     let querySpec;
-    
+
     if (!teamName && !season && !division) {
       // Return all rosters
       querySpec = {
         query: 'SELECT * FROM c',
-        parameters: [],
+        parameters: []
       };
     } else {
       // Build dynamic query based on provided filters
-      let conditions = [];
-      let parameters = [];
-      
+      const conditions = [];
+      const parameters = [];
+
       if (teamName) {
         conditions.push('c.teamName = @teamName');
         parameters.push({ name: '@teamName', value: teamName });
       }
-      
+
       if (season) {
         // Handle both old format ("2025 Fall") and new structured queries
         const seasonParts = season.trim().split(/\s+/);
@@ -1415,15 +1453,15 @@ app.get('/api/rosters', async (req, res) => {
           parameters.push({ name: '@season', value: season });
         }
       }
-      
+
       if (division) {
         conditions.push('LOWER(c.division) = LOWER(@division)');
         parameters.push({ name: '@division', value: division });
       }
-      
+
       querySpec = {
         query: `SELECT * FROM c WHERE ${conditions.join(' AND ')}`,
-        parameters: parameters,
+        parameters
       };
     }
 
@@ -1473,7 +1511,7 @@ app.post('/api/rosters', async (req, res) => {
       teamName,
       season, // Keep original format for backward compatibility
       year: parseInt(year),
-      seasonType: seasonType,
+      seasonType,
       division,
       players: players.map(player => ({
         name: player.name,
@@ -1508,21 +1546,21 @@ app.put('/api/rosters/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updates = req.body;
-    
+
     const container = getRostersContainer();
     const { resource: existingRoster } = await container.item(id, id).read();
-    
+
     if (!existingRoster) {
       return res.status(404).json({ error: 'Roster not found' });
     }
-    
+
     const updatedRoster = {
       ...existingRoster,
       ...updates,
       id: existingRoster.id, // Preserve ID
       updatedAt: new Date().toISOString()
     };
-    
+
     const { resource } = await container.item(id, id).replace(updatedRoster);
     res.status(200).json(resource);
   } catch (error) {
@@ -1536,7 +1574,7 @@ app.delete('/api/rosters/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const container = getRostersContainer();
-    
+
     await container.item(id, id).delete();
     res.status(200).json({ message: 'Roster deleted successfully' });
   } catch (error) {
@@ -1559,26 +1597,26 @@ app.get('/api/game-events', async (req, res) => {
 
     const goalsQuery = wantsGoals
       ? {
-          query: gameId
-            ? 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.sequenceNumber ASC'
-            : 'SELECT * FROM c ORDER BY c.recordedAt DESC',
-          parameters: gameId ? [{ name: '@gameId', value: gameId }] : [],
-        }
+        query: gameId
+          ? 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.sequenceNumber ASC'
+          : 'SELECT * FROM c ORDER BY c.recordedAt DESC',
+        parameters: gameId ? [{ name: '@gameId', value: gameId }] : []
+      }
       : null;
 
     const penaltiesQuery = wantsPenalties
       ? {
-          query: gameId
-            ? 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.sequenceNumber ASC'
-            : 'SELECT * FROM c ORDER BY c.recordedAt DESC',
-          parameters: gameId ? [{ name: '@gameId', value: gameId }] : [],
-        }
+        query: gameId
+          ? 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.sequenceNumber ASC'
+          : 'SELECT * FROM c ORDER BY c.recordedAt DESC',
+        parameters: gameId ? [{ name: '@gameId', value: gameId }] : []
+      }
       : null;
 
     // Run allowed queries in parallel
     const [goalsResult, penaltiesResult] = await Promise.all([
       goalsQuery ? goalsContainer.items.query(goalsQuery).fetchAll() : Promise.resolve({ resources: [] }),
-      penaltiesQuery ? penaltiesContainer.items.query(penaltiesQuery).fetchAll() : Promise.resolve({ resources: [] }),
+      penaltiesQuery ? penaltiesContainer.items.query(penaltiesQuery).fetchAll() : Promise.resolve({ resources: [] })
     ]);
 
     // Normalize payloads and include eventType for consumers
@@ -2008,36 +2046,36 @@ app.get('/api/goals', async (req, res) => {
   try {
     const container = getGoalsContainer();
     let querySpec;
-    
+
     if (!gameId && !team && !playerId) {
       // Return all goals
       querySpec = {
         query: 'SELECT * FROM c ORDER BY c.recordedAt DESC',
-        parameters: [],
+        parameters: []
       };
     } else {
       // Build dynamic query based on provided filters
-      let conditions = [];
-      let parameters = [];
-      
+      const conditions = [];
+      const parameters = [];
+
       if (gameId) {
         conditions.push('c.gameId = @gameId');
         parameters.push({ name: '@gameId', value: gameId });
       }
-      
+
       if (team) {
         conditions.push('c.scoringTeam = @team');
         parameters.push({ name: '@team', value: team });
       }
-      
+
       if (playerId) {
         conditions.push('c.playerName = @playerId');
         parameters.push({ name: '@playerId', value: playerId });
       }
-      
+
       querySpec = {
         query: `SELECT * FROM c WHERE ${conditions.join(' AND ')} ORDER BY c.recordedAt DESC`,
-        parameters: parameters,
+        parameters
       };
     }
 
@@ -2075,12 +2113,12 @@ app.delete('/api/goals/:id', async (req, res) => {
 // Announce last goal endpoint
 app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => {
   const requestLogger = logger.withRequest(req);
-  requestLogger.info('Goal announcement request', { 
-    gameId: req.body.gameId, 
-    voiceGender: req.body.voiceGender, 
-    announcerMode: req.body.announcerMode 
+  requestLogger.info('Goal announcement request', {
+    gameId: req.body.gameId,
+    voiceGender: req.body.voiceGender,
+    announcerMode: req.body.announcerMode
   });
-  
+
   const { gameId, voiceGender, announcerMode } = req.body;
 
   if (!gameId) {
@@ -2110,9 +2148,9 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
   // Map voice gender to Google TTS Studio voices using UNIFIED voice configuration
   const { getAnnouncerVoices, logTtsUse } = await import('./voice-config.js');
   const voiceConfig = await getAnnouncerVoices();
-  
-  let selectedVoice = voiceGender === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
-  
+
+  const selectedVoice = voiceGender === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
+
   // Log TTS usage for monitoring
   logger.logTtsUsage(selectedVoice, voiceConfig.provider, gameId, {
     where: voiceGender === 'male' ? 'MaleButton' : 'FemaleButton',
@@ -2121,14 +2159,14 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
     style: 'none',
     mode: announcerMode
   });
-  
+
   requestLogger.debug('Voice configuration selected', {
     selectedVoice,
-    voiceType: selectedVoice.includes('Studio') ? 'Studio (Professional)' : 
-               selectedVoice.includes('Neural2') ? 'Neural2 (Standard)' : 'Unknown',
+    voiceType: selectedVoice.includes('Studio') ? 'Studio (Professional)' :
+      selectedVoice.includes('Neural2') ? 'Neural2 (Standard)' : 'Unknown',
     mode: announcerMode
   });
-  
+
   // For dual mode, we don't use TTS service - conversation is handled in frontend
   let originalVoice;
   if (announcerMode !== 'dual') {
@@ -2140,30 +2178,30 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
   try {
     const goalsContainer = getGoalsContainer();
     const gamesContainer = getGamesContainer();
-    
+
     // Get the most recent goal for this game
     const { resources: goals } = await goalsContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC',
+        parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
 
     // Get game details for context
     let game;
-    
+
     // Use query lookup since direct lookup doesn't work with partition key
     const { resources: gamesByQuery } = await gamesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
-    
+
     if (gamesByQuery.length > 0) {
       game = gamesByQuery[0];
     }
-    
+
     if (!game) {
       return res.status(404).json({
         error: 'Game not found.'
@@ -2183,7 +2221,7 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
             scoreless: true,
             conversationStarter
           });
-          
+
           return res.status(200).json({
             success: true,
             scoreless: true,
@@ -2201,11 +2239,11 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
             awayTeam: game.awayTeam,
             period: 1 // Default to first period for scoreless games
           }, voiceGender);
-          
+
           // Generate TTS audio for scoreless commentary using admin-selected voice
           const audioResult = await ttsService.generateSpeech(scorelessCommentary, gameId, 'announcement');
           const audioFilename = audioResult?.success ? audioResult.filename : null;
-          
+
           return res.status(200).json({
             success: true,
             scoreless: true,
@@ -2229,7 +2267,7 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
     }
 
     const lastGoal = goals[0];
-    
+
     // Calculate current score after this goal
     const homeGoals = goals.filter(g => g.teamName === game.homeTeam).length;
     const awayGoals = goals.filter(g => g.teamName === game.awayTeam).length;
@@ -2262,18 +2300,24 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
     // Career enrichment (same logic as pregen if not cached)
     try {
       let historicalContainer = null;
-      try { const mod = await import('./cosmosClient.js'); historicalContainer = mod.getHistoricalPlayerStatsContainer?.(); } catch(_) {}
+      try {
+        const mod = await import('./cosmosClient.js'); historicalContainer = mod.getHistoricalPlayerStatsContainer?.();
+      } catch (_) {}
       if (historicalContainer) {
-        if (!globalThis.__CAREER_GOAL_CACHE__) globalThis.__CAREER_GOAL_CACHE__ = new Map();
-        if (!globalThis.__CAREER_MENTION_CACHE__) globalThis.__CAREER_MENTION_CACHE__ = new Map();
-        const cacheKey = (goalData.playerName||'').toLowerCase();
+        if (!globalThis.__CAREER_GOAL_CACHE__) {
+          globalThis.__CAREER_GOAL_CACHE__ = new Map();
+        }
+        if (!globalThis.__CAREER_MENTION_CACHE__) {
+          globalThis.__CAREER_MENTION_CACHE__ = new Map();
+        }
+        const cacheKey = (goalData.playerName || '').toLowerCase();
         let careerBaseline = globalThis.__CAREER_GOAL_CACHE__.get(cacheKey);
         if (careerBaseline == null) {
           const { resources: histRows } = await historicalContainer.items.query({
             query: 'SELECT c.goals FROM c WHERE c.playerName = @p',
             parameters: [{ name: '@p', value: goalData.playerName }]
           }).fetchAll();
-          careerBaseline = histRows.reduce((a,r)=>a+(r.goals||0),0);
+          careerBaseline = histRows.reduce((a,r) => a + (r.goals || 0),0);
           globalThis.__CAREER_GOAL_CACHE__.set(cacheKey, careerBaseline);
         }
         playerStats.careerGoalsBefore = careerBaseline + playerStats.seasonGoals;
@@ -2284,7 +2328,7 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
           globalThis.__CAREER_MENTION_CACHE__.set(mentionKey, true);
         }
       }
-    } catch(_) { /* ignore */ }
+    } catch (_) { /* ignore */ }
 
     // Try to serve from cache only if it matches the most recent goal id
     const latestGoalId = lastGoal.id || lastGoal._rid;
@@ -2345,7 +2389,7 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
       entry.lastGoalId = latestGoalId;
       entry.dual = { conversation, updatedAt: Date.now(), lineGapMs };
       announcerCache.goals.set(gameId, entry);
-  announcerMetrics.generation.goals++;
+      announcerMetrics.generation.goals++;
 
       res.status(200).json({
         success: true,
@@ -2370,7 +2414,7 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
       entry.lastGoalId = latestGoalId;
       entry.single[voiceGender] = { text: announcementText, audioPath: audioFilename, voice: selectedVoice, updatedAt: Date.now() };
       announcerCache.goals.set(gameId, entry);
-  announcerMetrics.generation.goals++;
+      announcerMetrics.generation.goals++;
 
       res.status(200).json({
         success: true,
@@ -2397,12 +2441,12 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
 // Penalty announcement endpoint
 app.post('/api/penalties/announce-last', aiRateLimitMiddleware, async (req, res) => {
   const requestLogger = logger.withRequest(req);
-  requestLogger.info('Penalty announcement request', { 
-    gameId: req.body.gameId, 
-    voiceGender: req.body.voiceGender, 
-    announcerMode: req.body.announcerMode 
+  requestLogger.info('Penalty announcement request', {
+    gameId: req.body.gameId,
+    voiceGender: req.body.voiceGender,
+    announcerMode: req.body.announcerMode
   });
-  
+
   const { gameId, voiceGender, announcerMode } = req.body;
 
   if (!gameId) {
@@ -2432,21 +2476,21 @@ app.post('/api/penalties/announce-last', aiRateLimitMiddleware, async (req, res)
   // Map voice gender to Google TTS Studio voices using UNIFIED voice configuration
   const { getAnnouncerVoices, logTtsUse } = await import('./voice-config.js');
   const voiceConfig = await getAnnouncerVoices();
-  
-  let selectedVoice = voiceGender === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
-  
+
+  const selectedVoice = voiceGender === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
+
   // Log TTS usage for debugging
-  logTtsUse({ 
-    where: voiceGender === 'male' ? 'MaleButton_Penalty' : 'FemaleButton_Penalty', 
-    provider: voiceConfig.provider, 
-    voice: selectedVoice, 
-    rate: voiceConfig.settings.rate, 
-    pitch: voiceConfig.settings.pitch, 
-    style: 'none' 
+  logTtsUse({
+    where: voiceGender === 'male' ? 'MaleButton_Penalty' : 'FemaleButton_Penalty',
+    provider: voiceConfig.provider,
+    voice: selectedVoice,
+    rate: voiceConfig.settings.rate,
+    pitch: voiceConfig.settings.pitch,
+    style: 'none'
   });
-  
+
   console.log(`🎤 Using voice for penalty: ${selectedVoice} (requested: ${voiceGender}, mode: ${announcerMode})`);
-  
+
   // For dual mode, we don't use TTS service
   let originalVoice;
   if (announcerMode !== 'dual') {
@@ -2460,31 +2504,31 @@ app.post('/api/penalties/announce-last', aiRateLimitMiddleware, async (req, res)
     const gamesContainer = getGamesContainer();
     const goalsContainer = getGoalsContainer();
 
-  // We'll check cache once we have context below
-    
+    // We'll check cache once we have context below
+
     // Get the most recent penalty for this game
     const { resources: penalties } = await penaltiesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC',
+        parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
 
     // Get game details for context
     let game;
-    
+
     // Use query lookup since direct lookup doesn't work with partition key
     const { resources: gamesByQuery } = await gamesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
-    
+
     if (gamesByQuery.length > 0) {
       game = gamesByQuery[0];
     }
-    
+
     if (!game) {
       return res.status(404).json({
         error: 'Game not found.'
@@ -2498,16 +2542,16 @@ app.post('/api/penalties/announce-last', aiRateLimitMiddleware, async (req, res)
     }
 
     const lastPenalty = penalties[0];
-    
+
     // Calculate current score for context (handle both new and legacy field names)
     const { resources: goals } = await goalsContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
 
-  const homeGoals = goals.filter(g => g.teamName === game.homeTeam).length;
+    const homeGoals = goals.filter(g => g.teamName === game.homeTeam).length;
     const awayGoals = goals.filter(g => g.teamName === game.awayTeam).length;
 
     // Prepare penalty data for announcement
@@ -2563,12 +2607,12 @@ app.post('/api/penalties/announce-last', aiRateLimitMiddleware, async (req, res)
     if (announcerMode === 'dual') {
       // Generate dual announcer conversation
       const conversation = trimConversationLines(await generateDualPenaltyAnnouncement(penaltyData, gameContext), 4);
-      
+
       console.log('✅ Dual penalty announcement generated successfully');
       const entry = announcerCache.penalties.get(gameId) || { single: {} };
       entry.dual = { conversation, updatedAt: Date.now() };
       announcerCache.penalties.set(gameId, entry);
-      
+
       res.status(200).json({
         success: true,
         penalty: lastPenalty,
@@ -2579,16 +2623,16 @@ app.post('/api/penalties/announce-last', aiRateLimitMiddleware, async (req, res)
     } else {
       // Generate single announcer text
       const announcementText = await generatePenaltyAnnouncement(penaltyData, gameContext, voiceGender);
-      
+
       // Generate TTS audio for penalty announcement (using special penalty voice)
       const audioResult = await ttsService.generatePenaltySpeech(announcementText, gameId);
       const audioFilename = audioResult?.success ? audioResult.filename : null;
-      
+
       console.log('✅ Penalty announcement generated successfully');
       const entry = announcerCache.penalties.get(gameId) || { single: {} };
       entry.single[voiceGender] = { text: announcementText, audioPath: audioFilename, voice: selectedVoice, updatedAt: Date.now() };
       announcerCache.penalties.set(gameId, entry);
-      
+
       res.status(200).json({
         success: true,
         penalty: lastPenalty,
@@ -2615,13 +2659,13 @@ app.post('/api/penalties/announce-last', aiRateLimitMiddleware, async (req, res)
 // Random Commentary endpoint
 app.post('/api/randomCommentary', aiRateLimitMiddleware, async (req, res) => {
   const requestLogger = logger.withRequest(req);
-  requestLogger.info('Random commentary request', { 
-    gameId: req.body.gameId, 
+  requestLogger.info('Random commentary request', {
+    gameId: req.body.gameId,
     division: req.body.division,
-    voiceGender: req.body.voiceGender, 
-    announcerMode: req.body.announcerMode 
+    voiceGender: req.body.voiceGender,
+    announcerMode: req.body.announcerMode
   });
-  
+
   const { gameId, division, voiceGender, announcerMode } = req.body;
 
   if (!gameId && !division) {
@@ -2650,61 +2694,61 @@ app.post('/api/randomCommentary', aiRateLimitMiddleware, async (req, res) => {
   // Handle dual announcer mode
   if (announcerMode === 'dual') {
     try {
-      let gameContext = { gameId, division };
-      
+      const gameContext = { gameId, division };
+
       // Try to get database context, but provide fallback if database is not available
       try {
         const goalsContainer = getGoalsContainer();
         const penaltiesContainer = getPenaltiesContainer();
         const gamesContainer = getGamesContainer();
-        
+
         if (gameId) {
           // Get game details
           const { resources: gameDetails } = await gamesContainer.items
             .query({
-              query: "SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId",
+              query: 'SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId',
               parameters: [{ name: '@gameId', value: gameId }]
             })
             .fetchAll();
-          
+
           if (gameDetails.length > 0) {
             const game = gameDetails[0];
             gameContext.homeTeam = game.homeTeam;
             gameContext.awayTeam = game.awayTeam;
             gameContext.division = game.division || game.league;
           }
-          
+
           // Get recent goals and penalties for context
           const { resources: goals } = await goalsContainer.items
             .query({
-              query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
+              query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC',
               parameters: [{ name: '@gameId', value: gameId }]
             })
             .fetchAll();
-          
+
           const { resources: penalties } = await penaltiesContainer.items
             .query({
-              query: "SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC",
+              query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c._ts DESC',
               parameters: [{ name: '@gameId', value: gameId }]
             })
             .fetchAll();
-          
+
           gameContext.goalsCount = goals.length;
           gameContext.penaltiesCount = penalties.length;
-          
+
           if (goals.length > 0) {
             const homeGoals = goals.filter(g => (g.teamName || g.scoringTeam) === gameContext.homeTeam).length;
             const awayGoals = goals.filter(g => (g.teamName || g.scoringTeam) === gameContext.awayTeam).length;
             gameContext.currentScore = { home: homeGoals, away: awayGoals };
           }
         }
-        
+
         console.log('✅ Retrieved database context for dual random commentary');
-        
+
       } catch (dbError) {
         // Fallback to simple game context when database is not available (local development)
         console.log('⚠️ Database not available for dual mode, using fallback context:', dbError.message);
-        
+
         // Provide minimal context for dual announcer conversation
         if (gameId) {
           gameContext.homeTeam = 'Home Team';
@@ -2715,7 +2759,7 @@ app.post('/api/randomCommentary', aiRateLimitMiddleware, async (req, res) => {
           gameContext.currentScore = { home: 0, away: 0 };
         }
       }
-      
+
       // Serve on-deck cached conversation if available
       const key = gameId ? `game-${gameId}` : `div-${division || 'global'}`;
       const cached = announcerCache.randomDual.get(key);
@@ -2736,9 +2780,9 @@ app.post('/api/randomCommentary', aiRateLimitMiddleware, async (req, res) => {
       // Pre-generate the next one in background
       preGenerateRandomDual(key, gameContext);
       console.log('🎙️ Received conversation from generateDualRandomCommentary:', conversation?.length, 'lines');
-      
+
       console.log('✅ Dual random commentary conversation generated successfully');
-      
+
       const adaptiveGap = computeAdaptiveLineGap({
         period: gameContext.period,
         timeRemaining: gameContext.timeRemaining,
@@ -2753,7 +2797,7 @@ app.post('/api/randomCommentary', aiRateLimitMiddleware, async (req, res) => {
         lineGapMs: adaptiveGap,
         gameContext
       });
-      
+
     } catch (error) {
       console.error('❌ Error generating dual random commentary:', {
         message: error.message,
@@ -2779,16 +2823,16 @@ app.post('/api/randomCommentary', aiRateLimitMiddleware, async (req, res) => {
   // Single announcer mode continues as before
   // Map voice gender to Google TTS Studio voices using database configuration
   let selectedVoice = 'en-US-Studio-Q'; // Default fallback
-  
+
   try {
     const gamesContainer = getGamesContainer();
     const { resources: configs } = await gamesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.id = 'voiceConfig'",
+        query: 'SELECT * FROM c WHERE c.id = \'voiceConfig\'',
         parameters: []
       })
       .fetchAll();
-    
+
     if (configs.length > 0) {
       const voiceConfig = configs[0];
       if (voiceGender === 'male' && voiceConfig.maleVoice) {
@@ -2800,7 +2844,7 @@ app.post('/api/randomCommentary', aiRateLimitMiddleware, async (req, res) => {
       // Use defaults based on corrected gender mapping
       const defaultMapping = {
         'male': 'en-US-Studio-Q',    // Studio-Q is Al (male)
-        'female': 'en-US-Studio-O'   // Studio-O is Linda (female)  
+        'female': 'en-US-Studio-O'   // Studio-O is Linda (female)
       };
       selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
     }
@@ -2812,58 +2856,58 @@ app.post('/api/randomCommentary', aiRateLimitMiddleware, async (req, res) => {
     };
     selectedVoice = defaultMapping[voiceGender] || 'en-US-Studio-Q';
   }
-  
+
   console.log(`🎤 Using voice for random commentary: ${selectedVoice} (requested: ${voiceGender})`);
-  
+
   // Temporarily set the voice in TTS service for this request
   const originalVoice = ttsService.selectedVoice;
   ttsService.selectedVoice = selectedVoice;
 
   try {
     let commentaryText = '';
-    
+
     // Try to access database containers for rich commentary
     try {
       const goalsContainer = getGoalsContainer();
       const penaltiesContainer = getPenaltiesContainer();
       const gamesContainer = getGamesContainer();
-      
+
       // Generate different types of commentary, prioritizing game-specific content when gameId is provided
       let commentaryTypes = ['hot_player', 'leader', 'matchup', 'fact'];
-      
+
       // If we have a gameId, add game-specific commentary types and prioritize them
       if (gameId) {
         commentaryTypes = ['game_specific', 'hot_player', 'game_specific', 'leader', 'game_specific', 'matchup', 'fact'];
       }
-      
+
       const selectedType = commentaryTypes[Math.floor(Math.random() * commentaryTypes.length)];
-      
+
       switch (selectedType) {
-        case 'game_specific':
-          commentaryText = await generateGameSpecificCommentary(goalsContainer, penaltiesContainer, gamesContainer, gameId);
-          break;
-        case 'hot_player':
-          commentaryText = await generateHotPlayerCommentary(goalsContainer, gameId, division);
-          break;
-        case 'leader':
-          commentaryText = await generateLeaderCommentary(goalsContainer, division);
-          break;
-        case 'matchup':
-          commentaryText = await generateMatchupCommentary(gamesContainer, division);
-          break;
-        case 'fact':
-          commentaryText = await generateFactCommentary(goalsContainer, penaltiesContainer, division);
-          break;
-        default:
-          commentaryText = 'Welcome to hockey night!';
+      case 'game_specific':
+        commentaryText = await generateGameSpecificCommentary(goalsContainer, penaltiesContainer, gamesContainer, gameId);
+        break;
+      case 'hot_player':
+        commentaryText = await generateHotPlayerCommentary(goalsContainer, gameId, division);
+        break;
+      case 'leader':
+        commentaryText = await generateLeaderCommentary(goalsContainer, division);
+        break;
+      case 'matchup':
+        commentaryText = await generateMatchupCommentary(gamesContainer, division);
+        break;
+      case 'fact':
+        commentaryText = await generateFactCommentary(goalsContainer, penaltiesContainer, division);
+        break;
+      default:
+        commentaryText = 'Welcome to hockey night!';
       }
-      
+
       console.log(`✅ Generated ${selectedType} commentary from database`);
-      
+
     } catch (dbError) {
       // Fallback to simple commentary when database is not available (local development)
       console.log('⚠️ Database not available, using fallback commentary:', dbError.message);
-      
+
       const fallbackCommentaries = [
         'The players are battling hard on the ice tonight! What an exciting game we have here!',
         'Both teams are showing incredible determination! The energy in the arena is electric!',
@@ -2873,18 +2917,18 @@ app.post('/api/randomCommentary', aiRateLimitMiddleware, async (req, res) => {
         'The competition is fierce tonight! Every shift matters in this exciting matchup!',
         'Watch these athletes showcase their talent! Pure hockey excellence on display!'
       ];
-      
+
       commentaryText = fallbackCommentaries[Math.floor(Math.random() * fallbackCommentaries.length)];
       console.log('✅ Using fallback commentary for local development');
     }
-    
+
     // Generate TTS audio for random commentary
     const audioResult = await ttsService.generateSpeech(commentaryText, gameId || 'random', 'announcement');
     const audioFilename = audioResult?.success ? audioResult.filename : null;
-    
+
     console.log('🔊 TTS Result:', { audioResult, audioFilename });
     console.log('✅ Random commentary generated successfully');
-    
+
     res.status(200).json({
       success: true,
       type: 'random',
@@ -2930,38 +2974,38 @@ async function generateGameSpecificCommentary(goalsContainer, penaltiesContainer
     // Get game details first
     const { resources: gameDetails } = await gamesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId",
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId',
         parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
-    
+
     if (gameDetails.length === 0) {
       return 'Both teams are battling hard on the ice tonight!';
     }
-    
+
     const game = gameDetails[0];
     const homeTeam = game.homeTeam || 'Home Team';
     const awayTeam = game.awayTeam || 'Away Team';
-    
+
     // Get goals for this specific game
     const { resources: gameGoals } = await goalsContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId",
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId',
         parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
-    
+
     // Get penalties for this game
     const { resources: gamePenalties } = await penaltiesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId",
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId',
         parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
-    
+
     // Generate commentary based on current game state
     const templates = [];
-    
+
     if (gameGoals.length > 0) {
       const recentGoal = gameGoals[gameGoals.length - 1];
       const scorer = recentGoal.playerName || 'a player';
@@ -2969,21 +3013,21 @@ async function generateGameSpecificCommentary(goalsContainer, penaltiesContainer
       templates.push(`What a goal by ${scorer} for ${team}!`);
       templates.push(`${team} finds the back of the net with that goal from ${scorer}!`);
     }
-    
+
     if (gamePenalties.length > 0) {
       templates.push(`We've seen some physical play out there with ${gamePenalties.length} penalties tonight!`);
     }
-    
+
     // Add general game-specific templates
     templates.push(`It's a great matchup between ${awayTeam} and ${homeTeam} tonight!`);
     templates.push(`${homeTeam} and ${awayTeam} are giving it their all on home ice!`);
-    templates.push(`The intensity is building between these two teams!`);
-    
+    templates.push('The intensity is building between these two teams!');
+
     if (gameGoals.length === 0) {
-      templates.push(`Both goaltenders are standing on their heads - no goals scored yet!`);
+      templates.push('Both goaltenders are standing on their heads - no goals scored yet!');
       templates.push(`Defensive battle out there between ${homeTeam} and ${awayTeam}!`);
     }
-    
+
     return templates[Math.floor(Math.random() * templates.length)];
   } catch (error) {
     console.error('Error generating game-specific commentary:', error);
@@ -2996,14 +3040,14 @@ async function generateHotPlayerCommentary(goalsContainer, gameId, division) {
     // Get recent goals (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
+
     const { resources: recentGoals } = await goalsContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c._ts > @timestamp",
+        query: 'SELECT * FROM c WHERE c._ts > @timestamp',
         parameters: [{ name: '@timestamp', value: Math.floor(sevenDaysAgo.getTime() / 1000) }]
       })
       .fetchAll();
-    
+
     // Count goals by player
     const playerGoals = {};
     recentGoals.forEach(goal => {
@@ -3012,12 +3056,12 @@ async function generateHotPlayerCommentary(goalsContainer, gameId, division) {
         playerGoals[player] = (playerGoals[player] || 0) + 1;
       }
     });
-    
+
     // Find hot players (3+ goals)
     const hotPlayers = Object.entries(playerGoals)
       .filter(([player, goals]) => goals >= 3)
       .sort(([,a], [,b]) => b - a);
-    
+
     if (hotPlayers.length > 0) {
       const [player, goals] = hotPlayers[0];
       const templates = [
@@ -3027,7 +3071,7 @@ async function generateHotPlayerCommentary(goalsContainer, gameId, division) {
       ];
       return templates[Math.floor(Math.random() * templates.length)];
     }
-    
+
     return 'Players are battling hard on the ice tonight!';
   } catch (error) {
     console.error('Error generating hot player commentary:', error);
@@ -3040,10 +3084,10 @@ async function generateLeaderCommentary(goalsContainer, division) {
     // Get all goals for season leaders
     const { resources: allGoals } = await goalsContainer.items
       .query({
-        query: "SELECT * FROM c"
+        query: 'SELECT * FROM c'
       })
       .fetchAll();
-    
+
     // Count total goals by player
     const playerTotals = {};
     allGoals.forEach(goal => {
@@ -3052,12 +3096,12 @@ async function generateLeaderCommentary(goalsContainer, division) {
         playerTotals[player] = (playerTotals[player] || 0) + 1;
       }
     });
-    
+
     // Find top scorers
     const leaders = Object.entries(playerTotals)
       .sort(([,a], [,b]) => b - a)
       .slice(0, 3);
-    
+
     if (leaders.length > 0) {
       const [topPlayer, topGoals] = leaders[0];
       const templates = [
@@ -3067,7 +3111,7 @@ async function generateLeaderCommentary(goalsContainer, division) {
       ];
       return templates[Math.floor(Math.random() * templates.length)];
     }
-    
+
     return 'The race for the scoring title is heating up!';
   } catch (error) {
     console.error('Error generating leader commentary:', error);
@@ -3080,20 +3124,20 @@ async function generateMatchupCommentary(gamesContainer, division) {
     // Get recent games for matchup insights
     const { resources: recentGames } = await gamesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.eventType = 'game-submission' ORDER BY c._ts DESC"
+        query: 'SELECT * FROM c WHERE c.eventType = \'game-submission\' ORDER BY c._ts DESC'
       })
       .fetchAll();
-    
+
     if (recentGames.length >= 2) {
       const recentGame = recentGames[0];
       const templates = [
         `Earlier today, ${recentGame.gameSummary?.goalsByTeam ? Object.keys(recentGame.gameSummary.goalsByTeam)[0] : 'a team'} put up a strong performance!`,
-        `The competition has been intense across all matchups this week!`,
-        `Teams are battling for playoff position in every game!`
+        'The competition has been intense across all matchups this week!',
+        'Teams are battling for playoff position in every game!'
       ];
       return templates[Math.floor(Math.random() * templates.length)];
     }
-    
+
     return 'Every game matters as teams fight for position!';
   } catch (error) {
     console.error('Error generating matchup commentary:', error);
@@ -3106,27 +3150,27 @@ async function generateFactCommentary(goalsContainer, penaltiesContainer, divisi
     // Get some fun stats
     const { resources: allGoals } = await goalsContainer.items
       .query({
-        query: "SELECT COUNT(1) as totalGoals FROM c"
+        query: 'SELECT COUNT(1) as totalGoals FROM c'
       })
       .fetchAll();
-    
+
     const { resources: allPenalties } = await penaltiesContainer.items
       .query({
-        query: "SELECT COUNT(1) as totalPenalties FROM c"
+        query: 'SELECT COUNT(1) as totalPenalties FROM c'
       })
       .fetchAll();
-    
+
     const totalGoals = allGoals[0]?.totalGoals || 0;
     const totalPenalties = allPenalties[0]?.totalPenalties || 0;
-    
+
     const facts = [
       `Over ${totalGoals} goals have been scored this season!`,
       `Players have accumulated ${totalPenalties} penalty minutes so far!`,
-      `Hockey is a game of speed, skill, and determination!`,
-      `Every shift could be the difference maker in this game!`,
-      `The pace of play keeps getting faster every season!`
+      'Hockey is a game of speed, skill, and determination!',
+      'Every shift could be the difference maker in this game!',
+      'The pace of play keeps getting faster every season!'
     ];
-    
+
     return facts[Math.floor(Math.random() * facts.length)];
   } catch (error) {
     console.error('Error generating fact commentary:', error);
@@ -3149,34 +3193,34 @@ app.post('/api/games/submit', async (req, res) => {
     const goalsContainer = getGoalsContainer();
     const penaltiesContainer = getPenaltiesContainer();
     const gamesContainer = getGamesContainer();
-    
+
     // Check if this game has already been submitted
     const existingSubmissionQuery = {
-      query: "SELECT * FROM c WHERE c.eventType = 'game-submission' AND c.gameId = @gameId",
+      query: 'SELECT * FROM c WHERE c.eventType = \'game-submission\' AND c.gameId = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
     const { resources: existingSubmissions } = await gamesContainer.items.query(existingSubmissionQuery).fetchAll();
-    
+
     if (existingSubmissions.length > 0) {
       return res.status(400).json({
         error: 'Game has already been submitted. Use the admin panel to reset the game if you need to re-score it.',
         alreadySubmitted: true
       });
     }
-    
+
     // Get the original game record to extract division/league information
     let division = 'Unknown';
     let league = 'Unknown';
     let homeTeam = 'Unknown';
     let awayTeam = 'Unknown';
-    
+
     try {
       const originalGameQuery = {
         query: 'SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId',
         parameters: [{ name: '@gameId', value: gameId }]
       };
       const { resources: originalGames } = await gamesContainer.items.query(originalGameQuery).fetchAll();
-      
+
       if (originalGames.length > 0) {
         const game = originalGames[0];
         division = game.division || game.league || 'Unknown';
@@ -3187,14 +3231,14 @@ app.post('/api/games/submit', async (req, res) => {
     } catch (error) {
       console.warn('Could not fetch original game record:', error.message);
     }
-    
+
     // Update all goals for this game to mark as submitted
     const goalsQuery = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
     const { resources: goals } = await goalsContainer.items.query(goalsQuery).fetchAll();
-    
+
     for (const goal of goals) {
       const updatedGoal = {
         ...goal,
@@ -3204,14 +3248,14 @@ app.post('/api/games/submit', async (req, res) => {
       };
       await goalsContainer.item(goal.id, goal.gameId).replace(updatedGoal);
     }
-    
+
     // Update all penalties for this game to mark as submitted
     const penaltiesQuery = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
     const { resources: penalties } = await penaltiesContainer.items.query(penaltiesQuery).fetchAll();
-    
+
     for (const penalty of penalties) {
       const updatedPenalty = {
         ...penalty,
@@ -3221,7 +3265,7 @@ app.post('/api/games/submit', async (req, res) => {
       };
       await penaltiesContainer.item(penalty.id, penalty.gameId).replace(updatedPenalty);
     }
-    
+
     // Create game summary record with consistent ID format
     const currentSeason = '2025 Fall'; // Current season configuration
     const gameSubmissionRecord = {
@@ -3252,7 +3296,7 @@ app.post('/api/games/submit', async (req, res) => {
         totalPIM: penalties.reduce((sum, p) => sum + parseInt(p.penaltyLength || 0), 0)
       }
     };
-    
+
     // Update the original game record to mark it as submitted
     try {
       const originalGameQuery = {
@@ -3260,7 +3304,7 @@ app.post('/api/games/submit', async (req, res) => {
         parameters: [{ name: '@gameId', value: gameId }]
       };
       const { resources: originalGames } = await gamesContainer.items.query(originalGameQuery).fetchAll();
-      
+
       if (originalGames.length > 0) {
         const originalGame = originalGames[0];
         const updatedGame = {
@@ -3272,7 +3316,7 @@ app.post('/api/games/submit', async (req, res) => {
           totalGoals: goals.length,
           totalPenalties: penalties.length
         };
-        
+
         await gamesContainer.item(originalGame.id, originalGame.gameId || originalGame.id).replace(updatedGame);
         console.log('✅ Original game record updated to completed status');
       }
@@ -3280,34 +3324,34 @@ app.post('/api/games/submit', async (req, res) => {
       console.warn('⚠️ Could not update original game record:', updateError.message);
       // Continue with submission creation even if original update fails
     }
-    
+
     const { resource } = await gamesContainer.items.create(gameSubmissionRecord);
     console.log('✅ Game submitted successfully');
-    
+
     // Trigger automatic rink report generation
     try {
       console.log('📰 Triggering rink report generation...');
-      
+
       // Get the game details to determine division
       let gameDetails = null;
       try {
         const { resources: gameQuery } = await gamesContainer.items
           .query({
-            query: "SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId",
-            parameters: [{ name: "@gameId", value: gameId }]
+            query: 'SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId',
+            parameters: [{ name: '@gameId', value: gameId }]
           })
           .fetchAll();
-        
+
         if (gameQuery.length > 0) {
           gameDetails = gameQuery[0];
         }
       } catch (gameQueryError) {
         console.warn('⚠️ Could not fetch game details for report generation:', gameQueryError.message);
       }
-      
+
       if (gameDetails && gameDetails.division) {
         console.log(`📰 Generating report for ${gameDetails.division} division`);
-        
+
         // Generate report asynchronously (don't wait for completion)
         generateRinkReport(gameDetails.division) // Generate for all submitted games
           .then((report) => {
@@ -3323,7 +3367,7 @@ app.post('/api/games/submit', async (req, res) => {
       console.error('❌ Error in report generation trigger:', reportGenError.message);
       // Don't fail the game submission if report generation fails
     }
-    
+
     res.status(201).json({
       success: true,
       submissionRecord: resource,
@@ -3352,55 +3396,55 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
     const goalsContainer = getGoalsContainer();
     const penaltiesContainer = getPenaltiesContainer();
     const gamesContainer = getGamesContainer();
-    
+
     console.log('📊 Querying for goals...');
     // Get all goals for this game
     const { resources: goals } = await goalsContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
-    
+
     console.log(`📊 Found ${goals.length} goals to delete`);
-    
+
     console.log('🚨 Querying for penalties...');
     // Get all penalties for this game
     const { resources: penalties } = await penaltiesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
-      
+
     console.log(`🚨 Found ${penalties.length} penalties to delete`);
-      
+
     console.log('📝 Querying for ALL game-related records...');
     // Get ALL records related to this game (including primary game document)
     const { resources: allGameRecords } = await gamesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId OR c.id = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
-    
+
     console.log(`📝 Found ${allGameRecords.length} total game records to delete`);
-    
+
     // Also specifically get submission records with different query pattern
     const { resources: submissions } = await gamesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.gameId = @gameId AND (c.eventType = 'game-submission' OR c.eventType = 'game-completion')",
-        parameters: [{ name: "@gameId", value: gameId }]
+        query: 'SELECT * FROM c WHERE c.gameId = @gameId AND (c.eventType = \'game-submission\' OR c.eventType = \'game-completion\')',
+        parameters: [{ name: '@gameId', value: gameId }]
       })
       .fetchAll();
-    
+
     console.log(`📝 Found ${submissions.length} specific submission records to delete`);
-    
+
     // Delete all goals
     console.log('🗑️ Deleting goals...');
     let goalsDeleted = 0;
     let goalsAlreadyGone = 0;
-    
+
     for (const goal of goals) {
       try {
         await goalsContainer.item(goal.id, goal.gameId).delete();
@@ -3415,12 +3459,12 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
         }
       }
     }
-    
-    // Delete all penalties  
+
+    // Delete all penalties
     console.log('🗑️ Deleting penalties...');
     let penaltiesDeleted = 0;
     let penaltiesAlreadyGone = 0;
-    
+
     for (const penalty of penalties) {
       try {
         await penaltiesContainer.item(penalty.id, penalty.gameId).delete();
@@ -3435,12 +3479,12 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
         }
       }
     }
-    
+
     // Delete submission records to remove from admin panel
     console.log('🗑️ Deleting specific submission records...');
     let submissionsDeleted = 0;
     let submissionsAlreadyGone = 0;
-    
+
     for (const submission of submissions) {
       try {
         await gamesContainer.item(submission.id, submission.gameId).delete();
@@ -3455,16 +3499,16 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
         }
       }
     }
-    
+
     // Delete ALL game-related records to ensure complete removal (avoid duplicates)
     console.log('🗑️ Deleting remaining game records...');
     let gameRecordsDeleted = 0;
     let gameRecordsAlreadyGone = 0;
-    
+
     // Filter out records we already processed in submissions
     const submissionIds = new Set(submissions.map(s => s.id));
     const remainingRecords = allGameRecords.filter(record => !submissionIds.has(record.id));
-    
+
     for (const record of remainingRecords) {
       try {
         await gamesContainer.item(record.id, record.gameId || gameId).delete();
@@ -3479,26 +3523,26 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
         }
       }
     }
-    
+
     // Also try to delete the primary game record - check for multiple possible structures
     console.log('🗑️ Deleting primary game record...');
-    
+
     // First, try to find the actual game record to get the correct partition key
     const gameQuery = {
       query: 'SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
-    
+
     const { resources: gameRecords } = await gamesContainer.items.query(gameQuery).fetchAll();
-    const mainGameRecord = gameRecords.find(record => 
-      record.id === gameId || 
-      (record.gameId === gameId && !record.eventType) || 
+    const mainGameRecord = gameRecords.find(record =>
+      record.id === gameId ||
+      (record.gameId === gameId && !record.eventType) ||
       (record.gameId === gameId && record.eventType === 'game-creation')
     );
-    
+
     if (mainGameRecord) {
       try {
-        // Use the correct partition key (likely 'league' field) 
+        // Use the correct partition key (likely 'league' field)
         const partitionKey = mainGameRecord.league || mainGameRecord.gameId || gameId;
         await gamesContainer.item(mainGameRecord.id, partitionKey).delete();
         console.log(`✅ Deleted primary game record: ${mainGameRecord.id} with partition key: ${partitionKey}`);
@@ -3522,21 +3566,21 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
         }
       }
     }
-    
+
     // Calculate total items processed (deleted + already gone)
-    const totalProcessed = goalsDeleted + penaltiesDeleted + submissionsDeleted + gameRecordsDeleted + 
+    const totalProcessed = goalsDeleted + penaltiesDeleted + submissionsDeleted + gameRecordsDeleted +
                            goalsAlreadyGone + penaltiesAlreadyGone + submissionsAlreadyGone + gameRecordsAlreadyGone;
-    
+
     console.log(`✅ Reset complete: Successfully deleted ${goalsDeleted} goals, ${penaltiesDeleted} penalties, ${submissionsDeleted} submissions, ${gameRecordsDeleted} game records for ${gameId}`);
     if (goalsAlreadyGone + penaltiesAlreadyGone + submissionsAlreadyGone + gameRecordsAlreadyGone > 0) {
       console.log(`ℹ️  ${goalsAlreadyGone + penaltiesAlreadyGone + submissionsAlreadyGone + gameRecordsAlreadyGone} items were already removed`);
     }
-    
+
     // Show meaningful message even when totalDeleted is 0 due to eventual consistency
-    const resultMessage = totalProcessed > 0 
+    const resultMessage = totalProcessed > 0
       ? `Game completely removed. Processed ${totalProcessed} records total.`
-      : `Game deletion processed. All game data has been marked for removal from the system.`;
-    
+      : 'Game deletion processed. All game data has been marked for removal from the system.';
+
     res.status(200).json({
       success: true,
       message: resultMessage,
@@ -3546,14 +3590,14 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
         submissions: submissionsDeleted,
         gameRecords: gameRecordsDeleted,
         totalDeleted: goalsDeleted + penaltiesDeleted + submissionsDeleted + gameRecordsDeleted,
-        totalProcessed: totalProcessed,
+        totalProcessed,
         alreadyRemoved: goalsAlreadyGone + penaltiesAlreadyGone + submissionsAlreadyGone + gameRecordsAlreadyGone
       }
     });
   } catch (error) {
     console.error('❌ Error resetting game:', error.message);
     console.error('Error details:', error);
-    
+
     // Provide more specific error information
     let errorMessage = 'Failed to reset game data';
     if (error.code === 'InvalidPartitionKey') {
@@ -3565,7 +3609,7 @@ app.delete('/api/games/:gameId/reset', async (req, res) => {
     } else if (error.code === 'TooManyRequests') {
       errorMessage = 'Database throttling - please try again in a moment';
     }
-    
+
     res.status(500).json({
       error: 'Internal server error',
       message: errorMessage,
@@ -3580,38 +3624,38 @@ app.delete('/api/games/cleanup', async (req, res) => {
 
   try {
     const gamesContainer = getGamesContainer();
-    
+
     // Get all games
     const { resources: allGames } = await gamesContainer.items
       .query({
-        query: "SELECT * FROM c",
+        query: 'SELECT * FROM c',
         parameters: []
       })
       .fetchAll();
-    
+
     console.log(`📊 Found ${allGames.length} total records to examine`);
-    
+
     // Filter for problematic games
     const problematicGames = allGames.filter(game => {
       // Games with Silver or Bronze division
       const isSilverOrBronze = game.division === 'Silver' || game.division === 'Bronze';
-      
+
       // Games with missing or invalid team names
-      const missingTeams = !game.homeTeam || !game.awayTeam || 
+      const missingTeams = !game.homeTeam || !game.awayTeam ||
                           game.homeTeam.trim() === '' || game.awayTeam.trim() === '' ||
                           game.homeTeam === 'vs' || game.awayTeam === 'vs';
-      
+
       // Games with "Date TBD" or invalid dates
       const invalidDate = !game.gameDate || game.gameDate === 'Date TBD';
-      
+
       return isSilverOrBronze || missingTeams || invalidDate;
     });
-    
+
     console.log(`🎯 Found ${problematicGames.length} problematic games to delete`);
-    
+
     let deletedCount = 0;
     let errorCount = 0;
-    
+
     for (const game of problematicGames) {
       try {
         // Try different partition key strategies
@@ -3629,12 +3673,12 @@ app.delete('/api/games/cleanup', async (req, res) => {
         }
       }
     }
-    
+
     console.log(`✅ Cleanup complete: Successfully deleted ${deletedCount} problematic games`);
     if (errorCount > 0) {
       console.log(`⚠️  ${errorCount} games had deletion errors`);
     }
-    
+
     res.status(200).json({
       success: true,
       message: `Cleanup complete. Deleted ${deletedCount} problematic games.`,
@@ -3660,36 +3704,36 @@ app.get('/api/penalties', async (req, res) => {
   try {
     const container = getPenaltiesContainer();
     let querySpec;
-    
+
     if (!gameId && !team && !playerId) {
       // Return all penalties
       querySpec = {
         query: 'SELECT * FROM c ORDER BY c.recordedAt DESC',
-        parameters: [],
+        parameters: []
       };
     } else {
       // Build dynamic query based on provided filters
-      let conditions = [];
-      let parameters = [];
-      
+      const conditions = [];
+      const parameters = [];
+
       if (gameId) {
         conditions.push('c.gameId = @gameId');
         parameters.push({ name: '@gameId', value: gameId });
       }
-      
+
       if (team) {
         conditions.push('c.teamName = @team');
         parameters.push({ name: '@team', value: team });
       }
-      
+
       if (playerId) {
         conditions.push('c.playerName = @playerId');
         parameters.push({ name: '@playerId', value: playerId });
       }
-      
+
       querySpec = {
         query: `SELECT * FROM c WHERE ${conditions.join(' AND ')} ORDER BY c.recordedAt DESC`,
-        parameters: parameters,
+        parameters
       };
     }
 
@@ -3740,20 +3784,20 @@ app.post('/api/ot-shootout', async (req, res) => {
     const goalsContainer = getGoalsContainer();
     const penaltiesContainer = getPenaltiesContainer();
     const gamesContainer = getGamesContainer();
-    
+
     // Get existing goals and penalties for context
     const goalsQuery = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
     const { resources: goals } = await goalsContainer.items.query(goalsQuery).fetchAll();
-    
+
     const penaltiesQuery = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
     const { resources: penalties } = await penaltiesContainer.items.query(penaltiesQuery).fetchAll();
-    
+
     // Create OT/Shootout record
     const otShootoutRecord = {
       id: `${gameId}-ot-shootout-${Date.now()}`,
@@ -3765,7 +3809,7 @@ app.post('/api/ot-shootout', async (req, res) => {
       recordedAt: new Date().toISOString(),
       gameStatus: 'completed', // Game is now completed
       submittedBy: submittedBy || 'Scorekeeper',
-      
+
       // Game summary for analytics
       gameSummary: {
         totalGoals: goals.length,
@@ -3781,9 +3825,9 @@ app.post('/api/ot-shootout', async (req, res) => {
         totalPIM: penalties.reduce((sum, p) => sum + parseInt(p.penaltyLength || 0), 0)
       }
     };
-    
+
     const { resource } = await container.items.create(otShootoutRecord);
-    
+
     // Mark all goals and penalties as completed
     for (const goal of goals) {
       const updatedGoal = {
@@ -3794,7 +3838,7 @@ app.post('/api/ot-shootout', async (req, res) => {
       };
       await goalsContainer.item(goal.id, goal.gameId).replace(updatedGoal);
     }
-    
+
     for (const penalty of penalties) {
       const updatedPenalty = {
         ...penalty,
@@ -3804,7 +3848,7 @@ app.post('/api/ot-shootout', async (req, res) => {
       };
       await penaltiesContainer.item(penalty.id, penalty.gameId).replace(updatedPenalty);
     }
-    
+
     // Create final game completion record
     const gameCompletionRecord = {
       id: `${gameId}-completion-${Date.now()}`,
@@ -3819,11 +3863,11 @@ app.post('/api/ot-shootout', async (req, res) => {
       totalGoals: goals.length,
       totalPenalties: penalties.length
     };
-    
+
     await gamesContainer.items.create(gameCompletionRecord);
-    
+
     console.log('✅ OT/Shootout result recorded and game completed');
-    
+
     res.status(201).json({
       success: true,
       otShootoutRecord: resource,
@@ -3841,16 +3885,16 @@ app.get('/api/ot-shootout', async (req, res) => {
   try {
     const container = getOTShootoutContainer();
     let querySpec;
-    
+
     if (!gameId) {
       querySpec = {
         query: 'SELECT * FROM c ORDER BY c.recordedAt DESC',
-        parameters: [],
+        parameters: []
       };
     } else {
       querySpec = {
         query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt DESC',
-        parameters: [{ name: '@gameId', value: gameId }],
+        parameters: [{ name: '@gameId', value: gameId }]
       };
     }
 
@@ -3866,7 +3910,9 @@ app.get('/api/ot-shootout', async (req, res) => {
 // Returns a normalized shape while preserving legacy fields for backward compatibility
 app.get('/api/events', async (req, res) => {
   const { gameId } = req.query;
-  if (!gameId) return res.status(400).json({ error: 'gameId query param required' });
+  if (!gameId) {
+    return res.status(400).json({ error: 'gameId query param required' });
+  }
   try {
     const goalsContainer = getGoalsContainer();
     const penaltiesContainer = getPenaltiesContainer();
@@ -3951,14 +3997,14 @@ app.get('/api/health', (req, res) => {
     NODE_ENV: process.env.NODE_ENV,
     PORT: process.env.PORT
   };
-  
+
   // Check TTS service status
   const ttsStatus = {
     available: ttsService.client !== null,
-    credentialsSource: config.googleTts.credentialsJson ? 'Azure Environment JSON' : 
-                      config.googleTts.credentialsPath ? 'File Path' : 'None',
+    credentialsSource: config.googleTts.credentialsJson ? 'Azure Environment JSON' :
+      config.googleTts.credentialsPath ? 'File Path' : 'None',
     studioVoicesExpected: !!config.googleTts.credentialsJson,
-    googleCloudProject: config.googleTts.credentialsJson ? 
+    googleCloudProject: config.googleTts.credentialsJson ?
       (() => {
         try {
           const creds = JSON.parse(config.googleTts.credentialsJson);
@@ -3968,7 +4014,7 @@ app.get('/api/health', (req, res) => {
         }
       })() : 'Not configured'
   };
-  
+
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -3982,7 +4028,7 @@ app.get('/api/health', (req, res) => {
     endpoints: {
       goals: '/api/goals',
       penalties: '/api/penalties',
-      games: '/api/games', 
+      games: '/api/games',
       playerStats: '/api/player-stats',
       health: '/api/health',
       tts: '/api/tts/generate'
@@ -4000,35 +4046,43 @@ app.post('/api/admin/historical-player-stats/import', async (req, res) => {
     if (!data && csv) {
       const parse = (text) => {
         const lines = text.trim().split(/\r?\n/);
-        const header = lines.shift().split(',').map(h=>h.trim());
+        const header = lines.shift().split(',').map(h => h.trim());
         return lines.map(l => {
-          const parts = l.split(',').map(p=>p.trim());
-            const obj={};
-            header.forEach((h,i)=>obj[h]=parts[i]??'');
-            return obj;
-          });
+          const parts = l.split(',').map(p => p.trim());
+          const obj = {};
+          header.forEach((h,i) => obj[h] = parts[i] ?? '');
+          return obj;
+        });
       };
       data = parse(csv);
     }
-    if (!Array.isArray(data)) return res.status(400).json({ error: 'Provide rows[] or csv' });
-    const norm = v => (v??'').toString().trim();
-    const toInt = v => { const n=parseInt(v,10); return isNaN(n)?0:n; };
-    let imported=0;
+    if (!Array.isArray(data)) {
+      return res.status(400).json({ error: 'Provide rows[] or csv' });
+    }
+    const norm = v => (v ?? '').toString().trim();
+    const toInt = v => {
+      const n = parseInt(v,10); return isNaN(n) ? 0 : n;
+    };
+    let imported = 0;
     for (const r of data) {
       const playerName = norm(r.Name);
-      const division = norm(r.Division)||'Unknown';
-      const year = norm(r.Year)||'Unknown';
-      if (!playerName || !division || !year) continue;
-      const goals = toInt(r.Goals); const assists = toInt(r.Assists); const pim = toInt(r.PIM); const gp = toInt(r.GP); const points = r.Points? toInt(r.Points) : goals+assists;
+      const division = norm(r.Division) || 'Unknown';
+      const year = norm(r.Year) || 'Unknown';
+      if (!playerName || !division || !year) {
+        continue;
+      }
+      const goals = toInt(r.Goals); const assists = toInt(r.Assists); const pim = toInt(r.PIM); const gp = toInt(r.GP); const points = r.Points ? toInt(r.Points) : goals + assists;
       const id = `${year}-${division}-${playerName.toLowerCase().replace(/\s+/g,'_')}`;
-      const doc = { id, playerName, division, league: norm(r.League)||null, season: norm(r.Season)||null, year, goals, assists, pim, points, gp, source:'historical', importedAt: new Date().toISOString() };
-      if (!dryRun) await c.items.upsert(doc);
+      const doc = { id, playerName, division, league: norm(r.League) || null, season: norm(r.Season) || null, year, goals, assists, pim, points, gp, source: 'historical', importedAt: new Date().toISOString() };
+      if (!dryRun) {
+        await c.items.upsert(doc);
+      }
       imported++;
     }
-    res.status(200).json({ success:true, imported, dryRun: !!dryRun });
+    res.status(200).json({ success: true, imported, dryRun: !!dryRun });
   } catch (e) {
     console.error('Historical import error', e);
-    res.status(500).json({ error:'Import failed', message:e.message });
+    res.status(500).json({ error: 'Import failed', message: e.message });
   }
 });
 
@@ -4039,7 +4093,9 @@ app.post('/api/admin/historical-player-stats/ensure', async (req, res) => {
     const db = await getDatabase();
     const defs = getContainerDefinitions();
     const def = defs['historical-player-stats'];
-    if (!def) return res.status(500).json({ error: 'Definition missing' });
+    if (!def) {
+      return res.status(500).json({ error: 'Definition missing' });
+    }
     const { container, resource } = await db.containers.createIfNotExists({
       id: def.name,
       partitionKey: def.partitionKey,
@@ -4059,81 +4115,81 @@ app.get('/api/player-stats', async (req, res) => {
     'Pragma': 'no-cache',
     'Expires': '0'
   });
-  
-  const { 
-    refresh, 
-    division, 
-    year, 
-    season, 
-    scope, 
-    debug, 
+
+  const {
+    refresh,
+    division,
+    year,
+    season,
+    scope,
+    debug,
     rostered,
     limit = 100, // Default limit
     offset = 0,  // Default offset
     sortBy = 'points', // Default sort
     sortOrder = 'desc' // Default order
   } = req.query; // scope: totals|historical|live
-  
-  try {
-  const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions, getRostersContainer } = await import('./cosmosClient.js');
 
-  // Check if database is configured - if not, return demo data
-  let db = null;
   try {
-    db = getDatabase();
-  } catch (error) {
-    logger.warn('Database not available, returning demo player stats');
-  }
+    const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions, getRostersContainer } = await import('./cosmosClient.js');
 
-  if (!db) {
-    logger.warn('Database not available, returning demo player stats');
-    
-    // Return demo data for testing performance optimizations
-    const demoData = [
-      { playerName: "Demo Player 1", division: "Gold", goals: 25, assists: 15, points: 40, pim: 4, gp: 20 },
-      { playerName: "Demo Player 2", division: "Silver", goals: 20, assists: 18, points: 38, pim: 6, gp: 18 },
-      { playerName: "Demo Player 3", division: "Bronze", goals: 18, assists: 12, points: 30, pim: 8, gp: 16 },
-      { playerName: "Demo Player 4", division: "Gold", goals: 15, assists: 20, points: 35, pim: 2, gp: 22 },
-      { playerName: "Demo Player 5", division: "Silver", goals: 22, assists: 10, points: 32, pim: 10, gp: 19 }
-    ];
-    
-    const totalCount = demoData.length;
-    const startIndex = parseInt(offset) || 0;
-    const limitNum = parseInt(limit) || 100;
-    const paginatedData = demoData.slice(startIndex, startIndex + limitNum);
-    
-    const pagination = {
-      total: totalCount,
-      limit: limitNum,
-      offset: startIndex,
-      hasNext: startIndex + limitNum < totalCount,
-      hasPrev: startIndex > 0
-    };
-    
-    if (debug === 'true') {
-      return res.json({ 
-        debug: {
-          historicalCount: 0,
-          liveCount: 0,
-          divisionFilter: division || null,
-          autoRebuilt: false,
-          scopeRequested: scope || 'totals',
-          rosterFiltering: false,
-          rosteredPlayersCount: 0,
-          filteredResultCount: paginatedData.length,
-          pagination
-        }, 
-        data: paginatedData, 
-        pagination 
-      });
+    // Check if database is configured - if not, return demo data
+    let db = null;
+    try {
+      db = getDatabase();
+    } catch (error) {
+      logger.warn('Database not available, returning demo player stats');
     }
-    
-    return res.json({ data: paginatedData, pagination });
-  }
-  
-  // Database is available, proceed with normal operation
-  // Use standardized 'player-stats' container for live aggregated stats
-  const liveC = db.container(getContainerDefinitions()['player-stats'].name);
+
+    if (!db) {
+      logger.warn('Database not available, returning demo player stats');
+
+      // Return demo data for testing performance optimizations
+      const demoData = [
+        { playerName: 'Demo Player 1', division: 'Gold', goals: 25, assists: 15, points: 40, pim: 4, gp: 20 },
+        { playerName: 'Demo Player 2', division: 'Silver', goals: 20, assists: 18, points: 38, pim: 6, gp: 18 },
+        { playerName: 'Demo Player 3', division: 'Bronze', goals: 18, assists: 12, points: 30, pim: 8, gp: 16 },
+        { playerName: 'Demo Player 4', division: 'Gold', goals: 15, assists: 20, points: 35, pim: 2, gp: 22 },
+        { playerName: 'Demo Player 5', division: 'Silver', goals: 22, assists: 10, points: 32, pim: 10, gp: 19 }
+      ];
+
+      const totalCount = demoData.length;
+      const startIndex = parseInt(offset) || 0;
+      const limitNum = parseInt(limit) || 100;
+      const paginatedData = demoData.slice(startIndex, startIndex + limitNum);
+
+      const pagination = {
+        total: totalCount,
+        limit: limitNum,
+        offset: startIndex,
+        hasNext: startIndex + limitNum < totalCount,
+        hasPrev: startIndex > 0
+      };
+
+      if (debug === 'true') {
+        return res.json({
+          debug: {
+            historicalCount: 0,
+            liveCount: 0,
+            divisionFilter: division || null,
+            autoRebuilt: false,
+            scopeRequested: scope || 'totals',
+            rosterFiltering: false,
+            rosteredPlayersCount: 0,
+            filteredResultCount: paginatedData.length,
+            pagination
+          },
+          data: paginatedData,
+          pagination
+        });
+      }
+
+      return res.json({ data: paginatedData, pagination });
+    }
+
+    // Database is available, proceed with normal operation
+    // Use standardized 'player-stats' container for live aggregated stats
+    const liveC = db.container(getContainerDefinitions()['player-stats'].name);
     const goalsC = db.container('goals');
     const pensC = db.container('penalties');
     const histC = getHistoricalPlayerStatsContainer();
@@ -4147,21 +4203,45 @@ app.get('/api/player-stats', async (req, res) => {
       // Rebuild live container (truncate only live docs)
       try {
         // Delete only previously generated live docs (source='live') to avoid wiping other player profiles
-        const { resources: existing } = await liveC.items.query("SELECT c.id, c._partitionKey FROM c WHERE c.source = 'live'").fetchAll();
-        for (const e of existing) { try { await liveC.item(e.id, e._partitionKey || e.id).delete(); } catch {} }
-      } catch (delErr) { console.warn('Live player stat cleanup issue', delErr.message); }
+        const { resources: existing } = await liveC.items.query('SELECT c.id, c._partitionKey FROM c WHERE c.source = \'live\'').fetchAll();
+        for (const e of existing) {
+          try {
+            await liveC.item(e.id, e._partitionKey || e.id).delete();
+          } catch {}
+        }
+      } catch (delErr) {
+        console.warn('Live player stat cleanup issue', delErr.message);
+      }
       const map = new Map();
-      const key = (name, div) => `${(div||'div').toLowerCase()}::${name.toLowerCase().replace(/\s+/g,'_')}`;
-      const ensure = (name, div) => { const k=key(name,div); if(!map.has(k)) map.set(k,{ id:k, playerId:k, playerName:name, division:div, goals:0, assists:0, pim:0, games:new Set() }); return map.get(k); };
+      const key = (name, div) => `${(div || 'div').toLowerCase()}::${name.toLowerCase().replace(/\s+/g,'_')}`;
+      const ensure = (name, div) => {
+        const k = key(name,div); if (!map.has(k)) {
+          map.set(k,{ id: k, playerId: k, playerName: name, division: div, goals: 0, assists: 0, pim: 0, games: new Set() });
+        } return map.get(k);
+      };
       for (const g of goals) {
-        const name = g.playerName; if(!name) continue; const div = g.division||null; const r=ensure(name,div); r.goals++; r.games.add(g.gameId); const assists = g.assistedBy||g.assists||[]; if(Array.isArray(assists)){ for(const a of assists){ if(!a) continue; const ar=ensure(a,div); ar.assists++; ar.games.add(g.gameId); }} }
+        const name = g.playerName; if (!name) {
+          continue;
+        } const div = g.division || null; const r = ensure(name,div); r.goals++; r.games.add(g.gameId); const assists = g.assistedBy || g.assists || []; if (Array.isArray(assists)) {
+          for (const a of assists) {
+            if (!a) {
+              continue;
+            } const ar = ensure(a,div); ar.assists++; ar.games.add(g.gameId);
+          }
+        }
+      }
       for (const p of pens) {
-        const name = p.playerName; if(!name) continue; const div = p.division||null; const r=ensure(name,div); const mins=parseInt(p.length||p.penaltyLength||0,10); if(!isNaN(mins)) r.pim+=mins; r.games.add(p.gameId); }
+        const name = p.playerName; if (!name) {
+          continue;
+        } const div = p.division || null; const r = ensure(name,div); const mins = parseInt(p.length || p.penaltyLength || 0,10); if (!isNaN(mins)) {
+          r.pim += mins;
+        } r.games.add(p.gameId);
+      }
       for (const rec of map.values()) {
-        const doc = { ...rec, _partitionKey: rec.division || 'global', points: rec.goals+rec.assists, gamesPlayed: rec.games.size, games: Array.from(rec.games), updatedAt: new Date().toISOString(), source:'live' };
+        const doc = { ...rec, _partitionKey: rec.division || 'global', points: rec.goals + rec.assists, gamesPlayed: rec.games.size, games: Array.from(rec.games), updatedAt: new Date().toISOString(), source: 'live' };
         await liveC.items.upsert(doc);
       }
-      return res.json({ success:true, rebuilt: map.size });
+      return res.json({ success: true, rebuilt: map.size });
     }
 
     // Fetch historical filtered
@@ -4169,17 +4249,25 @@ app.get('/api/player-stats', async (req, res) => {
     const hParams = [];
     if (division || year || season) {
       const cond = [];
-      if (division) { cond.push('c.division = @d'); hParams.push({ name:'@d', value: division }); }
-      if (year) { cond.push('c.year = @y'); hParams.push({ name:'@y', value: year }); }
-      if (season) { cond.push('c.season = @s'); hParams.push({ name:'@s', value: season }); }
+      if (division) {
+        cond.push('c.division = @d'); hParams.push({ name: '@d', value: division });
+      }
+      if (year) {
+        cond.push('c.year = @y'); hParams.push({ name: '@y', value: year });
+      }
+      if (season) {
+        cond.push('c.season = @s'); hParams.push({ name: '@s', value: season });
+      }
       histQuery = `SELECT * FROM c WHERE ${cond.join(' AND ')}`;
     }
     const { resources: historical } = await histC.items.query({ query: histQuery, parameters: hParams }).fetchAll();
 
     // Fetch live filtered
-    let liveQuery = "SELECT * FROM c WHERE c.source = 'live'";
+    let liveQuery = 'SELECT * FROM c WHERE c.source = \'live\'';
     const lParams = [];
-    if (division) { liveQuery += ' AND c.division = @d'; lParams.push({ name:'@d', value: division }); }
+    if (division) {
+      liveQuery += ' AND c.division = @d'; lParams.push({ name: '@d', value: division });
+    }
     const { resources: liveInitial } = await liveC.items.query({ query: liveQuery, parameters: lParams }).fetchAll();
     let live = liveInitial;
 
@@ -4192,61 +4280,88 @@ app.get('/api/player-stats', async (req, res) => {
         ]);
         if (goals.length > 0 || pens.length > 0) {
           const map = new Map();
-          const key = (name, div) => `${(div||'div').toLowerCase()}::${name.toLowerCase().replace(/\s+/g,'_')}`;
-          const ensure = (name, div) => { const k=key(name,div); if(!map.has(k)) map.set(k,{ id:k, playerId:k, playerName:name, division:div, goals:0, assists:0, pim:0, games:new Set() }); return map.get(k); };
+          const key = (name, div) => `${(div || 'div').toLowerCase()}::${name.toLowerCase().replace(/\s+/g,'_')}`;
+          const ensure = (name, div) => {
+            const k = key(name,div); if (!map.has(k)) {
+              map.set(k,{ id: k, playerId: k, playerName: name, division: div, goals: 0, assists: 0, pim: 0, games: new Set() });
+            } return map.get(k);
+          };
           for (const g of goals) {
-            const name = g.playerName; if(!name) continue; const div = g.division||null; const r=ensure(name,div); r.goals++; r.games.add(g.gameId); const assists = g.assistedBy||g.assists||[]; if(Array.isArray(assists)){ for(const a of assists){ if(!a) continue; const ar=ensure(a,div); ar.assists++; ar.games.add(g.gameId); }} }
-          for (const p of pens) { const name = p.playerName; if(!name) continue; const div = p.division||null; const r=ensure(name,div); const mins=parseInt(p.length||p.penaltyLength||0,10); if(!isNaN(mins)) r.pim+=mins; r.games.add(p.gameId); }
-          for (const rec of map.values()) { const doc = { ...rec, _partitionKey: rec.division || 'global', points: rec.goals+rec.assists, gamesPlayed: rec.games.size, games: Array.from(rec.games), updatedAt: new Date().toISOString(), source:'live', autoRebuilt:true }; await liveC.items.upsert(doc); }
+            const name = g.playerName; if (!name) {
+              continue;
+            } const div = g.division || null; const r = ensure(name,div); r.goals++; r.games.add(g.gameId); const assists = g.assistedBy || g.assists || []; if (Array.isArray(assists)) {
+              for (const a of assists) {
+                if (!a) {
+                  continue;
+                } const ar = ensure(a,div); ar.assists++; ar.games.add(g.gameId);
+              }
+            }
+          }
+          for (const p of pens) {
+            const name = p.playerName; if (!name) {
+              continue;
+            } const div = p.division || null; const r = ensure(name,div); const mins = parseInt(p.length || p.penaltyLength || 0,10); if (!isNaN(mins)) {
+              r.pim += mins;
+            } r.games.add(p.gameId);
+          }
+          for (const rec of map.values()) {
+            const doc = { ...rec, _partitionKey: rec.division || 'global', points: rec.goals + rec.assists, gamesPlayed: rec.games.size, games: Array.from(rec.games), updatedAt: new Date().toISOString(), source: 'live', autoRebuilt: true }; await liveC.items.upsert(doc);
+          }
           const { resources: liveAfter } = await liveC.items.query({ query: liveQuery, parameters: lParams }).fetchAll();
           live = liveAfter;
         }
-      } catch (autoErr) { console.warn('Auto rebuild live stats failed', autoErr.message); }
+      } catch (autoErr) {
+        console.warn('Auto rebuild live stats failed', autoErr.message);
+      }
     }
 
     const histIndex = new Map();
     for (const h of historical) {
-      const k = `${(h.division||'div').toLowerCase()}::${h.playerName.toLowerCase()}::${h.year}`;
+      const k = `${(h.division || 'div').toLowerCase()}::${h.playerName.toLowerCase()}::${h.year}`;
       histIndex.set(k, h);
     }
-    const byNameDiv = (name, div) => `${(div||'div').toLowerCase()}::${name.toLowerCase()}`;
+    const byNameDiv = (name, div) => `${(div || 'div').toLowerCase()}::${name.toLowerCase()}`;
     const mergedMap = new Map();
 
     // Seed merged with historical
     for (const h of historical) {
       const k = byNameDiv(h.playerName, h.division);
-      if (!mergedMap.has(k)) mergedMap.set(k, { playerName: h.playerName, division: h.division, historical: [], live: null });
+      if (!mergedMap.has(k)) {
+        mergedMap.set(k, { playerName: h.playerName, division: h.division, historical: [], live: null });
+      }
       mergedMap.get(k).historical.push(h);
     }
     // Attach live
     for (const l of live) {
       const k = byNameDiv(l.playerName, l.division);
-      if (!mergedMap.has(k)) mergedMap.set(k, { playerName: l.playerName, division: l.division, historical: [], live: null });
+      if (!mergedMap.has(k)) {
+        mergedMap.set(k, { playerName: l.playerName, division: l.division, historical: [], live: null });
+      }
       mergedMap.get(k).live = l;
     }
 
     // Roster filtering for current season (2025 Fall) if rostered=true or scope=live
-    let rosterNames = new Set();
+    const rosterNames = new Set();
     let shouldFilterByRoster = rostered === 'true' || (scope === 'live' && !year && !season);
-    
+
     if (shouldFilterByRoster) {
       try {
         // Fetch current season rosters (try multiple season formats)
         const seasonVariants = ['2025 Fall', '2025', 'Fall 2025'];
         let rosters = [];
-        
+
         for (const seasonVariant of seasonVariants) {
-          let rosterQuery = {
-            query: `SELECT * FROM c WHERE c.season = @season`,
+          const rosterQuery = {
+            query: 'SELECT * FROM c WHERE c.season = @season',
             parameters: [{ name: '@season', value: seasonVariant }]
           };
-          
+
           // If division filter is specified, apply it to rosters too
           if (division) {
-            rosterQuery.query += ` AND LOWER(c.division) = LOWER(@division)`;
+            rosterQuery.query += ' AND LOWER(c.division) = LOWER(@division)';
             rosterQuery.parameters.push({ name: '@division', value: division });
           }
-          
+
           const { resources: seasonRosters } = await rostersC.items.query(rosterQuery).fetchAll();
           if (seasonRosters.length > 0) {
             rosters = seasonRosters;
@@ -4254,13 +4369,13 @@ app.get('/api/player-stats', async (req, res) => {
             break;
           }
         }
-        
+
         if (rosters.length === 0) {
           // If no rosters found, try fetching all rosters to see what seasons exist
           const { resources: allRosters } = await rostersC.items.query('SELECT DISTINCT c.season FROM c').fetchAll();
           const availableSeasons = allRosters.map(r => r.season);
           console.log(`⚠️ No rosters found for current season variants. Available seasons: ${JSON.stringify(availableSeasons)}`);
-          console.log(`ℹ️ Disabling roster filtering since no current season rosters exist`);
+          console.log('ℹ️ Disabling roster filtering since no current season rosters exist');
           // Don't filter by roster if no rosters exist
           shouldFilterByRoster = false;
         } else {
@@ -4274,7 +4389,7 @@ app.get('/api/player-stats', async (req, res) => {
               }
             }
           }
-          
+
           console.log(`📋 Found ${rosterNames.size} rostered players for current season filtering`);
         }
       } catch (rosterErr) {
@@ -4293,24 +4408,30 @@ app.get('/api/player-stats', async (req, res) => {
           continue; // Skip non-rostered players
         }
       }
-      
-      const histTotals = entry.historical.reduce((acc,h)=>{ acc.goals+=h.goals; acc.assists+=h.assists; acc.points+=h.points; acc.pim+=h.pim; acc.gp+=h.gp; return acc; }, { goals:0, assists:0, points:0, pim:0, gp:0 });
-      const liveRec = entry.live ? { goals: entry.live.goals, assists: entry.live.assists, points: entry.live.points, pim: entry.live.pim, gp: entry.live.gamesPlayed } : { goals:0, assists:0, points:0, pim:0, gp:0 };
+
+      const histTotals = entry.historical.reduce((acc,h) => {
+        acc.goals += h.goals; acc.assists += h.assists; acc.points += h.points; acc.pim += h.pim; acc.gp += h.gp; return acc;
+      }, { goals: 0, assists: 0, points: 0, pim: 0, gp: 0 });
+      const liveRec = entry.live ? { goals: entry.live.goals, assists: entry.live.assists, points: entry.live.points, pim: entry.live.pim, gp: entry.live.gamesPlayed } : { goals: 0, assists: 0, points: 0, pim: 0, gp: 0 };
       const totals = { goals: histTotals.goals + liveRec.goals, assists: histTotals.assists + liveRec.assists, points: histTotals.points + liveRec.points, pim: histTotals.pim + liveRec.pim, gp: histTotals.gp + liveRec.gp };
       const base = { playerName: entry.playerName, division: entry.division };
-      if (scope === 'historical') response.push({ ...base, ...histTotals, scope:'historical' });
-      else if (scope === 'live') response.push({ ...base, ...liveRec, scope:'live' });
-      else response.push({ ...base, ...totals, historical: histTotals, live: liveRec, scope:'totals' });
+      if (scope === 'historical') {
+        response.push({ ...base, ...histTotals, scope: 'historical' });
+      } else if (scope === 'live') {
+        response.push({ ...base, ...liveRec, scope: 'live' });
+      } else {
+        response.push({ ...base, ...totals, historical: histTotals, live: liveRec, scope: 'totals' });
+      }
     }
 
-    const payload = response.sort((a,b)=> b.points - a.points);
-    
+    const payload = response.sort((a,b) => b.points - a.points);
+
     // Apply pagination
     const totalCount = payload.length;
     const startIndex = parseInt(offset) || 0;
     const limitNum = parseInt(limit) || 100;
     const paginatedPayload = payload.slice(startIndex, startIndex + limitNum);
-    
+
     // Add pagination metadata
     const pagination = {
       total: totalCount,
@@ -4319,14 +4440,14 @@ app.get('/api/player-stats', async (req, res) => {
       hasNext: startIndex + limitNum < totalCount,
       hasPrev: startIndex > 0
     };
-    
+
     if (debug === 'true') {
-      return res.json({ debug: { 
-        historicalCount: historical.length, 
-        liveCount: live.length, 
-        divisionFilter: division||null, 
-        autoRebuilt: live.some(l=>l.autoRebuilt), 
-        scopeRequested: scope||'totals',
+      return res.json({ debug: {
+        historicalCount: historical.length,
+        liveCount: live.length,
+        divisionFilter: division || null,
+        autoRebuilt: live.some(l => l.autoRebuilt),
+        scopeRequested: scope || 'totals',
         rosterFiltering: shouldFilterByRoster,
         rosteredPlayersCount: rosterNames.size,
         filteredResultCount: payload.length,
@@ -4336,7 +4457,7 @@ app.get('/api/player-stats', async (req, res) => {
     res.json({ data: paginatedPayload, pagination });
   } catch (e) {
     console.error('Player stats merged error', e);
-    res.status(500).json({ error:'Failed to get player stats', message:e.message });
+    res.status(500).json({ error: 'Failed to get player stats', message: e.message });
   }
 });
 
@@ -4347,25 +4468,35 @@ app.post('/api/admin/normalize-events', async (req, res) => {
     const db = await getDatabase();
     const goalsC = db.container('goals');
     const pensC = db.container('penalties');
-    const updates = { goals:0, penalties:0 };
+    const updates = { goals: 0, penalties: 0 };
     const { resources: goals } = await goalsC.items.query('SELECT * FROM c').fetchAll();
     for (const g of goals) {
-      let changed = false;
+      const changed = false;
       // Field already standardized - scorer field removed
       // teamName is now standardized across all containers
-      if (changed) { try { await goalsC.items.upsert(g); updates.goals++; } catch {} }
+      if (changed) {
+        try {
+          await goalsC.items.upsert(g); updates.goals++;
+        } catch {}
+      }
     }
     const { resources: pens } = await pensC.items.query('SELECT * FROM c').fetchAll();
     for (const p of pens) {
       let changed = false;
       // Field already standardized - penalizedPlayer field removed
-      if (!p.teamName && p.penalizedTeam) { p.teamName = p.penalizedTeam; changed = true; }
-      if (changed) { try { await pensC.items.upsert(p); updates.penalties++; } catch {} }
+      if (!p.teamName && p.penalizedTeam) {
+        p.teamName = p.penalizedTeam; changed = true;
+      }
+      if (changed) {
+        try {
+          await pensC.items.upsert(p); updates.penalties++;
+        } catch {}
+      }
     }
-    res.json({ success:true, updates });
+    res.json({ success: true, updates });
   } catch (e) {
     console.error('Normalization error', e);
-    res.status(500).json({ error:'Normalization failed', message:e.message });
+    res.status(500).json({ error: 'Normalization failed', message: e.message });
   }
 });
 
@@ -4378,15 +4509,19 @@ app.get('/api/player-stats/meta', async (req, res) => {
     const seasons = new Set();
     const years = new Set();
     for (const r of resources) {
-      if (r.season) seasons.add(String(r.season));
-      if (r.year) years.add(String(r.year));
+      if (r.season) {
+        seasons.add(String(r.season));
+      }
+      if (r.year) {
+        years.add(String(r.year));
+      }
     }
-    const seasonList = Array.from(seasons).filter(Boolean).sort((a,b)=> a.localeCompare(b));
-    const yearList = Array.from(years).filter(Boolean).sort((a,b)=> parseInt(b,10)-parseInt(a,10));
+    const seasonList = Array.from(seasons).filter(Boolean).sort((a,b) => a.localeCompare(b));
+    const yearList = Array.from(years).filter(Boolean).sort((a,b) => parseInt(b,10) - parseInt(a,10));
     res.json({ seasons: seasonList, years: yearList, count: resources.length, generatedAt: new Date().toISOString() });
   } catch (e) {
     console.error('Player stats meta error', e);
-    res.status(500).json({ error:'Failed to get player stats meta', message:e.message });
+    res.status(500).json({ error: 'Failed to get player stats meta', message: e.message });
   }
 });
 
@@ -4398,11 +4533,11 @@ app.get('/api/team-stats', async (req, res) => {
     'Pragma': 'no-cache',
     'Expires': '0'
   });
-  
+
   const { division } = req.query || {};
   try {
     const { getDatabase } = await import('./cosmosClient.js');
-    
+
     // Check if database is configured - if not, return demo data
     let db = null;
     try {
@@ -4413,28 +4548,28 @@ app.get('/api/team-stats', async (req, res) => {
 
     if (!db) {
       logger.warn('Database not available, returning demo team stats');
-      
+
       // Return demo team stats data
       const demoData = [
-        { teamName: "Demo Team A", division: "Gold", gamesPlayed: 20, wins: 15, losses: 3, ties: 2, goalsFor: 85, goalsAgainst: 45, points: 32 },
-        { teamName: "Demo Team B", division: "Silver", gamesPlayed: 18, wins: 12, losses: 4, ties: 2, goalsFor: 72, goalsAgainst: 38, points: 26 },
-        { teamName: "Demo Team C", division: "Bronze", gamesPlayed: 16, wins: 8, losses: 6, ties: 2, goalsFor: 58, goalsAgainst: 52, points: 18 },
-        { teamName: "Demo Team D", division: "Gold", gamesPlayed: 22, wins: 14, losses: 5, ties: 3, goalsFor: 78, goalsAgainst: 48, points: 31 },
-        { teamName: "Demo Team E", division: "Silver", gamesPlayed: 19, wins: 10, losses: 7, ties: 2, goalsFor: 65, goalsAgainst: 55, points: 22 }
+        { teamName: 'Demo Team A', division: 'Gold', gamesPlayed: 20, wins: 15, losses: 3, ties: 2, goalsFor: 85, goalsAgainst: 45, points: 32 },
+        { teamName: 'Demo Team B', division: 'Silver', gamesPlayed: 18, wins: 12, losses: 4, ties: 2, goalsFor: 72, goalsAgainst: 38, points: 26 },
+        { teamName: 'Demo Team C', division: 'Bronze', gamesPlayed: 16, wins: 8, losses: 6, ties: 2, goalsFor: 58, goalsAgainst: 52, points: 18 },
+        { teamName: 'Demo Team D', division: 'Gold', gamesPlayed: 22, wins: 14, losses: 5, ties: 3, goalsFor: 78, goalsAgainst: 48, points: 31 },
+        { teamName: 'Demo Team E', division: 'Silver', gamesPlayed: 19, wins: 10, losses: 7, ties: 2, goalsFor: 65, goalsAgainst: 55, points: 22 }
       ];
-      
+
       const filteredData = division ? demoData.filter(team => team.division === division) : demoData;
-      
+
       return res.json(filteredData);
     }
-    
+
     // Database is available, proceed with normal operation
     const gamesC = db.container('games');
     const goalsC = db.container('goals');
 
     // Fetch submission docs (these contain all the game data we need)
     const { resources: submissions } = await gamesC.items.query({
-      query: "SELECT * FROM c WHERE c.eventType = 'game-submission'",
+      query: 'SELECT * FROM c WHERE c.eventType = \'game-submission\'',
       parameters: []
     }).fetchAll();
 
@@ -4445,7 +4580,7 @@ app.get('/api/team-stats', async (req, res) => {
     // Filter by division if specified
     let games = submissions;
     if (division && division.toLowerCase() !== 'all') {
-      games = games.filter(g => (g.division||'').toLowerCase() === division.toLowerCase());
+      games = games.filter(g => (g.division || '').toLowerCase() === division.toLowerCase());
     }
 
     // Fetch all goals for submitted games
@@ -4459,14 +4594,14 @@ app.get('/api/team-stats', async (req, res) => {
       const div = game.division || game.league || null;
       [game.homeTeam, game.awayTeam].forEach(teamName => {
         if (!teamStatsMap.has(teamName)) {
-          teamStatsMap.set(teamName, { 
-            teamName, 
-            division: div, 
-            wins: 0, 
-            losses: 0, 
-            goalsFor: 0, 
-            goalsAgainst: 0, 
-            gamesPlayed: 0 
+          teamStatsMap.set(teamName, {
+            teamName,
+            division: div,
+            wins: 0,
+            losses: 0,
+            goalsFor: 0,
+            goalsAgainst: 0,
+            gamesPlayed: 0
           });
         }
       });
@@ -4478,7 +4613,7 @@ app.get('/api/team-stats', async (req, res) => {
       if (scoringTeam && teamStatsMap.has(scoringTeam)) {
         teamStatsMap.get(scoringTeam).goalsFor++;
       }
-      
+
       // Find opponent team and increment goals against
       const game = games.find(g => g.gameId === goal.gameId);
       if (game) {
@@ -4494,24 +4629,34 @@ app.get('/api/team-stats', async (req, res) => {
       const finalScore = game.finalScore || {};
       const homeScore = finalScore[game.homeTeam] || 0;
       const awayScore = finalScore[game.awayTeam] || 0;
-      
+
       const homeTeam = teamStatsMap.get(game.homeTeam);
       const awayTeam = teamStatsMap.get(game.awayTeam);
-      
+
       // Count games played for both teams regardless of score
-      if (homeTeam) homeTeam.gamesPlayed++;
-      if (awayTeam) awayTeam.gamesPlayed++;
-      
+      if (homeTeam) {
+        homeTeam.gamesPlayed++;
+      }
+      if (awayTeam) {
+        awayTeam.gamesPlayed++;
+      }
+
       // Only count wins/losses for non-tied games
       if (homeScore !== awayScore) {
         if (homeTeam) {
-          if (homeScore > awayScore) homeTeam.wins++;
-          else homeTeam.losses++;
+          if (homeScore > awayScore) {
+            homeTeam.wins++;
+          } else {
+            homeTeam.losses++;
+          }
         }
-        
+
         if (awayTeam) {
-          if (awayScore > homeScore) awayTeam.wins++;
-          else awayTeam.losses++;
+          if (awayScore > homeScore) {
+            awayTeam.wins++;
+          } else {
+            awayTeam.losses++;
+          }
         }
       }
       // Note: Tied games are neither wins nor losses, but still count as games played
@@ -4526,7 +4671,7 @@ app.get('/api/team-stats', async (req, res) => {
     res.json(response);
   } catch (e) {
     console.error('Team stats error', e);
-    res.status(500).json({ error:'Failed to get team stats', message:e.message });
+    res.status(500).json({ error: 'Failed to get team stats', message: e.message });
   }
 });
 
@@ -4544,19 +4689,21 @@ app.post('/api/admin/backfill-submissions', async (req, res) => {
 
     // Fetch all base game records (exclude existing submission docs)
     const { resources: baseGames } = await gamesC.items.query({
-      query: "SELECT * FROM c WHERE (NOT IS_DEFINED(c.eventType)) OR c.eventType != 'game-submission'"
+      query: 'SELECT * FROM c WHERE (NOT IS_DEFINED(c.eventType)) OR c.eventType != \'game-submission\''
     }).fetchAll();
 
     // Fetch existing submissions index
     const { resources: existingSubs } = await gamesC.items.query({
-      query: "SELECT c.gameId FROM c WHERE c.eventType = 'game-submission'"
+      query: 'SELECT c.gameId FROM c WHERE c.eventType = \'game-submission\''
     }).fetchAll();
     const existingSet = new Set(existingSubs.map(s => s.gameId));
 
     const toCreate = [];
     for (const g of baseGames) {
       const gameId = g.gameId || g.id;
-      if (!gameId || existingSet.has(gameId)) continue;
+      if (!gameId || existingSet.has(gameId)) {
+        continue;
+      }
       // Aggregate goals & penalties for summary
       const [{ resources: gameGoals }, { resources: gamePens }] = await Promise.all([
         goalsC.items.query({ query: 'SELECT * FROM c WHERE c.gameId = @gid', parameters: [{ name: '@gid', value: gameId }] }).fetchAll(),
@@ -4573,7 +4720,9 @@ app.post('/api/admin/backfill-submissions', async (req, res) => {
         const t = pen.teamName || 'Unknown';
         penaltiesByTeam[t] = (penaltiesByTeam[t] || 0) + 1;
         const mins = parseInt(pen.length || pen.penaltyLength || 0, 10);
-        if (!isNaN(mins)) totalPIM += mins;
+        if (!isNaN(mins)) {
+          totalPIM += mins;
+        }
       }
       const submissionDoc = {
         id: `${gameId}-submission-backfill`,
@@ -4598,7 +4747,9 @@ app.post('/api/admin/backfill-submissions', async (req, res) => {
     }
 
     for (const doc of toCreate) {
-      try { await gamesC.items.create(doc); } catch (e) { /* ignore duplicates */ }
+      try {
+        await gamesC.items.create(doc);
+      } catch (e) { /* ignore duplicates */ }
     }
     res.status(200).json({ success: true, created: toCreate.length });
   } catch (e) {
@@ -4622,9 +4773,15 @@ app.post('/api/admin/normalize-events', async (req, res) => {
     for (const g of goals) {
       let changed = false;
       // Field already standardized - scorer field removed
-      if (!g.teamName && g.scoringTeam) { g.teamName = g.scoringTeam; changed = true; }
-      if (!g.assistedBy && g.assists) { g.assistedBy = g.assists; changed = true; }
-      if (!g.timeRemaining && g.time) { g.timeRemaining = g.time; changed = true; }
+      if (!g.teamName && g.scoringTeam) {
+        g.teamName = g.scoringTeam; changed = true;
+      }
+      if (!g.assistedBy && g.assists) {
+        g.assistedBy = g.assists; changed = true;
+      }
+      if (!g.timeRemaining && g.time) {
+        g.timeRemaining = g.time; changed = true;
+      }
       if (changed && !dryRun) {
         await goalsC.item(g.id, g.gameId).replace(g);
         updated++;
@@ -4637,9 +4794,15 @@ app.post('/api/admin/normalize-events', async (req, res) => {
     for (const p of pens) {
       let changed = false;
       // Field already standardized - penalizedPlayer field removed
-      if (!p.teamName && p.penalizedTeam) { p.teamName = p.penalizedTeam; changed = true; }
-      if (!p.timeRemaining && p.time) { p.timeRemaining = p.time; changed = true; }
-      if (!p.length && p.penaltyLength) { p.length = p.penaltyLength; changed = true; }
+      if (!p.teamName && p.penalizedTeam) {
+        p.teamName = p.penalizedTeam; changed = true;
+      }
+      if (!p.timeRemaining && p.time) {
+        p.timeRemaining = p.time; changed = true;
+      }
+      if (!p.length && p.penaltyLength) {
+        p.length = p.penaltyLength; changed = true;
+      }
       if (changed && !dryRun) {
         await penaltiesC.item(p.id, p.gameId).replace(p);
         updated++;
@@ -4715,29 +4878,29 @@ app.use((err, req, res, next) => {
 // Get individual game details
 app.get('/api/games/:gameId', async (req, res) => {
   console.log(`🎮 Getting game details for ID: ${req.params.gameId}`);
-  
+
   try {
     const { gameId } = req.params;
     const container = getGamesContainer();
-    
+
     // Try to find the game using query
     const query = {
       query: 'SELECT * FROM c WHERE c.id = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
-    
+
     const { resources: games } = await container.items.query(query).fetchAll();
-    
+
     if (games.length === 0) {
       return res.status(404).json({
         error: 'Game not found',
         gameId
       });
     }
-    
+
     const game = games[0];
     console.log(`✅ Found game: ${game.awayTeam} vs ${game.homeTeam}`);
-    
+
     res.status(200).json(game);
   } catch (error) {
     console.error('❌ Error fetching game details:', error);
@@ -4748,40 +4911,40 @@ app.get('/api/games/:gameId', async (req, res) => {
 // Update game details
 app.put('/api/games/:gameId', async (req, res) => {
   console.log(`🎮 Updating game details for ID: ${req.params.gameId}`);
-  
+
   try {
     const { gameId } = req.params;
     const updateData = req.body;
     const container = getGamesContainer();
-    
+
     // Get the existing game
     const query = {
       query: 'SELECT * FROM c WHERE c.id = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
-    
+
     const { resources: games } = await container.items.query(query).fetchAll();
-    
+
     if (games.length === 0) {
       return res.status(404).json({
         error: 'Game not found',
         gameId
       });
     }
-    
+
     const existingGame = games[0];
-    
+
     // Update the game with new data
     const updatedGame = {
       ...existingGame,
       ...updateData,
       lastModified: new Date().toISOString()
     };
-    
+
     await container.item(gameId, gameId).replace(updatedGame);
-    
+
     console.log(`✅ Updated game: ${updatedGame.awayTeam} vs ${updatedGame.homeTeam}`);
-    
+
     res.status(200).json({
       success: true,
       message: 'Game updated successfully',
@@ -4796,20 +4959,20 @@ app.put('/api/games/:gameId', async (req, res) => {
 // Get goals for a specific game
 app.get('/api/goals/game/:gameId', async (req, res) => {
   console.log(`⚽ Getting goals for game ID: ${req.params.gameId}`);
-  
+
   try {
     const { gameId } = req.params;
     const container = getGoalsContainer();
-    
+
     const query = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.timeScored ASC',
       parameters: [{ name: '@gameId', value: gameId }]
     };
-    
+
     const { resources: goals } = await container.items.query(query).fetchAll();
-    
+
     console.log(`✅ Found ${goals.length} goals for game ${gameId}`);
-    
+
     res.status(200).json(goals);
   } catch (error) {
     console.error('❌ Error fetching goals for game:', error);
@@ -4817,23 +4980,23 @@ app.get('/api/goals/game/:gameId', async (req, res) => {
   }
 });
 
-// Get penalties for a specific game  
+// Get penalties for a specific game
 app.get('/api/penalties/game/:gameId', async (req, res) => {
   console.log(`⚠️ Getting penalties for game ID: ${req.params.gameId}`);
-  
+
   try {
     const { gameId } = req.params;
     const container = getPenaltiesContainer();
-    
+
     const query = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.timeRecorded ASC',
       parameters: [{ name: '@gameId', value: gameId }]
     };
-    
+
     const { resources: penalties } = await container.items.query(query).fetchAll();
-    
+
     console.log(`✅ Found ${penalties.length} penalties for game ${gameId}`);
-    
+
     res.status(200).json(penalties);
   } catch (error) {
     console.error('❌ Error fetching penalties for game:', error);
@@ -4845,25 +5008,25 @@ app.get('/api/penalties/game/:gameId', async (req, res) => {
 app.post('/api/shots-on-goal', async (req, res) => {
   console.log('🥅 Recording shot on goal...');
   const { gameId, team } = req.body;
-  
+
   try {
     const container = getShotsOnGoalContainer();
-    
+
     // Try to find existing record for this game
     const query = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
-    
+
     const { resources: existingRecords } = await container.items.query(query).fetchAll();
     let shotRecord;
-    
+
     if (existingRecords.length > 0) {
       // Update existing record
       shotRecord = existingRecords[0];
       shotRecord[team] = (shotRecord[team] || 0) + 1;
       shotRecord.lastUpdated = new Date().toISOString();
-      
+
       // Ensure team data is populated for existing records that might not have it
       if (!shotRecord.homeTeam || !shotRecord.awayTeam || !shotRecord.homeTeamId || !shotRecord.awayTeamId) {
         try {
@@ -4885,25 +5048,25 @@ app.post('/api/shots-on-goal', async (req, res) => {
           console.log('Could not backfill team data:', gameError.message);
         }
       }
-      
+
       await container.item(shotRecord.id, shotRecord.gameId).replace(shotRecord);
       console.log(`✅ Updated shot count for ${team} in game ${gameId}: ${shotRecord[team]}`);
     } else {
       // Create new record
       shotRecord = {
         id: `shots_${gameId}`,
-        gameId: gameId,
+        gameId,
         type: 'shots-on-goal-summary',
         home: team === 'home' ? 1 : 0,
         away: team === 'away' ? 1 : 0,
         homeTeam: '',      // Team display name
-        awayTeam: '',      // Team display name  
+        awayTeam: '',      // Team display name
         homeTeamId: '',    // Team ID for database relationships
         awayTeamId: '',    // Team ID for database relationships
         createdAt: new Date().toISOString(),
         lastUpdated: new Date().toISOString()
       };
-      
+
       // Try to get team names and IDs from game data
       try {
         const gamesContainer = getGamesContainer();
@@ -4924,11 +5087,11 @@ app.post('/api/shots-on-goal', async (req, res) => {
       } catch (gameError) {
         console.log('Could not fetch game details for team names:', gameError.message);
       }
-      
+
       await container.items.create(shotRecord);
       console.log(`✅ Created new shot record for game ${gameId}, ${team}: 1`);
     }
-    
+
     res.status(201).json({
       gameId: shotRecord.gameId,
       home: shotRecord.home,
@@ -4947,21 +5110,21 @@ app.post('/api/shots-on-goal', async (req, res) => {
 
 app.get('/api/shots-on-goal/game/:gameId', async (req, res) => {
   const { gameId } = req.params;
-  
+
   try {
     const container = getShotsOnGoalContainer();
-    
+
     const query = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId',
       parameters: [
         { name: '@gameId', value: gameId }
       ]
     };
-    
+
     const { resources: shots } = await container.items.query(query).fetchAll();
-    
+
     let shotCounts = { home: 0, away: 0 };
-    
+
     if (shots.length > 0) {
       const shotRecord = shots[0];
       shotCounts = {
@@ -4971,7 +5134,7 @@ app.get('/api/shots-on-goal/game/:gameId', async (req, res) => {
         gameId: shotRecord.gameId
       };
     }
-    
+
     console.log(`✅ Found shot counts for game ${gameId}: Home: ${shotCounts.home}, Away: ${shotCounts.away}`);
     res.status(200).json(shotCounts);
   } catch (error) {
@@ -4984,14 +5147,14 @@ app.get('/api/shots-on-goal/game/:gameId', async (req, res) => {
 app.delete('/api/shots-on-goal/:id', async (req, res) => {
   const { id } = req.params;
   const { gameId } = req.query;
-  
+
   try {
     const container = getShotsOnGoalContainer();
-    
+
     console.log(`🗑️ Deleting shots on goal record ${id} for game ${gameId}`);
-    
+
     await container.item(id, gameId).delete();
-    
+
     console.log('✅ Shots on goal record deleted successfully');
     res.status(200).json({ message: 'Shots on goal record deleted successfully' });
   } catch (error) {
@@ -5016,14 +5179,18 @@ app.post('/api/games/:gameId/cancel', async (req, res) => {
     const otC = db.container('ot-shootout');
     const gamesC = db.container('games');
 
-    async function deleteByQuery(container, query, paramName='@gid') {
+    async function deleteByQuery(container, query, paramName = '@gid') {
       try {
-        const { resources } = await container.items.query({ query, parameters:[{ name:paramName, value: gameId }] }).fetchAll();
+        const { resources } = await container.items.query({ query, parameters: [{ name: paramName, value: gameId }] }).fetchAll();
         for (const doc of resources) {
-          try { await container.item(doc.id, doc.gameId || doc.id).delete(); } catch(_) {}
+          try {
+            await container.item(doc.id, doc.gameId || doc.id).delete();
+          } catch (_) {}
         }
         return resources.length;
-      } catch { return 0; }
+      } catch {
+        return 0;
+      }
     }
 
     const [goalsDeleted, pensDeleted, shotsDeleted, attendDeleted, otDeleted] = await Promise.all([
@@ -5039,12 +5206,14 @@ app.post('/api/games/:gameId/cancel', async (req, res) => {
 
     // Optionally delete base game record itself? Keep for scheduling clarity. Only remove if query param force=true
     if (req.query.force === 'true') {
-      try { await gamesC.item(gameId, gameId).delete(); } catch(_) {}
+      try {
+        await gamesC.item(gameId, gameId).delete();
+      } catch (_) {}
     }
 
-    res.json({ success:true, gameId, goalsDeleted, penaltiesDeleted: pensDeleted, shotsDeleted, attendanceDeleted: attendDeleted, otDeleted });
+    res.json({ success: true, gameId, goalsDeleted, penaltiesDeleted: pensDeleted, shotsDeleted, attendanceDeleted: attendDeleted, otDeleted });
   } catch (e) {
-    res.status(500).json({ error:'Failed to cancel game', message:e.message });
+    res.status(500).json({ error: 'Failed to cancel game', message: e.message });
   }
 });
 
@@ -5150,33 +5319,33 @@ app.post('/api/undo-last-action', async (req, res) => {
 app.post('/api/undo-shot-on-goal', async (req, res) => {
   console.log('↩️ Undoing shot on goal...');
   const { gameId, team } = req.body;
-  
+
   try {
     const container = getShotsOnGoalContainer();
-    
+
     // Find the shot record for this game
     const query = {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId',
       parameters: [{ name: '@gameId', value: gameId }]
     };
-    
+
     const { resources: shots } = await container.items.query(query).fetchAll();
-    
+
     if (shots.length === 0) {
       return res.status(404).json({ error: 'No shot records found for this game' });
     }
-    
+
     const shotRecord = shots[0];
     const currentCount = shotRecord[team] || 0;
-    
+
     if (currentCount === 0) {
       return res.status(400).json({ error: `No shots to undo for team ${team}` });
     }
-    
+
     // Decrement the count
     shotRecord[team] = currentCount - 1;
     shotRecord.lastUpdated = new Date().toISOString();
-    
+
     if ((shotRecord.home || 0) === 0 && (shotRecord.away || 0) === 0) {
       // If no shots left, delete the record
       await container.item(shotRecord.id, shotRecord.gameId).delete();
@@ -5186,7 +5355,7 @@ app.post('/api/undo-shot-on-goal', async (req, res) => {
       await container.item(shotRecord.id, shotRecord.gameId).replace(shotRecord);
       console.log(`✅ Undid shot for ${team} in game ${gameId}: ${shotRecord[team]}`);
     }
-    
+
     res.status(200).json({
       message: `Successfully undid shot for ${team}`,
       gameId: shotRecord.gameId,
@@ -5204,11 +5373,11 @@ app.post('/api/undo-shot-on-goal', async (req, res) => {
 app.get('/api/rink-reports', async (req, res) => {
   console.log('📰 Fetching rink reports...');
   const { division } = req.query;
-  
+
   try {
     const container = getRinkReportsContainer();
     let querySpec;
-    
+
     if (division) {
       // Get report for specific division
       querySpec = {
@@ -5221,16 +5390,16 @@ app.get('/api/rink-reports', async (req, res) => {
         query: 'SELECT * FROM c ORDER BY c.lastUpdated DESC'
       };
     }
-    
+
     const { resources: reports } = await container.items.query(querySpec).fetchAll();
-    
+
     console.log(`✅ Found ${reports.length} rink reports`);
     res.status(200).json(reports);
   } catch (error) {
     console.error('❌ Error fetching rink reports:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch rink reports',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -5239,7 +5408,7 @@ app.get('/api/rink-reports', async (req, res) => {
 app.post('/api/rink-reports/generate', async (req, res) => {
   console.log('📰 Manual rink report generation triggered...');
   const { division } = req.body;
-  
+
   try {
     if (!division) {
       return res.status(400).json({
@@ -5247,11 +5416,11 @@ app.post('/api/rink-reports/generate', async (req, res) => {
         example: { division: 'Gold' }
       });
     }
-    
+
     console.log(`📰 Generating report for ${division} division`);
-    
+
     const report = await generateRinkReport(division);
-    
+
     res.status(201).json({
       success: true,
       message: `Rink report generated for ${division} division`,
@@ -5356,7 +5525,7 @@ app.get('/api/admin/voices', (req, res) => {
   try {
     const availableVoices = ttsService.getAvailableVoices();
     const currentVoice = ttsService.selectedVoice;
-    
+
     res.json({
       currentVoice,
       availableVoices,
@@ -5364,9 +5533,9 @@ app.get('/api/admin/voices', (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error fetching available voices:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to fetch available voices',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -5375,9 +5544,9 @@ app.get('/api/admin/voices', (req, res) => {
 app.post('/api/admin/cleanup-games', async (req, res) => {
   try {
     console.log('🧹 Admin requested game cleanup...');
-    
+
     const { cleanupDuplicateGames } = await import('./cleanupDuplicateGames.js');
-    
+
     // Run cleanup and capture results
     const originalLog = console.log;
     const logs = [];
@@ -5385,19 +5554,19 @@ app.post('/api/admin/cleanup-games', async (req, res) => {
       logs.push(args.join(' '));
       originalLog(...args);
     };
-    
+
     try {
       await cleanupDuplicateGames();
-      
+
       res.json({
         success: true,
         message: 'Game cleanup completed successfully',
-        logs: logs
+        logs
       });
     } finally {
       console.log = originalLog;
     }
-    
+
   } catch (error) {
     console.error('❌ Game cleanup failed:', error);
     res.status(500).json({
@@ -5411,25 +5580,25 @@ app.post('/api/admin/cleanup-games', async (req, res) => {
 app.post('/api/admin/voices/select', (req, res) => {
   try {
     const { voiceId } = req.body;
-    
+
     if (!voiceId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Voice ID is required',
         example: { voiceId: 'en-US-Studio-O' }
       });
     }
-    
+
     const success = ttsService.setAnnouncerVoice(voiceId);
-    
+
     if (success) {
       console.log(`🎤 Voice changed to: ${voiceId}`);
-      res.json({ 
+      res.json({
         success: true,
         message: `Announcer voice changed to ${voiceId}`,
         currentVoice: ttsService.selectedVoice
       });
     } else {
-      res.status(400).json({ 
+      res.status(400).json({
         error: 'Invalid voice ID',
         currentVoice: ttsService.selectedVoice,
         availableVoices: ttsService.getAvailableVoices().map(v => v.id)
@@ -5437,9 +5606,9 @@ app.post('/api/admin/voices/select', (req, res) => {
     }
   } catch (error) {
     console.error('❌ Error setting voice:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'Failed to set voice',
-      message: error.message 
+      message: error.message
     });
   }
 });
@@ -5448,13 +5617,13 @@ app.post('/api/admin/voices/select', (req, res) => {
 app.post('/api/tts/dual-line', async (req, res) => {
   try {
     const { text, speaker, gameId } = req.body;
-    
+
     if (!text || !speaker) {
-      return res.status(400).json({ 
-        error: 'Text and speaker are required for dual announcer TTS' 
+      return res.status(400).json({
+        error: 'Text and speaker are required for dual announcer TTS'
       });
     }
-    
+
     // Check if TTS client is available
     if (!ttsService.client) {
       return res.status(503).json({
@@ -5462,47 +5631,47 @@ app.post('/api/tts/dual-line', async (req, res) => {
         message: 'Studio voices require Google Cloud credentials to be configured'
       });
     }
-    
+
     console.log(`🎤 Generating ${speaker === 'male' ? 'Al' : 'Linda'} TTS: "${text.substring(0, 50)}..."`);
-    
+
     // Use the UNIFIED voice configuration system - same as individual buttons
     const { getAnnouncerVoices, logTtsUse } = await import('./voice-config.js');
     const voiceConfig = await getAnnouncerVoices();
-    
+
     // Select studio voice based on speaker using the SAME voices as individual buttons
     const selectedVoice = speaker === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
-    
+
     // Log TTS usage for debugging
-    logTtsUse({ 
-      where: `DualAnnouncer_${speaker}`, 
-      provider: voiceConfig.provider, 
-      voice: selectedVoice, 
-      rate: voiceConfig.settings.rate, 
-      pitch: voiceConfig.settings.pitch, 
-      style: 'none' 
+    logTtsUse({
+      where: `DualAnnouncer_${speaker}`,
+      provider: voiceConfig.provider,
+      voice: selectedVoice,
+      rate: voiceConfig.settings.rate,
+      pitch: voiceConfig.settings.pitch,
+      style: 'none'
     });
-    
+
     console.log(`🎙️ Using ${speaker} studio voice: ${selectedVoice}`);
     console.log(`🎯 Voice mapping - male: ${voiceConfig.maleVoice}, female: ${voiceConfig.femaleVoice}`);
     console.log(`🔧 TTS client status: ${ttsService.client ? 'Connected' : 'Not connected'}`);
     console.log(`🌍 Google credentials: ${config.googleTts.credentialsPath ? 'File path set' : 'Using JSON env var'}`);
     console.log(`🎚️ Expected voice type: ${selectedVoice.includes('Studio') ? 'Studio (Professional)' : selectedVoice.includes('Neural2') ? 'Neural2 (Standard)' : 'Unknown'}`);
-    
+
     // Temporarily set the voice in TTS service for this request
     const originalVoice = ttsService.selectedVoice;
     ttsService.selectedVoice = selectedVoice;
-    
+
     try {
       // Generate TTS audio using the dual-announcer scenario
       const audioResult = await ttsService.generateSpeech(text, gameId || 'dual', 'announcement');
-      
+
       if (audioResult.success) {
         console.log(`✅ Generated ${speaker === 'male' ? 'Al' : 'Linda'} TTS using ${selectedVoice}`);
         console.log(`📊 Audio stats: ${audioResult.size} bytes, settings: ${JSON.stringify(audioResult.settings)}`);
         res.json({
           success: true,
           audioPath: audioResult.filename, // return filename instead of undefined audioPath
-          speaker: speaker,
+          speaker,
           voice: selectedVoice,
           size: audioResult.size,
           settings: audioResult.settings
@@ -5518,7 +5687,7 @@ app.post('/api/tts/dual-line', async (req, res) => {
       // Restore original voice
       ttsService.selectedVoice = originalVoice;
     }
-    
+
   } catch (error) {
     console.error('❌ Error in dual announcer TTS endpoint:', error);
     res.status(500).json({
@@ -5533,16 +5702,16 @@ app.post('/api/tts/dual-line', async (req, res) => {
 app.get('/api/admin/voice-config', async (req, res) => {
   try {
     const gamesContainer = getGamesContainer();
-    
+
     // Try to get existing voice configuration
     try {
       const { resources: configs } = await gamesContainer.items
         .query({
-          query: "SELECT * FROM c WHERE c.id = 'voiceConfig'",
+          query: 'SELECT * FROM c WHERE c.id = \'voiceConfig\'',
           parameters: []
         })
         .fetchAll();
-      
+
       if (configs.length > 0) {
         res.json({
           success: true,
@@ -5554,7 +5723,7 @@ app.get('/api/admin/voice-config', async (req, res) => {
           success: true,
           config: {
             id: 'voiceConfig',
-            maleVoice: 'en-US-Studio-Q', // Studio-Q is male 
+            maleVoice: 'en-US-Studio-Q', // Studio-Q is male
             femaleVoice: 'en-US-Studio-O' // Studio-O is Linda (female)
           }
         });
@@ -5583,27 +5752,27 @@ app.get('/api/admin/voice-config', async (req, res) => {
 app.post('/api/admin/voice-config', async (req, res) => {
   try {
     const { maleVoice, femaleVoice } = req.body;
-    
+
     if (!maleVoice || !femaleVoice) {
       return res.status(400).json({
         error: 'Both maleVoice and femaleVoice are required'
       });
     }
-    
+
     const gamesContainer = getGamesContainer();
-    
+
     const voiceConfig = {
       id: 'voiceConfig',
       maleVoice,
       femaleVoice,
       updatedAt: new Date().toISOString()
     };
-    
+
     // Use upsert to create or update the configuration
     const { resource } = await gamesContainer.items.upsert(voiceConfig);
-    
+
     console.log(`✅ Voice configuration updated: Male=${maleVoice}, Female=${femaleVoice}`);
-    
+
     res.json({
       success: true,
       message: 'Voice configuration saved successfully',
@@ -5640,7 +5809,7 @@ app.get('/api/admin/available-voices', (req, res) => {
     ];
 
     const allVoices = [...studioVoices, ...neuralVoices];
-    
+
     res.json({
       success: true,
       voices: allVoices
@@ -5657,7 +5826,7 @@ app.get('/api/admin/available-voices', (req, res) => {
 // Serve static frontend files only in production (after all API routes)
 if (config.isProduction) {
   const frontendDist = path.resolve(__dirname, 'frontend');
-  app.use(express.static(frontendDist, { 
+  app.use(express.static(frontendDist, {
     maxAge: '0', // Force no cache for immediate deployment updates
     setHeaders: (res, path) => {
       if (path.endsWith('version.json')) {
@@ -5689,7 +5858,7 @@ if (config.isProduction) {
 
 const server = app.listen(config.port, () => {
   const memUsage = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
-  
+
   logger.success('Hockey Scorekeeper API started successfully', {
     port: config.port,
     environment: config.env,
@@ -5711,7 +5880,7 @@ const server = app.listen(config.port, () => {
   });
   console.log('⏱️  Server started in', Math.floor((Date.now() - startTime) / 1000), 'seconds');
   console.log('✅ Deployment completed successfully - Studio voice authentication enabled');
-  
+
   // Production-ready banner
   console.log('\n');
   console.log('████████ ██   ██ ███████     ███████  ██████  ██████  ██████  ███████ ██   ██ ███████ ███████ ██████  ███████ ██████  ');

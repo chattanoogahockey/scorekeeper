@@ -38,7 +38,7 @@ class Logger {
 
     const sanitized = { ...data };
     const sensitiveFields = ['password', 'token', 'secret', 'key', 'auth', 'credential'];
-    
+
     for (const field of sensitiveFields) {
       if (field in sanitized) {
         sanitized[field] = '[REDACTED]';
@@ -77,7 +77,7 @@ class Logger {
       console.log(JSON.stringify(logEntry));
     } else {
       // Development: Human-readable format
-      const metaStr = Object.keys(metadata).length > 0 
+      const metaStr = Object.keys(metadata).length > 0
         ? ` | ${JSON.stringify(this.sanitize(metadata))}`
         : '';
       console.log(`${emoji} [${timestamp}] ${message}${metaStr}`);
@@ -167,7 +167,7 @@ class Logger {
     if (available) {
       this.success('Announcer service loaded', { features });
     } else {
-      this.warn('Announcer service not available', { 
+      this.warn('Announcer service not available', {
         impact: 'Voice announcements disabled',
         fallback: 'Text-only mode available'
       });

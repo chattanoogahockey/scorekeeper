@@ -69,10 +69,10 @@ class TTSService {
    * Create SSML markup optimized specifically for Studio voices
    * Based on Google Cloud documentation: Studio voices support SSML except:
    * - <mark> tags
-   * - <emphasis> tags  
+   * - <emphasis> tags
    * - <prosody pitch> attributes
    * - <lang> tags
-   * 
+   *
    * Studio voices DO support:
    * - <prosody rate> and <prosody volume>
    * - <break> tags
@@ -81,7 +81,7 @@ class TTSService {
    */
   createAnnouncerSSML(text, scenario = 'announcement', voiceSettings, voiceId) {
     const isStudioVoice = voiceId.includes('Studio');
-    
+
     if (isStudioVoice) {
       // Studio voice-optimized SSML (no emphasis, no pitch)
       if (scenario === 'goal') {
@@ -107,7 +107,7 @@ class TTSService {
     } else {
       // Neural2 voices support full SSML including emphasis and pitch
       const { emphasis } = voiceSettings;
-      
+
       if (scenario === 'goal') {
         return `<speak>
           <emphasis level="${emphasis}">
@@ -144,12 +144,12 @@ class TTSService {
         id: 'en-US-Studio-Q',
         name: 'Studio Q (Male - Professional)',
         gender: 'MALE',
-        type: 'Studio', 
+        type: 'Studio',
         description: 'Professional male voice for clear, articulate announcements (DEFAULT)'
       },
       {
         id: 'en-US-Studio-O',
-        name: 'Studio O (Female - Energetic)', 
+        name: 'Studio O (Female - Energetic)',
         gender: 'FEMALE',  // FIXED: Studio-O is actually female
         type: 'Studio',
         description: 'High-energy female voice perfect for goals and exciting moments'
@@ -157,7 +157,7 @@ class TTSService {
       {
         id: 'en-US-Studio-M',
         name: 'Studio M (Male - Authoritative)',
-        gender: 'MALE', 
+        gender: 'MALE',
         type: 'Studio',
         description: 'Authoritative male voice ideal for penalties and official announcements'
       },
@@ -187,7 +187,7 @@ class TTSService {
 
   setAnnouncerVoice(voiceName) {
     const supportedVoices = this.getAvailableVoices().map(v => v.id);
-    
+
     if (supportedVoices.includes(voiceName)) {
       this.selectedVoice = voiceName;
       console.log(`🎤 Announcer voice set to: ${voiceName}`);
@@ -201,7 +201,7 @@ class TTSService {
   async initializeClient() {
     try {
       console.log('🔑 Initializing Google Cloud TTS with credential file approach');
-      
+
       if (config.googleTts.credentialsPath) {
         console.log(`✅ GOOGLE_APPLICATION_CREDENTIALS found: ${config.googleTts.credentialsPath}`);
       } else if (config.googleTts.credentialsJson) {
@@ -211,10 +211,10 @@ class TTSService {
         this.client = null;
         return; // Exit gracefully without crashing
       }
-      
+
       // Initialize with explicit project configuration for Studio voices
       const clientConfig = {};
-      
+
       // If using JSON credentials from environment, parse and set project
       if (config.googleTts.credentialsJson) {
         try {
@@ -229,18 +229,18 @@ class TTSService {
           return;
         }
       }
-      
+
       this.client = new textToSpeech.TextToSpeechClient(clientConfig);
-      
+
       // Test Studio voice availability
       try {
         const [response] = await this.client.listVoices({
           languageCode: 'en-US'
         });
-        
+
         const studioVoices = response.voices.filter(voice => voice.name.includes('Studio'));
         console.log(`🎤 Found ${studioVoices.length} Studio voices available:`, studioVoices.map(v => v.name));
-        
+
         if (studioVoices.length === 0) {
           console.warn('⚠️  No Studio voices found - may fall back to Neural2 voices');
         }
@@ -248,11 +248,11 @@ class TTSService {
         console.warn('⚠️  Could not list voices (continuing anyway):', voiceListError.message);
         // Don't crash on voice listing failure
       }
-      
+
       // Initialize audio cache directory
       await fs.mkdir(this.audioDir, { recursive: true });
       console.log(`📁 Audio cache directory ready: ${this.audioDir}`);
-      
+
     } catch (error) {
       console.error('❌ TTS Service initialization failed:', error.message);
       console.log('🔄 Continuing without TTS functionality...');
@@ -270,7 +270,7 @@ class TTSService {
     // Validate voice exists in Google Cloud catalog to prevent fallback
     const { validateVoice } = await import('./voice-config.js');
     const isValidVoice = await validateVoice(this.client, this.selectedVoice);
-    
+
     if (!isValidVoice) {
       console.error(`❌ Voice '${this.selectedVoice}' not available in Google Cloud TTS`);
       return {
@@ -282,18 +282,18 @@ class TTSService {
 
     try {
       const cleanText = text.replace(/[^\w\s.,!?;:()-]/g, '').substring(0, 500);
-      
+
       // Get optimal settings for this voice and scenario
       const voiceSettings = this.getVoiceSettings(this.selectedVoice, type);
-      
+
       // Create enhanced SSML for hyper-realistic delivery
       const ssmlText = this.createAnnouncerSSML(cleanText, type, voiceSettings, this.selectedVoice);
-      
+
       console.log(`🎙️  Generating speech: "${cleanText}" with voice: ${this.selectedVoice}`);
       console.log(`⚙️  Settings: Rate=${voiceSettings.speakingRate}, Pitch=${voiceSettings.pitch}, Volume=${voiceSettings.volumeGainDb}, Emphasis=${voiceSettings.emphasis}`);
-      
+
       const isStudioVoice = this.selectedVoice.includes('Studio');
-      
+
       const request = {
         input: { ssml: ssmlText }, // Use SSML instead of plain text
         voice: {
@@ -318,9 +318,9 @@ class TTSService {
       });
 
       const synthesizePromise = this.client.synthesizeSpeech(request);
-      
+
       const [response] = await Promise.race([synthesizePromise, timeoutPromise]);
-      
+
       if (!response.audioContent) {
         throw new Error('No audio content received from Google Cloud TTS');
       }
@@ -328,15 +328,15 @@ class TTSService {
       const filename = `${type}_${gameId}_${this.selectedVoice}_${Date.now()}.mp3`;
       const filepath = path.join(this.audioDir, filename);
       await fs.writeFile(filepath, response.audioContent, 'binary');
-      
+
       const audioSize = response.audioContent.length;
       console.log(`✅ Enhanced speech generated: ${filename} (${audioSize} bytes)`);
       console.log(`🎯 Voice optimized for ${type} scenario with ${this.selectedVoice}`);
-      
+
       return {
         success: true,
-        filepath: filepath,
-        filename: filename,
+        filepath,
+        filename,
         voice: this.selectedVoice,
         size: audioSize,
         cached: false,
@@ -346,14 +346,14 @@ class TTSService {
 
     } catch (error) {
       console.error('❌ Speech generation failed:', error.message);
-      
+
       // Enhanced fallback logic - only try fallback for specific Studio voice issues
-      if (this.selectedVoice.includes('Studio') && 
+      if (this.selectedVoice.includes('Studio') &&
           (error.message.includes('timeout') || error.message.includes('UNAVAILABLE') || error.code === 503)) {
         console.log('🔄 Studio voice temporarily unavailable, trying Neural2-D fallback...');
         const originalVoice = this.selectedVoice;
         this.selectedVoice = 'en-US-Neural2-D';
-        
+
         try {
           const fallbackResult = await this.generateSpeech(text, gameId, type);
           this.selectedVoice = originalVoice; // Restore
@@ -367,7 +367,7 @@ class TTSService {
           console.error('❌ Neural2-D fallback also failed:', fallbackError.message);
         }
       }
-      
+
       return {
         success: false,
         error: error.message,

@@ -6,11 +6,11 @@ import { getGamesContainer, getGoalsContainer, getPenaltiesContainer, getRinkRep
 export async function generateRinkReport(division) {
   const reportId = `${division}-all-submitted`;
   console.log(`?? Generating rink report for ${division} division (all submitted games)`);
-  
+
   try {
     const gameData = await aggregateGameData(division);
     const reportContent = await generateReportContent(division, gameData);
-    
+
     // Store the report in Cosmos DB
     const report = {
       id: reportId,
@@ -26,10 +26,10 @@ export async function generateRinkReport(division) {
       generatedBy: 'auto',
       lastUpdated: new Date().toISOString()
     };
-    
+
     const container = getRinkReportsContainer();
     await container.items.upsert(report);
-    
+
     console.log(`? Rink report generated and stored for ${division} division`);
     return report;
   } catch (error) {
@@ -45,7 +45,7 @@ async function aggregateGameData(division) {
   const gamesContainer = getGamesContainer();
   const goalsContainer = getGoalsContainer();
   const penaltiesContainer = getPenaltiesContainer();
-  
+
   // Get all games for this division (for now, including scheduled ones since no games completed yet)
   const gamesQuery = {
     query: `
@@ -57,36 +57,36 @@ async function aggregateGameData(division) {
       { name: '@division', value: division }
     ]
   };
-  
+
   const { resources: games } = await gamesContainer.items.query(gamesQuery).fetchAll();
-  
+
   // Get all goals for these games
   const gameIds = games.map(g => g.id || g.gameId);
   let allGoals = [];
   let allPenalties = [];
-  
+
   if (gameIds.length > 0) {
     // Build query for goals
     const goalsQuery = {
       query: `SELECT * FROM c WHERE c.gameId IN (${gameIds.map((_, i) => `@gameId${i}`).join(', ')})`,
       parameters: gameIds.map((id, i) => ({ name: `@gameId${i}`, value: id }))
     };
-    
+
     const { resources: goals } = await goalsContainer.items.query(goalsQuery).fetchAll();
     allGoals = goals;
-    
-    // Build query for penalties  
+
+    // Build query for penalties
     const penaltiesQuery = {
       query: `SELECT * FROM c WHERE c.gameId IN (${gameIds.map((_, i) => `@gameId${i}`).join(', ')})`,
       parameters: gameIds.map((id, i) => ({ name: `@gameId${i}`, value: id }))
     };
-    
+
     const { resources: penalties } = await penaltiesContainer.items.query(penaltiesQuery).fetchAll();
     allPenalties = penalties;
   } else {
     console.log('No games found for goals/penalties query');
   }
-  
+
   return {
     division,
     games,
@@ -101,22 +101,22 @@ async function aggregateGameData(division) {
  */
 async function generateReportContent(division, gameData) {
   const { games, goals, penalties, gameStats } = gameData;
-  
+
   // Generate highlights
   const highlights = generateHighlights(games, goals, penalties, gameStats);
-  
+
   // Generate standout players
   const standoutPlayers = generateStandoutPlayers(goals, penalties, gameStats);
-  
+
   // Generate league updates
   const leagueUpdates = generateLeagueUpdates(division, gameStats);
-  
+
   // Generate upcoming predictions (placeholder for now)
   const upcomingPredictions = generateUpcomingPredictions(division, gameStats);
-  
+
   // Generate main article HTML
   const html = generateArticleHTML(division, gameStats, highlights, standoutPlayers);
-  
+
   return {
     html,
     highlights,
@@ -140,7 +140,7 @@ function calculateGameStats(games, goals, penalties) {
     topScorers: [],
     gameResults: []
   };
-  
+
   // Process games
   games.forEach(game => {
     if (game.gameSummary) {
@@ -155,44 +155,44 @@ function calculateGameStats(games, goals, penalties) {
       stats.gameResults.push(result);
     }
   });
-  
+
   // Process goals for player stats
   goals.forEach(goal => {
     const playerName = goal.playerName || goal.scorer;
     const teamName = goal.teamName || goal.scoringTeam;
-    
+
     if (playerName) {
       if (!stats.players[playerName]) {
-        stats.players[playerName] = { 
-          name: playerName, 
-          team: teamName, 
-          goals: 0, 
-          assists: 0, 
-          points: 0, 
-          pim: 0 
+        stats.players[playerName] = {
+          name: playerName,
+          team: teamName,
+          goals: 0,
+          assists: 0,
+          points: 0,
+          pim: 0
         };
       }
       stats.players[playerName].goals++;
       stats.players[playerName].points++;
-      
+
       // Count assists
       const assists = goal.assistedBy || goal.assists || [];
       assists.forEach(assist => {
         if (!stats.players[assist]) {
-          stats.players[assist] = { 
-            name: assist, 
-            team: teamName, 
-            goals: 0, 
-            assists: 0, 
-            points: 0, 
-            pim: 0 
+          stats.players[assist] = {
+            name: assist,
+            team: teamName,
+            goals: 0,
+            assists: 0,
+            points: 0,
+            pim: 0
           };
         }
         stats.players[assist].assists++;
         stats.players[assist].points++;
       });
     }
-    
+
     if (teamName) {
       if (!stats.teams[teamName]) {
         stats.teams[teamName] = { name: teamName, goals: 0, penalties: 0, pim: 0, games: 0 };
@@ -200,17 +200,17 @@ function calculateGameStats(games, goals, penalties) {
       stats.teams[teamName].goals++;
     }
   });
-  
+
   // Process penalties
   penalties.forEach(penalty => {
     const playerName = penalty.playerName || penalty.penalizedPlayer;
     const teamName = penalty.teamName || penalty.penalizedTeam;
     const pim = parseInt(penalty.penaltyLength || penalty.length || 0);
-    
+
     if (playerName && stats.players[playerName]) {
       stats.players[playerName].pim += pim;
     }
-    
+
     if (teamName) {
       if (!stats.teams[teamName]) {
         stats.teams[teamName] = { name: teamName, goals: 0, penalties: 0, pim: 0, games: 0 };
@@ -219,7 +219,7 @@ function calculateGameStats(games, goals, penalties) {
       stats.teams[teamName].pim += pim;
     }
   });
-  
+
   // Calculate team games played
   stats.gameResults.forEach(result => {
     result.teams.forEach(teamName => {
@@ -228,17 +228,21 @@ function calculateGameStats(games, goals, penalties) {
       }
     });
   });
-  
+
   // Generate top scorers list
   stats.topScorers = Object.values(stats.players)
     .filter(p => p.points > 0)
     .sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      if (b.goals !== a.goals) return b.goals - a.goals;
+      if (b.points !== a.points) {
+        return b.points - a.points;
+      }
+      if (b.goals !== a.goals) {
+        return b.goals - a.goals;
+      }
       return a.name.localeCompare(b.name);
     })
     .slice(0, 10);
-  
+
   return stats;
 }
 
@@ -247,20 +251,20 @@ function calculateGameStats(games, goals, penalties) {
  */
 function generateHighlights(games, goals, penalties, gameStats) {
   const highlights = [];
-  
+
   // High-scoring games
   const highScoringGames = gameStats.gameResults.filter(g => g.totalGoals >= 8);
   highScoringGames.forEach(game => {
     const teamNames = game.teams.join(' vs ');
     highlights.push(`High-scoring thriller: ${teamNames} combines for ${game.totalGoals} goals`);
   });
-  
+
   // Hat tricks
   const hatTricks = Object.values(gameStats.players).filter(p => p.goals >= 3);
   hatTricks.forEach(player => {
     highlights.push(`${player.name} records hat trick with ${player.goals} goals`);
   });
-  
+
   // Close games (1-goal difference)
   const closeGames = gameStats.gameResults.filter(game => {
     const scores = Object.values(game.scores);
@@ -272,13 +276,13 @@ function generateHighlights(games, goals, penalties, gameStats) {
   closeGames.forEach(game => {
     highlights.push(`Nail-biter: ${game.teams.join(' edges ')} in one-goal thriller`);
   });
-  
+
   // Penalty-heavy games
   const penaltyHeavyGames = gameStats.gameResults.filter(g => g.totalPenalties >= 8);
   penaltyHeavyGames.forEach(game => {
     highlights.push(`Physical matchup: ${game.teams.join(' vs ')} accumulates ${game.totalPenalties} penalties`);
   });
-  
+
   // Fallback highlights if no specific events
   if (highlights.length === 0) {
     highlights.push(`${weekStats.totalGames} exciting games played this week`);
@@ -288,7 +292,7 @@ function generateHighlights(games, goals, penalties, gameStats) {
       highlights.push(`${topScorer.name} leads weekly scoring with ${topScorer.points} points`);
     }
   }
-  
+
   return highlights.slice(0, 6); // Limit to 6 highlights
 }
 
@@ -297,7 +301,7 @@ function generateHighlights(games, goals, penalties, gameStats) {
  */
 function generateStandoutPlayers(goals, penalties, weekStats) {
   const players = [];
-  
+
   // Top 3 scorers
   weekStats.topScorers.slice(0, 3).forEach(player => {
     let highlight = '';
@@ -310,7 +314,7 @@ function generateStandoutPlayers(goals, penalties, weekStats) {
     } else {
       highlight = `Solid contributor with ${player.goals}G, ${player.assists}A`;
     }
-    
+
     players.push({
       name: player.name,
       team: player.team,
@@ -318,7 +322,7 @@ function generateStandoutPlayers(goals, penalties, weekStats) {
       highlight
     });
   });
-  
+
   return players;
 }
 
@@ -327,22 +331,22 @@ function generateStandoutPlayers(goals, penalties, weekStats) {
  */
 function generateLeagueUpdates(division, weekStats) {
   const updates = [];
-  
+
   updates.push(`${division} division completed ${weekStats.totalGames} games this week`);
   updates.push(`Players scored ${weekStats.totalGoals} goals across all matchups`);
-  
+
   if (weekStats.totalPIM > 0) {
     updates.push(`${weekStats.totalPIM} penalty minutes assessed this week`);
   }
-  
+
   if (weekStats.topScorers.length > 0) {
     const avgGoalsPerGame = (weekStats.totalGoals / Math.max(weekStats.totalGames, 1)).toFixed(1);
     updates.push(`Average of ${avgGoalsPerGame} goals per game this week`);
   }
-  
+
   updates.push('Playoff race continues to intensify as season progresses');
   updates.push('Teams preparing for upcoming championship tournament');
-  
+
   return updates;
 }
 
@@ -373,7 +377,7 @@ function generateArticleHTML(division, gameStats, highlights, standoutPlayers) {
   const topTeam = Object.values(gameStats.teams)
     .filter(t => t.games > 0)
     .sort((a, b) => (b.goals / b.games) - (a.goals / a.games))[0];
-  
+
   return `
     <p>The ${division} Division has showcased exceptional hockey with ${gameStats.totalGames} thrilling matchups. Players combined for ${gameStats.totalGoals} goals, demonstrating the high level of skill and competition in our league.</p>
     
@@ -406,9 +410,9 @@ function generateArticleHTML(division, gameStats, highlights, standoutPlayers) {
  */
 export async function generateReportsForAllDivisions() {
   const divisions = ['Gold', 'Silver', 'Bronze'];
-  
-  console.log(`?? Generating reports for all divisions (all submitted games)`);
-  
+
+  console.log('?? Generating reports for all divisions (all submitted games)');
+
   const results = [];
   for (const division of divisions) {
     try {
@@ -419,6 +423,6 @@ export async function generateReportsForAllDivisions() {
       results.push({ division, success: false, error: error.message });
     }
   }
-  
+
   return results;
 }

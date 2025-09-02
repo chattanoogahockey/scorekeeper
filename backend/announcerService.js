@@ -3,15 +3,15 @@ import logger from './logger.js';
 
 // Check if OpenAI is properly configured
 const openaiApiKey = process.env.OPENAI_API_KEY;
-const openaiConfigured = openaiApiKey && 
-                        openaiApiKey !== 'your-openai-api-key-here' && 
+const openaiConfigured = openaiApiKey &&
+                        openaiApiKey !== 'your-openai-api-key-here' &&
                         !openaiApiKey.includes('your-');
 
 // Initialize OpenAI only if properly configured
 let openai = null;
 if (openaiConfigured) {
   openai = new OpenAI({
-    apiKey: openaiApiKey,
+    apiKey: openaiApiKey
   });
 } else {
   logger.warn('OpenAI not configured. Announcer service will run in demo mode.');
@@ -38,51 +38,51 @@ function calculateGameProgression(period, timeRemaining) {
   // Convert time string (MM:SS) to total seconds
   const [minutes, seconds] = timeRemaining.split(':').map(Number);
   const totalSecondsRemaining = (minutes * 60) + seconds;
-  
+
   // Each period is 20 minutes (1200 seconds)
   const secondsPerPeriod = 20 * 60; // 1200 seconds
-  
+
   // Calculate how much time has elapsed in current period
   const elapsedInCurrentPeriod = secondsPerPeriod - totalSecondsRemaining;
-  
+
   // Calculate total elapsed time in game
   const totalElapsedTime = ((period - 1) * secondsPerPeriod) + elapsedInCurrentPeriod;
-  
+
   // Total game time is 3 periods of 20 minutes each (3600 seconds)
   const totalGameTime = 3 * secondsPerPeriod; // 3600 seconds
-  
+
   // Calculate progression percentage
   const percentage = Math.round((totalElapsedTime / totalGameTime) * 100);
-  
+
   // Determine context based on period and time remaining
   let context, urgency;
-  
+
   if (period === 1) {
     if (totalSecondsRemaining > 600) { // More than 10 minutes left
-      context = "early in the first period";
-      urgency = "low";
+      context = 'early in the first period';
+      urgency = 'low';
     } else {
-      context = "late in the first period";
-      urgency = "medium";
+      context = 'late in the first period';
+      urgency = 'medium';
     }
   } else if (period === 2) {
     if (totalSecondsRemaining > 600) {
-      context = "early in the second period";
-      urgency = "medium";
+      context = 'early in the second period';
+      urgency = 'medium';
     } else {
-      context = "late in the second period";
-      urgency = "medium-high";
+      context = 'late in the second period';
+      urgency = 'medium-high';
     }
   } else if (period === 3) {
     if (totalSecondsRemaining > 300) { // More than 5 minutes left
-      context = "third period";
-      urgency = "high";
+      context = 'third period';
+      urgency = 'high';
     } else {
-      context = "crunch time in the third period";
-      urgency = "very high";
+      context = 'crunch time in the third period';
+      urgency = 'very high';
     }
   }
-  
+
   return {
     percentage,
     context,
@@ -98,15 +98,17 @@ function calculateGameProgression(period, timeRemaining) {
 export async function generateGoalAnnouncement(goalData, playerStats = null, voiceGender = 'male') {
   // Check if OpenAI is available
   const demoResult = checkOpenAIAndReturnDemo(`Goal scored by ${goalData.playerName} for ${goalData.teamName}!`);
-  if (demoResult) return demoResult;
-  
+  if (demoResult) {
+    return demoResult;
+  }
+
   try {
-    const { 
-      playerName, 
-      teamName, 
-      period, 
-      timeRemaining, 
-      assistedBy = [], 
+    const {
+      playerName,
+      teamName,
+      period,
+      timeRemaining,
+      assistedBy = [],
       goalType = 'even strength',
       homeScore,
       awayScore,
@@ -115,15 +117,15 @@ export async function generateGoalAnnouncement(goalData, playerStats = null, voi
     } = goalData;
 
     // Build context for the LLM
-    const assistText = assistedBy.length > 0 ? 
-      `Assisted by ${assistedBy.join(' and ')}` : 
+    const assistText = assistedBy.length > 0 ?
+      `Assisted by ${assistedBy.join(' and ')}` :
       'Unassisted';
 
-    const scoreText = teamName === homeTeam ? 
+    const scoreText = teamName === homeTeam ?
       `${homeTeam} ${homeScore}, ${awayTeam} ${awayScore}` :
       `${awayTeam} ${awayScore}, ${homeTeam} ${homeScore}`;
 
-    const statsText = playerStats ? 
+    const statsText = playerStats ?
       `This is ${playerName}'s ${playerStats.goalsThisGame + 1}${getOrdinalSuffix(playerStats.goalsThisGame + 1)} goal of the game, and ${playerStats.seasonGoals + 1}${getOrdinalSuffix(playerStats.seasonGoals + 1)} of the season.` : '';
 
     let careerLineInstruction = '';
@@ -135,11 +137,11 @@ export async function generateGoalAnnouncement(goalData, playerStats = null, voi
     }
 
     // Determine personality based on voice gender
-    const personalityPrompt = voiceGender === 'female' ? 
-      `You are a professional roller hockey arena announcer named Linda. You are the play-by-play voice in the Scorekeeper app. Create an exciting goal announcement that captures Linda's upbeat, bright, energetic approach to hockey broadcasting.` :
-      `You are a professional roller hockey arena announcer named Al. You are the play-by-play voice in the Scorekeeper app. Create an exciting goal announcement that captures Al's natural play-by-play rhythm and delivery.`;
+    const personalityPrompt = voiceGender === 'female' ?
+      'You are a professional roller hockey arena announcer named Linda. You are the play-by-play voice in the Scorekeeper app. Create an exciting goal announcement that captures Linda\'s upbeat, bright, energetic approach to hockey broadcasting.' :
+      'You are a professional roller hockey arena announcer named Al. You are the play-by-play voice in the Scorekeeper app. Create an exciting goal announcement that captures Al\'s natural play-by-play rhythm and delivery.';
 
-  const styleGuidelines = voiceGender === 'female' ? 
+    const styleGuidelines = voiceGender === 'female' ?
       `**STYLE GUIDELINES (Linda's approach):**
 - **Upbeat and energetic**: Bright, warm tone that makes every goal feel electric
 - **Confident and conversational**: Clear delivery like she's smiling as she speaks
@@ -229,26 +231,26 @@ ${examples}
 Your ${voiceGender === 'female' ? 'Linda' : 'Al'}-style announcement:`;
 
     const systemContent = voiceGender === 'female' ?
-      "You are a professional roller hockey arena announcer named Linda. Use her upbeat, energetic, and warm delivery style with genuine excitement for every goal." :
-      "You are a professional roller hockey arena announcer named Al. Use his vivid but minimal play-by-play style, natural excitement, and understated humor to create compelling goal announcements.";
+      'You are a professional roller hockey arena announcer named Linda. Use her upbeat, energetic, and warm delivery style with genuine excitement for every goal.' :
+      'You are a professional roller hockey arena announcer named Al. Use his vivid but minimal play-by-play style, natural excitement, and understated humor to create compelling goal announcements.';
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: 'gpt-4',
       messages: [
         {
-          role: "system",
+          role: 'system',
           content: systemContent
         },
         {
-          role: "user",
+          role: 'user',
           content: prompt
         }
       ],
       max_tokens: 200,
-      temperature: 0.8,
+      temperature: 0.8
     });
 
-  return stripFluff(completion.choices[0].message.content.trim());
+    return stripFluff(completion.choices[0].message.content.trim());
   } catch (error) {
     console.error('Error generating goal announcement:', error);
     throw new Error('Failed to generate announcement: ' + error.message);
@@ -261,17 +263,19 @@ Your ${voiceGender === 'female' ? 'Linda' : 'Al'}-style announcement:`;
 export async function generateScorelessCommentary(gameData, voiceGender = 'male') {
   // Check if OpenAI is available
   const demoResult = checkOpenAIAndReturnDemo(`We're in a scoreless battle between ${gameData.homeTeam} and ${gameData.awayTeam} in period ${gameData.period}.`);
-  if (demoResult) return demoResult;
-  
+  if (demoResult) {
+    return demoResult;
+  }
+
   try {
     const { homeTeam, awayTeam, period } = gameData;
 
     // Determine personality based on voice gender
-    const personalityPrompt = voiceGender === 'female' ? 
-      `You are a professional roller hockey announcer named Linda. Generate exciting commentary about this scoreless battle with Linda's bright, energetic approach.` :
-      `You are a professional roller hockey announcer named Al. Generate commentary about this scoreless game with Al's play-by-play mastery and natural excitement.`;
+    const personalityPrompt = voiceGender === 'female' ?
+      'You are a professional roller hockey announcer named Linda. Generate exciting commentary about this scoreless battle with Linda\'s bright, energetic approach.' :
+      'You are a professional roller hockey announcer named Al. Generate commentary about this scoreless game with Al\'s play-by-play mastery and natural excitement.';
 
-    const styleGuidelines = voiceGender === 'female' ? 
+    const styleGuidelines = voiceGender === 'female' ?
       `**STYLE GUIDELINES (Linda's approach):**
 - **Upbeat energy**: Even scoreless games are exciting with the right perspective
 - **Fan-first excitement**: Make viewers appreciate the defensive battle
@@ -303,26 +307,26 @@ Keep it engaging and create excitement even without goals. 2-3 sentences max. So
 Your ${voiceGender === 'female' ? 'Linda' : 'Al'}-style commentary:`;
 
     const systemContent = voiceGender === 'female' ?
-      "You are a professional roller hockey announcer named Linda. Use her upbeat, energetic approach to make even scoreless games exciting with genuine enthusiasm and hockey knowledge." :
-      "You are a professional roller hockey announcer named Al. Use his tension-building ability and natural excitement to make scoreless games compelling.";
+      'You are a professional roller hockey announcer named Linda. Use her upbeat, energetic approach to make even scoreless games exciting with genuine enthusiasm and hockey knowledge.' :
+      'You are a professional roller hockey announcer named Al. Use his tension-building ability and natural excitement to make scoreless games compelling.';
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: 'gpt-4',
       messages: [
         {
-          role: "system", 
+          role: 'system',
           content: systemContent
         },
         {
-          role: "user",
+          role: 'user',
           content: prompt
         }
       ],
       max_tokens: 150,
-      temperature: 0.9,
+      temperature: 0.9
     });
 
-  return stripFluff(completion.choices[0].message.content.trim());
+    return stripFluff(completion.choices[0].message.content.trim());
   } catch (error) {
     console.error('Error generating scoreless commentary:', error);
     throw new Error('Failed to generate commentary: ' + error.message);
@@ -334,8 +338,8 @@ Your ${voiceGender === 'female' ? 'Linda' : 'Al'}-style commentary:`;
  */
 export async function generateGoalFeedDescription(goalData, playerStats = null) {
   try {
-    const { 
-      playerName, 
+    const {
+      playerName,
       teamName,
       assistedBy = [],
       goalType = 'even strength'
@@ -361,22 +365,22 @@ Example: "Steven Howell with the 2nd of the night for his sixth on the season"
 Your description:`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: 'gpt-4',
       messages: [
         {
-          role: "system",
-          content: "You are writing brief, professional roller hockey goal descriptions for a game feed. Be concise and informative."
+          role: 'system',
+          content: 'You are writing brief, professional roller hockey goal descriptions for a game feed. Be concise and informative.'
         },
         {
-          role: "user", 
+          role: 'user',
           content: prompt
         }
       ],
       max_tokens: 50,
-      temperature: 0.7,
+      temperature: 0.7
     });
 
-  return stripFluff(completion.choices[0].message.content.trim());
+    return stripFluff(completion.choices[0].message.content.trim());
   } catch (error) {
     console.error('Error generating goal feed description:', error);
     // Fallback to simple description
@@ -414,22 +418,22 @@ Example: "Jones heads to the box for interference, putting his team shorthanded"
 Your description:`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: 'gpt-4',
       messages: [
         {
-          role: "system",
-          content: "You are writing brief, professional roller hockey penalty descriptions for a game feed."
+          role: 'system',
+          content: 'You are writing brief, professional roller hockey penalty descriptions for a game feed.'
         },
         {
-          role: "user",
+          role: 'user',
           content: prompt
         }
       ],
       max_tokens: 50,
-      temperature: 0.7,
+      temperature: 0.7
     });
 
-  return stripFluff(completion.choices[0].message.content.trim());
+    return stripFluff(completion.choices[0].message.content.trim());
   } catch (error) {
     console.error('Error generating penalty feed description:', error);
     return `${penalizedPlayer} called for ${penaltyType}`;
@@ -441,23 +445,23 @@ Your description:`;
  */
 export async function generatePenaltyAnnouncement(penaltyData, gameContext = null, voiceGender = 'male') {
   try {
-    const { 
-      playerName, 
-      teamName, 
-      penaltyType, 
-      period, 
-      timeRemaining, 
+    const {
+      playerName,
+      teamName,
+      penaltyType,
+      period,
+      timeRemaining,
       length = 2
     } = penaltyData;
 
     const { homeTeam, awayTeam, currentScore } = gameContext || {};
 
     // Determine personality based on voice gender
-    const personalityPrompt = voiceGender === 'female' ? 
-      `You are a professional roller hockey arena announcer named Linda. Create a clear, authoritative penalty announcement with Linda's upbeat but professional approach.` :
-      `You are a professional roller hockey arena announcer named Al. Create a clear, authoritative penalty announcement for the following penalty:`;
+    const personalityPrompt = voiceGender === 'female' ?
+      'You are a professional roller hockey arena announcer named Linda. Create a clear, authoritative penalty announcement with Linda\'s upbeat but professional approach.' :
+      'You are a professional roller hockey arena announcer named Al. Create a clear, authoritative penalty announcement for the following penalty:';
 
-  const styleGuidelines = voiceGender === 'female' ? 
+    const styleGuidelines = voiceGender === 'female' ?
       `**STYLE GUIDELINES (Linda's approach):**
 - **Professional but warm**: Clear, authoritative delivery with Linda's signature warmth
 - **Confident and conversational**: Matter-of-fact delivery with underlying enthusiasm
@@ -533,26 +537,26 @@ Write this as ${voiceGender === 'female' ? 'Linda' : 'Al'} would call it - be cl
 ${examples}`;
 
     const systemContent = voiceGender === 'female' ?
-      "You are a professional hockey arena announcer named Linda. Use her warm but professional delivery style with clear authority for penalty announcements." :
-      "You are a professional hockey arena announcer named Al. Use his clear, authoritative yet natural delivery style for penalty announcements.";
+      'You are a professional hockey arena announcer named Linda. Use her warm but professional delivery style with clear authority for penalty announcements.' :
+      'You are a professional hockey arena announcer named Al. Use his clear, authoritative yet natural delivery style for penalty announcements.';
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: 'gpt-4',
       messages: [
         {
-          role: "system",
+          role: 'system',
           content: systemContent
         },
         {
-          role: "user",
+          role: 'user',
           content: prompt
         }
       ],
       max_tokens: 50,
-      temperature: 0.7,
+      temperature: 0.7
     });
 
-  return stripFluff(completion.choices[0].message.content.trim());
+    return stripFluff(completion.choices[0].message.content.trim());
   } catch (error) {
     console.error('Error generating penalty announcement:', error);
     return `${playerName}, ${length} minutes for ${penaltyType}`;
@@ -565,12 +569,12 @@ ${examples}`;
  */
 export async function generateDualGoalAnnouncement(goalData, playerStats = null) {
   try {
-    const { 
-      playerName, 
-      teamName, 
-      period, 
-      timeRemaining, 
-      assistedBy = [], 
+    const {
+      playerName,
+      teamName,
+      period,
+      timeRemaining,
+      assistedBy = [],
       goalType = 'even strength',
       homeScore,
       awayScore,
@@ -578,11 +582,11 @@ export async function generateDualGoalAnnouncement(goalData, playerStats = null)
       awayTeam
     } = goalData;
 
-    const assistText = assistedBy.length > 0 ? 
-      `Assisted by ${assistedBy.join(' and ')}` : 
+    const assistText = assistedBy.length > 0 ?
+      `Assisted by ${assistedBy.join(' and ')}` :
       'Unassisted';
 
-    const scoreText = teamName === homeTeam ? 
+    const scoreText = teamName === homeTeam ?
       `${homeTeam} ${homeScore}, ${awayTeam} ${awayScore}` :
       `${awayTeam} ${awayScore}, ${homeTeam} ${homeScore}`;
 
@@ -597,7 +601,7 @@ IMPORTANT HOCKEY TIMING CONTEXT:
 - Time urgency: ${dualGoalProgression.urgency}
 - A goal at 00:26 happens LATER in the period than 16:00`;
 
-  const prompt = `Create a realistic 4-line conversation between two veteran hockey announcers about this goal. These are seasoned broadcast partners who know each other well and naturally build on each other's commentary. Keep it concise but natural.
+    const prompt = `Create a realistic 4-line conversation between two veteran hockey announcers about this goal. These are seasoned broadcast partners who know each other well and naturally build on each other's commentary. Keep it concise but natural.
 
 STRICT NAMING RULES (CRITICAL):
 - The male announcer is ONLY ever referred to as "Al" (never any last name, never other first names or nicknames).
@@ -643,28 +647,28 @@ FORMAT: Return ONLY a JSON array with 4 lines alternating male-female-male-femal
   {"speaker": "female", "text": "Analysis or insight"}
 ]`;
 
-  const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
       messages: [
         {
-      role: "system",
-  content: "You are creating realistic, natural conversations between veteran hockey broadcast partners named Al and Linda. You MUST ONLY use the first names Al and Linda to identify or reference them, never last names, never other names. Return ONLY valid JSON with exactly 4 alternating lines (male-female-male-female). If the model generates any other name for the announcers, replace it with the correct one before returning."
+          role: 'system',
+          content: 'You are creating realistic, natural conversations between veteran hockey broadcast partners named Al and Linda. You MUST ONLY use the first names Al and Linda to identify or reference them, never last names, never other names. Return ONLY valid JSON with exactly 4 alternating lines (male-female-male-female). If the model generates any other name for the announcers, replace it with the correct one before returning.'
         },
         {
-          role: "user",
+          role: 'user',
           content: prompt
         }
       ],
       max_tokens: 300, // Reduced for faster responses
-      temperature: 0.9,
+      temperature: 0.9
     });
 
     const conversationText = completion.choices[0].message.content.trim();
-    
+
     // Parse the JSON response
     try {
-  const conversation = sanitizeConversation(JSON.parse(conversationText));
-  if (Array.isArray(conversation) && conversation.length === 4) {
+      const conversation = sanitizeConversation(JSON.parse(conversationText));
+      if (Array.isArray(conversation) && conversation.length === 4) {
         return conversation;
       } else {
         throw new Error('Invalid conversation format');
@@ -672,12 +676,12 @@ FORMAT: Return ONLY a JSON array with 4 lines alternating male-female-male-femal
     } catch (parseError) {
       console.error('Failed to parse dual announcer conversation:', parseError);
       // Fallback to enhanced conversation
-  return sanitizeConversation([
-        {"speaker": "male", "text": `GOAL! ${playerName} scores for ${teamName}!`},
-        {"speaker": "female", "text": `What a shot! That's exactly what this team needed!`},
-        {"speaker": "male", "text": `The ${assistText.toLowerCase()} really set that up perfectly.`},
-    {"speaker": "female", "text": `Great teamwork, and now it's ${scoreText}.`}
-  ]);
+      return sanitizeConversation([
+        {'speaker': 'male', 'text': `GOAL! ${playerName} scores for ${teamName}!`},
+        {'speaker': 'female', 'text': 'What a shot! That\'s exactly what this team needed!'},
+        {'speaker': 'male', 'text': `The ${assistText.toLowerCase()} really set that up perfectly.`},
+        {'speaker': 'female', 'text': `Great teamwork, and now it's ${scoreText}.`}
+      ]);
     }
   } catch (error) {
     console.error('Error generating dual goal announcement:', error);
@@ -687,8 +691,8 @@ FORMAT: Return ONLY a JSON array with 4 lines alternating male-female-male-femal
       return sanitizeConversation([
         { speaker: 'male', text: `Goal on the play for ${teamName}!` },
         { speaker: 'female', text: `${playerName || 'The scorer'} showing great touch there.` },
-        { speaker: 'male', text: `That finish changes the tempo.` },
-        { speaker: 'female', text: `Absolutely. Momentum swing right now.` }
+        { speaker: 'male', text: 'That finish changes the tempo.' },
+        { speaker: 'female', text: 'Absolutely. Momentum swing right now.' }
       ], 'dual-goal-fallback');
     } catch (_) {
       throw new Error('Failed to generate dual announcer conversation: ' + error.message);
@@ -701,12 +705,12 @@ FORMAT: Return ONLY a JSON array with 4 lines alternating male-female-male-femal
  */
 export async function generateDualPenaltyAnnouncement(penaltyData, gameContext = null) {
   try {
-    const { 
-      playerName, 
-      teamName, 
-      penaltyType, 
-      period, 
-      timeRemaining, 
+    const {
+      playerName,
+      teamName,
+      penaltyType,
+      period,
+      timeRemaining,
       length = 2
     } = penaltyData;
 
@@ -723,7 +727,7 @@ IMPORTANT HOCKEY TIMING CONTEXT:
 - Time urgency: ${dualPenaltyProgression.urgency}
 - A penalty at 00:26 happens LATER in the period than 16:00`;
 
-  const prompt = `Create a realistic 4-line conversation between two veteran hockey announcers about this penalty. These are seasoned broadcast partners who naturally discuss the call, its impact, and game flow.
+    const prompt = `Create a realistic 4-line conversation between two veteran hockey announcers about this penalty. These are seasoned broadcast partners who naturally discuss the call, its impact, and game flow.
 
 STRICT NAMING RULES (CRITICAL):
 - The male announcer is ONLY ever referred to as "Al" (no last name, no other names).
@@ -771,27 +775,27 @@ FORMAT: Return ONLY a JSON array with 4 lines alternating male-female-male-femal
   {"speaker": "female", "text": "Analysis or strategic impact"}
 ]`;
 
-  const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
       messages: [
         {
-      role: "system",
-  content: "You are creating realistic, natural conversations between veteran hockey broadcast partners named Al and Linda about penalties. ONLY use 'Al' and 'Linda' as names. No last names, no substitutes. Return ONLY valid JSON with exactly 4 alternating lines (male-female-male-female). Sanitize any accidental other names to the correct ones before returning."
+          role: 'system',
+          content: 'You are creating realistic, natural conversations between veteran hockey broadcast partners named Al and Linda about penalties. ONLY use \'Al\' and \'Linda\' as names. No last names, no substitutes. Return ONLY valid JSON with exactly 4 alternating lines (male-female-male-female). Sanitize any accidental other names to the correct ones before returning.'
         },
         {
-          role: "user",
+          role: 'user',
           content: prompt
         }
       ],
       max_tokens: 300, // Reduced for faster responses
-      temperature: 0.8,
+      temperature: 0.8
     });
 
     const conversationText = completion.choices[0].message.content.trim();
-    
+
     try {
-  const conversation = sanitizeConversation(JSON.parse(conversationText));
-  if (Array.isArray(conversation) && conversation.length === 4) {
+      const conversation = sanitizeConversation(JSON.parse(conversationText));
+      if (Array.isArray(conversation) && conversation.length === 4) {
         return conversation;
       } else {
         throw new Error('Invalid conversation format');
@@ -799,12 +803,12 @@ FORMAT: Return ONLY a JSON array with 4 lines alternating male-female-male-femal
     } catch (parseError) {
       console.error('Failed to parse dual penalty conversation:', parseError);
       // Enhanced fallback conversation
-  return sanitizeConversation([
-        {"speaker": "male", "text": `${playerName}, ${length} minutes for ${penaltyType}.`},
-        {"speaker": "female", "text": `That's a textbook call by the official there.`},
-        {"speaker": "male", "text": `Bad timing for ${teamName} - they were building momentum.`},
-        {"speaker": "female", "text": `Now it's a power play opportunity for the other team.`}
-  ]);
+      return sanitizeConversation([
+        {'speaker': 'male', 'text': `${playerName}, ${length} minutes for ${penaltyType}.`},
+        {'speaker': 'female', 'text': 'That\'s a textbook call by the official there.'},
+        {'speaker': 'male', 'text': `Bad timing for ${teamName} - they were building momentum.`},
+        {'speaker': 'female', 'text': 'Now it\'s a power play opportunity for the other team.'}
+      ]);
     }
   } catch (error) {
     console.error('Error generating dual penalty announcement:', error);
@@ -812,9 +816,9 @@ FORMAT: Return ONLY a JSON array with 4 lines alternating male-female-male-femal
       const { playerName, penaltyType } = penaltyData || {};
       return sanitizeConversation([
         { speaker: 'male', text: `${playerName || 'Player'} called for ${penaltyType || 'a minor penalty'}.` },
-        { speaker: 'female', text: `Tough timing, that puts pressure on the kill.` },
-        { speaker: 'male', text: `Need disciplined clears now.` },
-        { speaker: 'female', text: `Exactly—can't let this snowball.` }
+        { speaker: 'female', text: 'Tough timing, that puts pressure on the kill.' },
+        { speaker: 'male', text: 'Need disciplined clears now.' },
+        { speaker: 'female', text: 'Exactly—can\'t let this snowball.' }
       ], 'dual-penalty-fallback');
     } catch (_) {
       throw new Error('Failed to generate dual penalty conversation: ' + error.message);
@@ -829,23 +833,23 @@ FORMAT: Return ONLY a JSON array with 4 lines alternating male-female-male-femal
 export async function generateDualRandomCommentary(gameId, gameContext = {}) {
   console.log('🎙️ Starting generateDualRandomCommentary for gameId:', gameId);
   console.log('🎙️ Game context:', gameContext);
-  
+
   // Check if OpenAI is configured
   if (!openaiConfigured || !openai) {
     logger.warn('OpenAI not configured, returning demo commentary');
-    
+
     // Return demo commentary
     return [
-      "Al: You know Linda, this has been a fascinating game to watch so far.",
-      "Linda: Absolutely Al, the intensity is really picking up in these final minutes.",
-      "Al: The goaltending has been spectacular on both sides tonight.",
-      "Linda: That's right, both netminders have been standing tall when it matters most."
+      'Al: You know Linda, this has been a fascinating game to watch so far.',
+      'Linda: Absolutely Al, the intensity is really picking up in these final minutes.',
+      'Al: The goaltending has been spectacular on both sides tonight.',
+      'Linda: That\'s right, both netminders have been standing tall when it matters most.'
     ];
   }
-  
+
   try {
     // First, generate a conversation starter based on analytics/context
-  const starterPrompt = `Create a conversation starter for two veteran hockey announcers during a break in the action. These are experienced broadcast partners who know each other well and can discuss hockey naturally.
+    const starterPrompt = `Create a conversation starter for two veteran hockey announcers during a break in the action. These are experienced broadcast partners who know each other well and can discuss hockey naturally.
 
 STRICT NAMING RULES (CRITICAL):
 - Male announcer name: Al (ONLY 'Al').
@@ -874,21 +878,21 @@ Return just the opening line text, no JSON or formatting.`;
     console.log('🤖 Making OpenAI starter call...');
     const starterCompletion = await Promise.race([
       openai.chat.completions.create({
-        model: "gpt-4",
+        model: 'gpt-4',
         messages: [
           {
-            role: "system",
-            content: "You are Al, a veteran male hockey announcer. ONLY use the names Al and Linda for the broadcast team (no last names, no substitutions). Generate natural conversation starters that experienced broadcast partners would use during hockey games."
+            role: 'system',
+            content: 'You are Al, a veteran male hockey announcer. ONLY use the names Al and Linda for the broadcast team (no last names, no substitutions). Generate natural conversation starters that experienced broadcast partners would use during hockey games.'
           },
           {
-            role: "user",
+            role: 'user',
             content: starterPrompt
           }
         ],
         max_tokens: 100, // Reduced for faster responses
-        temperature: 0.9,
+        temperature: 0.9
       }),
-      new Promise((_, reject) => 
+      new Promise((_, reject) =>
         setTimeout(() => reject(new Error('OpenAI starter call timeout after 15 seconds')), 15000)
       )
     ]);
@@ -897,7 +901,7 @@ Return just the opening line text, no JSON or formatting.`;
     console.log('🎙️ Generated conversation starter:', conversationStarter);
 
     // Now generate the full 5-line conversation starting with that opener
-  const conversationPrompt = `Continue this hockey announcer conversation for exactly 4 lines total, alternating male-female-male-female. These are veteran broadcast partners who naturally build on each other's observations.
+    const conversationPrompt = `Continue this hockey announcer conversation for exactly 4 lines total, alternating male-female-male-female. These are veteran broadcast partners who naturally build on each other's observations.
 
 STRICT NAMING RULES (CRITICAL):
 - Use ONLY 'Al' and 'Linda'.
@@ -931,28 +935,28 @@ FORMAT: Return ONLY a JSON array with exactly 4 lines alternating male-female-ma
     console.log('🤖 Making OpenAI conversation call...');
     const completion = await Promise.race([
       openai.chat.completions.create({
-        model: "gpt-4",
+        model: 'gpt-4',
         messages: [
           {
-            role: "system",
-            content: "You are creating realistic, natural conversations between veteran hockey broadcast partners named Al and Linda. ONLY output 'Al' and 'Linda' – no last names, no alternative names. Return ONLY valid JSON with exactly 4 alternating lines (male-female-male-female). Sanitize output if necessary before returning."
+            role: 'system',
+            content: 'You are creating realistic, natural conversations between veteran hockey broadcast partners named Al and Linda. ONLY output \'Al\' and \'Linda\' – no last names, no alternative names. Return ONLY valid JSON with exactly 4 alternating lines (male-female-male-female). Sanitize output if necessary before returning.'
           },
           {
-            role: "user",
+            role: 'user',
             content: conversationPrompt
           }
         ],
         max_tokens: 350, // Reduced for faster responses
-        temperature: 0.9,
+        temperature: 0.9
       }),
-      new Promise((_, reject) => 
+      new Promise((_, reject) =>
         setTimeout(() => reject(new Error('OpenAI conversation call timeout after 20 seconds')), 20000)
       )
     ]);
 
     const conversationText = completion.choices[0].message.content.trim();
     console.log('🎙️ Generated conversation text:', conversationText);
-    
+
     try {
       let parsed;
       try {
@@ -961,7 +965,7 @@ FORMAT: Return ONLY a JSON array with exactly 4 lines alternating male-female-ma
         // If the model returned a JS-like array of strings without valid JSON, try to coerce
         if (/^\[\s*".+"\s*\]/s.test(conversationText)) {
           // Attempt relaxed parsing by replacing smart quotes
-          const normalized = conversationText.replace(/[“”]/g,'"').replace(/[‘’]/g,"'");
+          const normalized = conversationText.replace(/[“”]/g,'"').replace(/[‘’]/g,'\'');
           parsed = JSON.parse(normalized);
         } else {
           throw jsonErr;
@@ -990,38 +994,38 @@ FORMAT: Return ONLY a JSON array with exactly 4 lines alternating male-female-ma
             return { speaker, text: m[2] };
           }
           // Fallback guess by alternating
-            return { speaker: 'male', text: line };
+          return { speaker: 'male', text: line };
         });
       }
       const rawConversation = sanitizeConversation(parsed);
       console.log('🎙️ Parsed raw conversation:', rawConversation);
-      
+
       // Convert conversation format if needed
       let conversation;
       if (Array.isArray(rawConversation)) {
         // Check if it's in the expected format with speaker/text
         if (rawConversation.length > 0 && rawConversation[0].speaker && rawConversation[0].text) {
           conversation = rawConversation;
-        } 
+        }
         // Check if it's in the male_announcer/female_announcer format
-        else if (rawConversation.length > 0 && 
+        else if (rawConversation.length > 0 &&
                  (rawConversation[0].male_announcer || rawConversation[0].female_announcer)) {
           conversation = [];
           for (let i = 0; i < rawConversation.length; i++) {
             const line = rawConversation[i];
             if (line.male_announcer) {
-              conversation.push({ speaker: "male", text: line.male_announcer });
+              conversation.push({ speaker: 'male', text: line.male_announcer });
             } else if (line.female_announcer) {
-              conversation.push({ speaker: "female", text: line.female_announcer });
+              conversation.push({ speaker: 'female', text: line.female_announcer });
             }
           }
         } else {
           throw new Error('Unrecognized conversation format');
         }
-        
+
         console.log('🎙️ Converted conversation:', conversation);
-        
-  if (conversation.length === 4) {
+
+        if (conversation.length === 4) {
           console.log('🎙️ Received conversation from generateDualRandomCommentary:', conversation.length, 'lines');
           return conversation;
         } else {
@@ -1031,14 +1035,14 @@ FORMAT: Return ONLY a JSON array with exactly 4 lines alternating male-female-ma
         throw new Error('Conversation is not an array');
       }
     } catch (parseError) {
-  console.error('Failed to parse dual random conversation:', parseError);
+      console.error('Failed to parse dual random conversation:', parseError);
       // Enhanced fallback to a more natural conversation
-  return sanitizeConversation([
-        {"speaker": "male", "text": conversationStarter},
-        {"speaker": "female", "text": "You know what I love about that? The way these teams adapt their strategies."},
-        {"speaker": "male", "text": "Exactly! And the skill level in this league keeps getting better."},
-        {"speaker": "female", "text": "Oh absolutely! The conditioning these players have now is incredible."}
-  ]);
+      return sanitizeConversation([
+        {'speaker': 'male', 'text': conversationStarter},
+        {'speaker': 'female', 'text': 'You know what I love about that? The way these teams adapt their strategies.'},
+        {'speaker': 'male', 'text': 'Exactly! And the skill level in this league keeps getting better.'},
+        {'speaker': 'female', 'text': 'Oh absolutely! The conditioning these players have now is incredible.'}
+      ]);
     }
   } catch (error) {
     console.error('Error generating dual random commentary:', error);
@@ -1061,10 +1065,16 @@ FORMAT: Return ONLY a JSON array with exactly 4 lines alternating male-female-ma
 function getOrdinalSuffix(num) {
   const j = num % 10;
   const k = num % 100;
-  
-  if (j === 1 && k !== 11) return 'st';
-  if (j === 2 && k !== 12) return 'nd';
-  if (j === 3 && k !== 13) return 'rd';
+
+  if (j === 1 && k !== 11) {
+    return 'st';
+  }
+  if (j === 2 && k !== 12) {
+    return 'nd';
+  }
+  if (j === 3 && k !== 13) {
+    return 'rd';
+  }
   return 'th';
 }
 
@@ -1072,30 +1082,52 @@ function getOrdinalSuffix(num) {
  * Sanitize conversation lines to enforce strict naming (Al, Linda only, no last names)
  */
 export function sanitizeConversation(convo, context = 'dual-announcer') {
-  if (!Array.isArray(convo)) return convo;
+  if (!Array.isArray(convo)) {
+    return convo;
+  }
   const maleVariants = [/\bAlan\b/gi, /\bAllan\b/gi, /\bAlfred\b/gi, /\bAlbert\b/gi];
   const femaleVariants = [/\bLynda\b/gi, /\bLindsey\b/gi, /\bLindsey\b/gi, /\bLindy\b/gi];
   const wrongFemaleToLinda = [/\bBob\b/gi, /\bBobby\b/gi];
   let modifications = 0;
   const sanitized = convo.map(line => {
-    if (!line || typeof line.text !== 'string') return line;
-    let original = line.text;
+    if (!line || typeof line.text !== 'string') {
+      return line;
+    }
+    const original = line.text;
     let t = original;
     // Normalize male variants to Al
-    maleVariants.forEach(r => { if (r.test(t)) { t = t.replace(r, 'Al'); modifications++; } });
+    maleVariants.forEach(r => {
+      if (r.test(t)) {
+        t = t.replace(r, 'Al'); modifications++;
+      }
+    });
     // Normalize female variants to Linda
-    femaleVariants.forEach(r => { if (r.test(t)) { t = t.replace(r, 'Linda'); modifications++; } });
+    femaleVariants.forEach(r => {
+      if (r.test(t)) {
+        t = t.replace(r, 'Linda'); modifications++;
+      }
+    });
     // Replace mis-gender hallucinations to Linda
-    wrongFemaleToLinda.forEach(r => { if (r.test(t)) { t = t.replace(r, 'Linda'); modifications++; } });
+    wrongFemaleToLinda.forEach(r => {
+      if (r.test(t)) {
+        t = t.replace(r, 'Linda'); modifications++;
+      }
+    });
     // Remove last names after Al or Linda
     const lastNamePattern = /\b(Al|Linda)\s+[A-Z][a-z]+\b/g;
-    t = t.replace(lastNamePattern, (m, p1) => { modifications++; return p1; });
-  t = stripFluff(t, false); // remove fluff but don't log each phrase individually
-  return { ...line, text: t };
+    t = t.replace(lastNamePattern, (m, p1) => {
+      modifications++; return p1;
+    });
+    t = stripFluff(t, false); // remove fluff but don't log each phrase individually
+    return { ...line, text: t };
   });
   if (modifications > 0) {
     const msg = `Sanitized ${modifications} name issue(s) in conversation (${context})`;
-    if (logger && logger.warn) logger.warn(msg); else console.warn(msg);
+    if (logger && logger.warn) {
+      logger.warn(msg);
+    } else {
+      console.warn(msg);
+    }
     try {
       if (globalThis.__ANNOUNCER_METRICS__) {
         globalThis.__ANNOUNCER_METRICS__.hygiene.namesSanitized += modifications;
@@ -1136,7 +1168,9 @@ const FLUFF_PATTERNS = [
 ];
 
 function stripFluff(text, log = false) {
-  if (!text) return text;
+  if (!text) {
+    return text;
+  }
   let modified = text;
   let hits = 0;
   FLUFF_PATTERNS.forEach(p => {
@@ -1150,9 +1184,15 @@ function stripFluff(text, log = false) {
   // Remove leftover orphan punctuation at end
   modified = modified.replace(/([:,;\-])$/g, '').trim();
   // Ensure first char capitalized
-  if (modified) modified = modified.charAt(0).toUpperCase() + modified.slice(1);
+  if (modified) {
+    modified = modified.charAt(0).toUpperCase() + modified.slice(1);
+  }
   if (log && hits > 0) {
-    if (logger && logger.warn) logger.warn(`Stripped ${hits} fluff phrase(s) from announcement`); else console.warn('Stripped fluff phrases');
+    if (logger && logger.warn) {
+      logger.warn(`Stripped ${hits} fluff phrase(s) from announcement`);
+    } else {
+      console.warn('Stripped fluff phrases');
+    }
   }
   try {
     if (hits > 0) {

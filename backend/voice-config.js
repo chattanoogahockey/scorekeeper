@@ -8,7 +8,7 @@ import { getSettingsContainer, getGamesContainer } from './cosmosClient.js';
 // Default voice configuration
 const DEFAULT_VOICES = {
   male: 'en-US-Studio-Q',    // Studio-Q is male
-  female: 'en-US-Studio-O'   // Studio-O is female  
+  female: 'en-US-Studio-O'   // Studio-O is female
 };
 
 /**
@@ -21,14 +21,14 @@ export async function getAnnouncerVoices() {
     const gamesContainer = getGamesContainer();
     const { resources: configs } = await gamesContainer.items
       .query({
-        query: "SELECT * FROM c WHERE c.id = 'voiceConfig'",
+        query: 'SELECT * FROM c WHERE c.id = \'voiceConfig\'',
         parameters: []
       })
       .fetchAll();
-    
+
     let maleVoice = DEFAULT_VOICES.male;
     let femaleVoice = DEFAULT_VOICES.female;
-    
+
     if (configs.length > 0) {
       const voiceConfig = configs[0];
       maleVoice = voiceConfig.maleVoice || DEFAULT_VOICES.male;
@@ -37,7 +37,7 @@ export async function getAnnouncerVoices() {
     } else {
 
     }
-    
+
     return {
       provider: 'google',
       maleVoice,
@@ -74,13 +74,13 @@ export async function getAnnouncerVoices() {
 export async function getVoiceForGender(voiceGender) {
   try {
     const config = await getAnnouncerVoices();
-    
+
     if (voiceGender === 'male') {
       return config.maleVoice;
     } else if (voiceGender === 'female') {
       return config.femaleVoice;
     }
-    
+
     // Fallback to male as default
     return config.maleVoice;
   } catch (error) {
@@ -128,11 +128,11 @@ export function getFallbackVoice(speaker, availableVoices = []) {
 
   // Find preferred voice from available voices
   if (availableVoices && availableVoices.length > 0) {
-    const matchingVoices = availableVoices.filter(voice => 
-      voice.lang.startsWith('en') && 
+    const matchingVoices = availableVoices.filter(voice =>
+      voice.lang.startsWith('en') &&
       config.preferredNames.some(name => voice.name.includes(name))
     );
-    
+
     if (matchingVoices.length > 0) {
       selectedVoice = matchingVoices[0];
     }
@@ -161,21 +161,21 @@ export async function validateVoice(ttsClient, voiceName) {
     console.warn('⚠️ TTS client not available, cannot validate voice');
     return false;
   }
-  
+
   try {
     // List available voices from Google Cloud TTS
     const [result] = await ttsClient.listVoices({
       languageCode: 'en-US'
     });
-    
+
     const availableVoices = result.voices || [];
     const voiceExists = availableVoices.some(voice => voice.name === voiceName);
-    
+
     if (!voiceExists) {
       console.error(`❌ Voice '${voiceName}' not found in Google Cloud TTS catalog`);
       console.log(`Available Studio voices: ${availableVoices.filter(v => v.name.includes('Studio')).map(v => v.name).join(', ')}`);
     }
-    
+
     return voiceExists;
   } catch (error) {
     console.warn('⚠️ Could not validate voice availability:', error.message);

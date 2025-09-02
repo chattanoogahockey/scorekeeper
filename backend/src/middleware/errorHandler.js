@@ -89,7 +89,7 @@ export function createErrorResponse(error, context = 'API', requestId = null) {
 /**
  * Global error handler middleware
  */
-export function errorHandler(error, req, res, next) {
+export function errorHandler(error, req, res, _next) {
   const requestId = req.requestId || req.headers['x-request-id'];
 
   // Log the error
@@ -112,26 +112,26 @@ export function errorHandler(error, req, res, next) {
   // Set appropriate status code
   let statusCode = 500;
   switch (errorResponse.code) {
-    case ErrorTypes.VALIDATION:
-      statusCode = 400;
-      break;
-    case ErrorTypes.NOT_FOUND:
-      statusCode = 404;
-      break;
-    case ErrorTypes.CONFLICT:
-      statusCode = 409;
-      break;
-    case ErrorTypes.UNAUTHORIZED:
-      statusCode = 401;
-      break;
-    case ErrorTypes.FORBIDDEN:
-      statusCode = 403;
-      break;
-    case ErrorTypes.RATE_LIMIT:
-      statusCode = 429;
-      break;
-    default:
-      statusCode = 500;
+  case ErrorTypes.VALIDATION:
+    statusCode = 400;
+    break;
+  case ErrorTypes.NOT_FOUND:
+    statusCode = 404;
+    break;
+  case ErrorTypes.CONFLICT:
+    statusCode = 409;
+    break;
+  case ErrorTypes.UNAUTHORIZED:
+    statusCode = 401;
+    break;
+  case ErrorTypes.FORBIDDEN:
+    statusCode = 403;
+    break;
+  case ErrorTypes.RATE_LIMIT:
+    statusCode = 429;
+    break;
+  default:
+    statusCode = 500;
   }
 
   res.status(statusCode).json(errorResponse);

@@ -114,12 +114,12 @@ export class HealthController {
       }
     } else {
       buildTime = new Date();
-      buildTimeSource = 'current-time';
+      // buildTimeSource = 'current-time'; // Not used
     }
 
     // Format the time in Eastern timezone
-    const formattedBuildTime = buildTime.toLocaleString("en-US", {
-      timeZone: "America/New_York",
+    const formattedBuildTime = buildTime.toLocaleString('en-US', {
+      timeZone: 'America/New_York',
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -148,7 +148,7 @@ export class HealthController {
    * Update deployment timestamp (admin endpoint)
    */
   static updateDeploymentTime = asyncHandler(async (req, res) => {
-    const { deploymentTimestamp, githubSha } = req.body;
+    const { deploymentTimestamp } = req.body;
 
     if (!deploymentTimestamp) {
       return res.status(400).json({ error: 'Missing deploymentTimestamp' });

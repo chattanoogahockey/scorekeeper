@@ -216,7 +216,7 @@ export class DatabaseService {
    */
   static async getSubmittedGames() {
     const submissions = await this.query('games', {
-      query: "SELECT * FROM c WHERE c.eventType = 'game-submission'",
+      query: 'SELECT * FROM c WHERE c.eventType = \'game-submission\'',
       parameters: []
     });
 
@@ -299,9 +299,9 @@ export class DatabaseService {
 
     const querySpec = conditions.length > 0
       ? {
-          query: `SELECT * FROM c WHERE ${conditions.join(' AND ')}`,
-          parameters
-        }
+        query: `SELECT * FROM c WHERE ${conditions.join(' AND ')}`,
+        parameters
+      }
       : { query: 'SELECT * FROM c' };
 
     return this.query('rosters', querySpec);

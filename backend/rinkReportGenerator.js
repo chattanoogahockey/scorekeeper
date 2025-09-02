@@ -1,11 +1,11 @@
-﻿import { getGamesContainer, getGoalsContainer, getPenaltiesContainer, getRinkReportsContainer } from './cosmosClient.js';
+import { getGamesContainer, getGoalsContainer, getPenaltiesContainer, getRinkReportsContainer } from './cosmosClient.js';
 
 /**
  * Generate a comprehensive rink report for a specific division (all submitted games)
  */
 export async function generateRinkReport(division) {
   const reportId = `${division}-all-submitted`;
-  console.log(`🏒 Generating rink report for ${division} division (all submitted games)`);
+  console.log(`?? Generating rink report for ${division} division (all submitted games)`);
   
   try {
     const gameData = await aggregateGameData(division);
@@ -30,10 +30,10 @@ export async function generateRinkReport(division) {
     const container = getRinkReportsContainer();
     await container.items.upsert(report);
     
-    console.log(`✅ Rink report generated and stored for ${division} division`);
+    console.log(`? Rink report generated and stored for ${division} division`);
     return report;
   } catch (error) {
-    console.error(`❌ Error generating rink report for ${division} division:`, error);
+    console.error(`? Error generating rink report for ${division} division:`, error);
     throw error;
   }
 }
@@ -407,7 +407,7 @@ function generateArticleHTML(division, gameStats, highlights, standoutPlayers) {
 export async function generateReportsForAllDivisions() {
   const divisions = ['Gold', 'Silver', 'Bronze'];
   
-  console.log(`🏒 Generating reports for all divisions (all submitted games)`);
+  console.log(`?? Generating reports for all divisions (all submitted games)`);
   
   const results = [];
   for (const division of divisions) {

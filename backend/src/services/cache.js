@@ -177,7 +177,7 @@ export class CacheService {
       caches: {}
     };
 
-    for (const [name, cache] of this.caches) {
+    for (const [name, _cache] of this.caches) {
       stats.caches[name] = this.getStats(name);
     }
 

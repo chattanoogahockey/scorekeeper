@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import dotenv from 'dotenv';
 import { config } from './config/index.js';
+import OpenAI from 'openai';
 import logger from './logger.js';
 
 // Load environment variables from .env file
@@ -17,6 +18,17 @@ dotenv.config();
 if (!process.env.COSMOS_DB_URI || !process.env.COSMOS_DB_KEY) {
   console.error('❌ Missing required environment variables');
   process.exit(1);
+}
+
+// Initialize OpenAI client (optional for chat functionality)
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  console.log('✅ OpenAI client initialized');
+} else {
+  console.log('⚠️  OpenAI API key not found - chat functionality will be disabled');
 }
 
 import {
@@ -507,9 +519,9 @@ async function initializeAnnouncer() {
 }
 
 // Schedule warmup shortly after startup
-setTimeout(() => {
-  initializeAnnouncer();
-}, 2000);
+// setTimeout(() => {
+//   initializeAnnouncer();
+// }, 2000);
 
 // ----- Pre-generation helpers -----
 async function preGenerateGoalAssets(gameId) {
@@ -1856,8 +1868,8 @@ app.post('/api/goals', async (req, res) => {
     const { resource } = await container.items.create(goal);
 
     // Kick off background pre-generation for announcer assets
-    preGenerateGoalAssets(gameId);
-    setTimeout(() => preGenerateGoalAssets(gameId), 1500);
+    // preGenerateGoalAssets(gameId);
+    // setTimeout(() => preGenerateGoalAssets(gameId), 1500);
 
     res.status(201).json({
       success: true,
@@ -2026,8 +2038,8 @@ app.post('/api/penalties', async (req, res) => {
     console.log('✅ Penalty recorded successfully with enhanced metadata');
 
     // Kick off background pre-generation for announcer assets
-    preGeneratePenaltyAssets(gameId);
-    setTimeout(() => preGeneratePenaltyAssets(gameId), 1500);
+    // preGeneratePenaltyAssets(gameId);
+    // setTimeout(() => preGeneratePenaltyAssets(gameId), 1500);
 
     res.status(201).json({
       success: true,
@@ -2367,9 +2379,9 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
     } else {
       announcerMetrics.cache.goals.misses++;
       // If we have a cached entry but it's stale, queue a background refresh (will overwrite after response)
-      if (cached && cached.lastGoalId !== latestGoalId) {
-        setTimeout(() => preGenerateGoalAssets(gameId), 50);
-      }
+      // if (cached && cached.lastGoalId !== latestGoalId) {
+      //   setTimeout(() => preGenerateGoalAssets(gameId), 50);
+      // }
     }
 
     if (announcerMode === 'dual') {
@@ -2778,7 +2790,7 @@ app.post('/api/randomCommentary', aiRateLimitMiddleware, async (req, res) => {
         conversation = trimConversationLines(conversation, 4);
       }
       // Pre-generate the next one in background
-      preGenerateRandomDual(key, gameContext);
+      // preGenerateRandomDual(key, gameContext);
       console.log('🎙️ Received conversation from generateDualRandomCommentary:', conversation?.length, 'lines');
 
       console.log('✅ Dual random commentary conversation generated successfully');
@@ -5832,6 +5844,100 @@ app.get('/api/admin/available-voices', (req, res) => {
   }
 });
 
+// Define tools for the analytical agent
+const tools = [
+  {
+    type: 'function',
+    function: {
+      name: 'get_top_players',
+      description: 'Get top players by a specific metric (goals, assists, points, pim, gp)',
+      parameters: {
+        type: 'object',
+        properties: {
+          metric: {
+            type: 'string',
+            enum: ['goals', 'assists', 'points', 'pim', 'gp'],
+            description: 'The metric to rank players by'
+          },
+          limit: {
+            type: 'integer',
+            description: 'Number of top players to return (default: 10)',
+            default: 10
+          }
+        },
+        required: ['metric']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_team_stats',
+      description: 'Get team statistics and performance data',
+      parameters: {
+        type: 'object',
+        properties: {
+          teamName: {
+            type: 'string',
+            description: 'Name of the team to get stats for (optional - returns all teams if not specified)'
+          },
+          season: {
+            type: 'string',
+            description: 'Season to filter by (optional)'
+          }
+        }
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_game_summary',
+      description: 'Get summary of a specific game',
+      parameters: {
+        type: 'object',
+        properties: {
+          gameId: {
+            type: 'string',
+            description: 'The ID of the game to get summary for'
+          }
+        },
+        required: ['gameId']
+      }
+    }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'aggregate_stats',
+      description: 'Get aggregated statistics across multiple games or seasons',
+      parameters: {
+        type: 'object',
+        properties: {
+          type: {
+            type: 'string',
+            enum: ['season', 'division', 'team'],
+            description: 'Type of aggregation to perform'
+          },
+          season: {
+            type: 'string',
+            description: 'Season to aggregate (required for season type)'
+          },
+          division: {
+            type: 'string',
+            description: 'Division to aggregate (required for division type)'
+          },
+          teamName: {
+            type: 'string',
+            description: 'Team name to aggregate (required for team type)'
+          }
+        },
+        required: ['type']
+      }
+    }
+  }
+];
+
 // Chat API endpoint for analytical agent
 app.post('/api/chat', async (req, res) => {
   try {
@@ -5840,6 +5946,20 @@ app.post('/api/chat', async (req, res) => {
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message is required' });
     }
+
+    // Check if OpenAI is available
+    if (!openai) {
+      return res.status(503).json({ 
+        error: 'Chat functionality is not available - OpenAI API key not configured' 
+      });
+    }
+
+    // Set headers for Server-Sent Events
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
 
     // Build conversation history
     let conversationMessages = [
@@ -5850,9 +5970,7 @@ app.post('/api/chat', async (req, res) => {
 Your capabilities:
 - Answer questions about player statistics, team performance, and game results
 - Provide insights on trends, comparisons, and leaderboards
-- Use the available tools to fetch accurate data from the database
-- Always provide concise, factual answers with data provenance
-- If data is not available, clearly state what information is missing
+- Answer questions about historical data across multiple seasons
 
 Available data includes:
 - Player stats: goals, assists, points, PIM, games played
@@ -5860,7 +5978,7 @@ Available data includes:
 - Game results and summaries
 - Historical data across multiple seasons
 
-Always use tools when you need to fetch specific data. Answer in plain text only - no tables, charts, or formatting.`
+Answer in plain text only - no tables, charts, or formatting.`
       }
     ];
 
@@ -5879,115 +5997,20 @@ Always use tools when you need to fetch specific data. Answer in plain text only
     const stream = await openai.chat.completions.create({
       model: 'gpt-4o-mini', // Use gpt-4o-mini for faster responses
       messages: conversationMessages,
-      tools: tools,
-      tool_choice: 'auto',
+      // tools: tools,  // Temporarily disable tools to test basic functionality
+      // tool_choice: 'auto',
       stream: true,
       max_tokens: 1000,
       temperature: 0.3
     });
 
-    let accumulatedResponse = '';
-    let currentToolCall = null;
-
+    // Simple streaming response without tools
     for await (const chunk of stream) {
       const delta = chunk.choices[0]?.delta;
-
-      if (delta?.tool_calls) {
-        // Handle tool calls
-        for (const toolCall of delta.tool_calls) {
-          if (toolCall.function) {
-            if (!currentToolCall) {
-              currentToolCall = {
-                id: toolCall.id,
-                function: {
-                  name: toolCall.function.name,
-                  arguments: ''
-                }
-              };
-            }
-            if (toolCall.function.arguments) {
-              currentToolCall.function.arguments += toolCall.function.arguments;
-            }
-          }
-        }
-      } else if (delta?.content) {
+      
+      if (delta?.content) {
         // Send content chunks
-        accumulatedResponse += delta.content;
         res.write(`data: ${JSON.stringify({ content: delta.content })}\n\n`);
-      }
-
-      // If we have a complete tool call, execute it
-      if (currentToolCall && currentToolCall.function.arguments) {
-        // Check if arguments form valid JSON
-        let args;
-        try {
-          args = JSON.parse(currentToolCall.function.arguments);
-        } catch (e) {
-          // Arguments not complete yet, continue accumulating
-          continue;
-        }
-
-        try {
-          let toolResult = null;
-
-          // Execute the appropriate tool
-          switch (currentToolCall.function.name) {
-            case 'get_top_players':
-              toolResult = await executeGetTopPlayers(args);
-              break;
-            case 'get_team_stats':
-              toolResult = await executeGetTeamStats(args);
-              break;
-            case 'get_game_summary':
-              toolResult = await executeGetGameSummary(args);
-              break;
-            case 'aggregate_stats':
-              toolResult = await executeAggregateStats(args);
-              break;
-            default:
-              toolResult = { error: 'Unknown tool' };
-          }
-
-          // Continue the conversation with tool result
-          try {
-            const toolStream = await openai.chat.completions.create({
-              model: 'gpt-4o-mini',
-              messages: [
-                ...conversationMessages.slice(0, -1), // All messages except the last user message
-                {
-                  role: 'assistant',
-                  content: accumulatedResponse,
-                  tool_calls: [currentToolCall]
-                },
-                {
-                  role: 'tool',
-                  tool_call_id: currentToolCall.id,
-                  content: JSON.stringify(toolResult)
-                }
-              ],
-              stream: true,
-              max_tokens: 1000,
-              temperature: 0.3
-            });
-
-            for await (const toolChunk of toolStream) {
-              const toolDelta = toolChunk.choices[0]?.delta;
-              if (toolDelta?.content) {
-                accumulatedResponse += toolDelta.content;
-                res.write(`data: ${JSON.stringify({ content: toolDelta.content })}\n\n`);
-              }
-            }
-          } catch (streamError) {
-            console.error('Tool response streaming error:', streamError);
-            res.write(`data: ${JSON.stringify({ content: 'Sorry, I encountered an error processing the tool response.' })}\n\n`);
-          }
-
-          currentToolCall = null;
-        } catch (error) {
-          console.error('Tool execution error:', error);
-          res.write(`data: ${JSON.stringify({ content: 'Sorry, I encountered an error processing your request.' })}\n\n`);
-          currentToolCall = null;
-        }
       }
     }
 

@@ -149,6 +149,7 @@ const Statistics = React.memo(() => {
   const [playerSortDirection, setPlayerSortDirection] = useState('desc');
   const [teamSortField, setTeamSortField] = useState('wins');
   const [teamSortDirection, setTeamSortDirection] = useState('desc');
+  const [filterLoading, setFilterLoading] = useState(false);
 
   // Chat state
   const [chatOpen, setChatOpen] = useState(false);
@@ -157,18 +158,28 @@ const Statistics = React.memo(() => {
 
   useEffect(() => { 
     fetchMeta(); 
-  }, []); // Only run once on mount
+  }, [fetchMeta]); // Only run once on mount
   
   useEffect(() => { 
     // Only fetch data after meta is loaded and we have valid options
     if (seasonOptions.length > 0 && yearOptions.length > 0) {
-      fetchPlayerStats(); 
-      fetchTeamStats();
-      fetchSeasonalData();
+      const fetchData = async () => {
+        setFilterLoading(true);
+        try {
+          await Promise.all([
+            fetchPlayerStats(),
+            fetchTeamStats(),
+            fetchSeasonalData()
+          ]);
+        } finally {
+          setFilterLoading(false);
+        }
+      };
+      fetchData();
     }
-  }, [selectedDivisions, selectedSeasons, selectedYears]); // Remove seasonOptions and yearOptions from dependencies
+  }, [fetchPlayerStats, fetchTeamStats, fetchSeasonalData, seasonOptions.length, yearOptions.length]);
 
-  const fetchSeasonalData = async () => {
+  const fetchSeasonalData = useCallback(async () => {
     try {
       const division = selectedDivisions.includes('All') ? null : selectedDivisions[0];
       const data = await statisticsService.fetchSeasonalData({
@@ -179,9 +190,9 @@ const Statistics = React.memo(() => {
       console.error('Failed to fetch seasonal data for charts:', e);
       setSeasonalData([]);
     }
-  };
+  }, [selectedDivisions]);
 
-  const fetchPlayerStats = async () => {
+  const fetchPlayerStats = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -218,9 +229,9 @@ const Statistics = React.memo(() => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDivisions, selectedSeasons, selectedYears]);
 
-  const fetchTeamStats = async () => {
+  const fetchTeamStats = useCallback(async () => {
     try {
       const division = selectedDivisions.includes('All') ? null : selectedDivisions[0];
       const data = await statisticsService.fetchTeamStats({
@@ -238,9 +249,9 @@ const Statistics = React.memo(() => {
       console.error('Team stats fetch failed', e);
       setTeamStats([]);
     }
-  };
+  }, [selectedDivisions]);
 
-  const fetchMeta = async () => {
+  const fetchMeta = useCallback(async () => {
     try {
       const meta = await statisticsService.fetchMeta();
 
@@ -283,7 +294,7 @@ const Statistics = React.memo(() => {
       setSelectedYears(['2025']);
       setSelectedSeasons(['Fall']);
     }
-  };
+  }, []);
 
   const divisions = ['All', 'Gold', 'Silver', 'Bronze'];
 
@@ -515,7 +526,13 @@ const Statistics = React.memo(() => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ 
+          message,
+          messages: chatMessages.map(msg => ({
+            role: msg.isUser ? 'user' : 'assistant',
+            content: msg.text
+          }))
+        }),
       });
 
       if (!response.ok) {
@@ -714,34 +731,42 @@ const Statistics = React.memo(() => {
               : 'Filter by year, season, and division to view specific statistics.'
             }
           </p>
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4 text-sm">
-            <div className="bg-blue-50 p-3 rounded border border-blue-200">
-              <div className="text-[10px] text-blue-700 uppercase tracking-wide">Top Scorer</div>
-              <div className="font-semibold text-blue-900 truncate" title={analytics.topScorer?.playerName}>{analytics.topScorer? analytics.topScorer.playerName : '—'}</div>
-            </div>
-            <div className="bg-green-50 p-3 rounded border border-green-200">
-              <div className="text-[10px] text-green-700 uppercase tracking-wide">Avg Points/Player</div>
-              <div className="font-semibold text-green-900">{analytics.avgPoints}</div>
-            </div>
-            <div className="bg-purple-50 p-3 rounded border border-purple-200">
-              <div className="text-[10px] text-purple-700 uppercase tracking-wide">Median Points</div>
-              <div className="font-semibold text-purple-900">{analytics.medianPoints}</div>
-            </div>
-            <div className="bg-orange-50 p-3 rounded border border-orange-200">
-              <div className="text-[10px] text-orange-700 uppercase tracking-wide">Total Goals</div>
-              <div className="font-semibold text-orange-900">{analytics.totalGoals}</div>
-            </div>
-            <div className="bg-teal-50 p-3 rounded border border-teal-200">
-              <div className="text-[10px] text-teal-700 uppercase tracking-wide">Goals / Game (Agg)</div>
-              <div className="font-semibold text-teal-900">{analytics.goalsPerGameAgg}</div>
-            </div>
-            <div className="bg-rose-50 p-3 rounded border border-rose-200">
-              <div className="text-[10px] text-rose-700 uppercase tracking-wide">Points / Player GP</div>
-              <div className="font-semibold text-rose-900">{analytics.pointsPerPlayerPerGame}</div>
-            </div>
-          </div>
           
-          {sortedPlayerStats.length > 0 ? (
+          {filterLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-600">Updating statistics...</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-4 text-sm">
+                <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                  <div className="text-[10px] text-blue-700 uppercase tracking-wide">Top Scorer</div>
+                  <div className="font-semibold text-blue-900 truncate" title={analytics.topScorer?.playerName}>{analytics.topScorer? analytics.topScorer.playerName : '—'}</div>
+                </div>
+                <div className="bg-green-50 p-3 rounded border border-green-200">
+                  <div className="text-[10px] text-green-700 uppercase tracking-wide">Avg Points/Player</div>
+                  <div className="font-semibold text-green-900">{analytics.avgPoints}</div>
+                </div>
+                <div className="bg-purple-50 p-3 rounded border border-purple-200">
+                  <div className="text-[10px] text-purple-700 uppercase tracking-wide">Median Points</div>
+                  <div className="font-semibold text-purple-900">{analytics.medianPoints}</div>
+                </div>
+                <div className="bg-orange-50 p-3 rounded border border-orange-200">
+                  <div className="text-[10px] text-orange-700 uppercase tracking-wide">Total Goals</div>
+                  <div className="font-semibold text-orange-900">{analytics.totalGoals}</div>
+                </div>
+                <div className="bg-teal-50 p-3 rounded border border-teal-200">
+                  <div className="text-[10px] text-teal-700 uppercase tracking-wide">Goals / Game (Agg)</div>
+                  <div className="font-semibold text-teal-900">{analytics.goalsPerGameAgg}</div>
+                </div>
+                <div className="bg-rose-50 p-3 rounded border border-rose-200">
+                  <div className="text-[10px] text-rose-700 uppercase tracking-wide">Points / Player GP</div>
+                  <div className="font-semibold text-rose-900">{analytics.pointsPerPlayerPerGame}</div>
+                </div>
+              </div>
+              
+              {sortedPlayerStats.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="min-w-full table-auto">
                 <thead>
@@ -795,9 +820,9 @@ const Statistics = React.memo(() => {
           ) : (
             <p className="text-gray-500 text-center py-8">No player statistics available for the selected division.</p>
           )}
+        </>
+        )}
         </div>
-
-        {/* Team Statistics and Top Scorers - Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           {/* Team Statistics Table */}
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -957,7 +982,6 @@ const Statistics = React.memo(() => {
             )}
           </div>
         </div>
-      </div>
 
       {/* Floating Chat Button */}
       <button
@@ -977,6 +1001,7 @@ const Statistics = React.memo(() => {
         isTyping={isTyping}
       />
     </div>
+  </div>
   );
 });
 

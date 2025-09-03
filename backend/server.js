@@ -5835,102 +5835,17 @@ app.get('/api/admin/available-voices', (req, res) => {
 // Chat API endpoint for analytical agent
 app.post('/api/chat', async (req, res) => {
   try {
-    const { message } = req.body;
+    const { message, messages } = req.body;
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // Set headers for SSE
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Headers', 'Cache-Control');
-
-    // Import OpenAI
-    const { OpenAI } = await import('openai');
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-
-    // Define tools for the agent
-    const tools = [
+    // Build conversation history
+    let conversationMessages = [
       {
-        type: 'function',
-        function: {
-          name: 'get_top_players',
-          description: 'Get top players by a specific metric (goals, assists, points, etc.)',
-          parameters: {
-            type: 'object',
-            properties: {
-              metric: { type: 'string', enum: ['goals', 'assists', 'points', 'pim', 'gp'] },
-              season: { type: 'string' },
-              leagueId: { type: 'string' },
-              limit: { type: 'number', default: 10 }
-            },
-            required: ['metric']
-          }
-        }
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'get_team_stats',
-          description: 'Get team statistics and performance data',
-          parameters: {
-            type: 'object',
-            properties: {
-              teamId: { type: 'string' },
-              metric: { type: 'string' },
-              season: { type: 'string' },
-              dateFrom: { type: 'string' },
-              dateTo: { type: 'string' }
-            }
-          }
-        }
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'get_game_summary',
-          description: 'Get summary of a specific game',
-          parameters: {
-            type: 'object',
-            properties: {
-              gameId: { type: 'string' }
-            },
-            required: ['gameId']
-          }
-        }
-      },
-      {
-        type: 'function',
-        function: {
-          name: 'aggregate_stats',
-          description: 'Aggregate statistics with custom filters and groupings',
-          parameters: {
-            type: 'object',
-            properties: {
-              entity: { type: 'string', enum: ['players', 'teams', 'games'] },
-              metrics: { type: 'array', items: { type: 'string' } },
-              filters: { type: 'object' },
-              groupBy: { type: 'array', items: { type: 'string' } },
-              limit: { type: 'number', default: 10 }
-            },
-            required: ['entity', 'metrics']
-          }
-        }
-      }
-    ];
-
-    // Create streaming response
-    const stream = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // Use gpt-4o-mini for faster responses
-      messages: [
-        {
-          role: 'system',
-          content: `You are the Scorekeeper Analytical Agent. You help users analyze hockey statistics and game data.
+        role: 'system',
+        content: `You are the Scorekeeper Analytical Agent. You help users analyze hockey statistics and game data.
 
 Your capabilities:
 - Answer questions about player statistics, team performance, and game results
@@ -5946,12 +5861,24 @@ Available data includes:
 - Historical data across multiple seasons
 
 Always use tools when you need to fetch specific data. Answer in plain text only - no tables, charts, or formatting.`
-        },
-        {
-          role: 'user',
-          content: message
-        }
-      ],
+      }
+    ];
+
+    // Add previous messages if provided
+    if (messages && Array.isArray(messages)) {
+      conversationMessages = conversationMessages.concat(messages);
+    }
+
+    // Add current user message
+    conversationMessages.push({
+      role: 'user',
+      content: message
+    });
+
+    // Create streaming response
+    const stream = await openai.chat.completions.create({
+      model: 'gpt-4o-mini', // Use gpt-4o-mini for faster responses
+      messages: conversationMessages,
       tools: tools,
       tool_choice: 'auto',
       stream: true,
@@ -5991,8 +5918,16 @@ Always use tools when you need to fetch specific data. Answer in plain text only
 
       // If we have a complete tool call, execute it
       if (currentToolCall && currentToolCall.function.arguments) {
+        // Check if arguments form valid JSON
+        let args;
         try {
-          const args = JSON.parse(currentToolCall.function.arguments);
+          args = JSON.parse(currentToolCall.function.arguments);
+        } catch (e) {
+          // Arguments not complete yet, continue accumulating
+          continue;
+        }
+
+        try {
           let toolResult = null;
 
           // Execute the appropriate tool
@@ -6014,45 +5949,44 @@ Always use tools when you need to fetch specific data. Answer in plain text only
           }
 
           // Continue the conversation with tool result
-          const toolStream = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [
-              {
-                role: 'system',
-                content: `You are the Scorekeeper Analytical Agent. Use the tool results to provide a concise answer.`
-              },
-              {
-                role: 'user',
-                content: message
-              },
-              {
-                role: 'assistant',
-                content: accumulatedResponse,
-                tool_calls: [currentToolCall]
-              },
-              {
-                role: 'tool',
-                tool_call_id: currentToolCall.id,
-                content: JSON.stringify(toolResult)
-              }
-            ],
-            stream: true,
-            max_tokens: 1000,
-            temperature: 0.3
-          });
+          try {
+            const toolStream = await openai.chat.completions.create({
+              model: 'gpt-4o-mini',
+              messages: [
+                ...conversationMessages.slice(0, -1), // All messages except the last user message
+                {
+                  role: 'assistant',
+                  content: accumulatedResponse,
+                  tool_calls: [currentToolCall]
+                },
+                {
+                  role: 'tool',
+                  tool_call_id: currentToolCall.id,
+                  content: JSON.stringify(toolResult)
+                }
+              ],
+              stream: true,
+              max_tokens: 1000,
+              temperature: 0.3
+            });
 
-          for await (const toolChunk of toolStream) {
-            const toolDelta = toolChunk.choices[0]?.delta;
-            if (toolDelta?.content) {
-              accumulatedResponse += toolDelta.content;
-              res.write(`data: ${JSON.stringify({ content: toolDelta.content })}\n\n`);
+            for await (const toolChunk of toolStream) {
+              const toolDelta = toolChunk.choices[0]?.delta;
+              if (toolDelta?.content) {
+                accumulatedResponse += toolDelta.content;
+                res.write(`data: ${JSON.stringify({ content: toolDelta.content })}\n\n`);
+              }
             }
+          } catch (streamError) {
+            console.error('Tool response streaming error:', streamError);
+            res.write(`data: ${JSON.stringify({ content: 'Sorry, I encountered an error processing the tool response.' })}\n\n`);
           }
 
           currentToolCall = null;
         } catch (error) {
           console.error('Tool execution error:', error);
           res.write(`data: ${JSON.stringify({ content: 'Sorry, I encountered an error processing your request.' })}\n\n`);
+          currentToolCall = null;
         }
       }
     }
@@ -6070,29 +6004,67 @@ Always use tools when you need to fetch specific data. Answer in plain text only
 // Tool execution functions
 async function executeGetTopPlayers(args) {
   try {
-    const { getDatabase } = await import('./cosmosClient.js');
-    const db = getDatabase();
-    const playerStatsContainer = db.container('player-stats');
+    const { getPlayerStatsContainer } = await import('./cosmosClient.js');
+    const playerStatsContainer = getPlayerStatsContainer();
+
+    // Validate metric parameter
+    const validMetrics = ['goals', 'assists', 'points', 'pim', 'gp'];
+    if (!validMetrics.includes(args.metric)) {
+      return { error: `Invalid metric: ${args.metric}. Valid metrics are: ${validMetrics.join(', ')}` };
+    }
+
+    // Build query with proper ORDER BY based on metric
+    let orderByField;
+    switch (args.metric) {
+      case 'goals':
+        orderByField = 'goals';
+        break;
+      case 'assists':
+        orderByField = 'assists';
+        break;
+      case 'points':
+        orderByField = 'points';
+        break;
+      case 'pim':
+        orderByField = 'pim';
+        break;
+      case 'gp':
+        orderByField = 'gamesPlayed';
+        break;
+      default:
+        orderByField = 'points'; // fallback
+    }
 
     const { resources } = await playerStatsContainer.items
       .query({
-        query: `SELECT TOP @limit * FROM c WHERE c.source = 'live' ORDER BY c.${args.metric} DESC`,
+        query: `SELECT TOP @limit * FROM c WHERE c.source = 'live' ORDER BY c.${orderByField} DESC`,
         parameters: [
           { name: '@limit', value: args.limit || 10 }
         ]
       })
       .fetchAll();
 
-    return resources.map(player => ({
-      playerName: player.playerName,
-      teamName: player.teamName,
-      division: player.division,
-      goals: player.goals || 0,
-      assists: player.assists || 0,
-      points: player.points || 0,
-      pim: player.pim || 0,
-      gp: player.gamesPlayed || 0
-    }));
+    // If no results with source='live', try without the filter
+    if (resources.length === 0) {
+      const { resources: allResources } = await playerStatsContainer.items
+        .query({
+          query: `SELECT TOP @limit * FROM c ORDER BY c.${orderByField} DESC`,
+          parameters: [
+            { name: '@limit', value: args.limit || 10 }
+          ]
+        })
+        .fetchAll();
+      return allResources.map(player => ({
+        playerName: player.playerName,
+        teamName: player.teamName,
+        division: player.division,
+        goals: player.goals || 0,
+        assists: player.assists || 0,
+        points: player.points || 0,
+        pim: player.pim || 0,
+        gp: player.gamesPlayed || 0
+      }));
+    }
   } catch (error) {
     console.error('get_top_players error:', error);
     return { error: 'Failed to fetch player data' };

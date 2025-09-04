@@ -48,16 +48,15 @@ export default function LeagueGameSelection() {
         const submittedIds = new Set(submittedRes.data.map(g => g.id || g.gameId));
 
 
-        // Filter games - Gold division only, not submitted, with valid teams
+        // Filter games - All divisions, not submitted, with valid teams
         const availableGames = res.data.filter(game => {
           const id = game.id || game.gameId;
-          const isGold = game.division?.toLowerCase() === 'gold';
           const hasValidTeams = game.homeTeam && game.awayTeam && 
                                game.homeTeam.trim() !== '' && game.awayTeam.trim() !== '' &&
                                game.homeTeam !== 'vs' && game.awayTeam !== 'vs';
           const notSubmitted = !submittedIds.has(id);
           
-          const isValid = isGold && hasValidTeams && notSubmitted;
+          const isValid = hasValidTeams && notSubmitted;
           
           // Filter valid available games
           

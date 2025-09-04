@@ -26,6 +26,9 @@ export default function AnnouncerControls({ gameId }) {
   // Voice selection state - default to 'female' (Linda) every time
   const [selectedVoice, setSelectedVoice] = useState('female');
 
+  // API base URL
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+
   // Force Linda (female announcer) as default on component mount
   useEffect(() => {
     setSelectedVoice('female');
@@ -224,9 +227,7 @@ export default function AnnouncerControls({ gameId }) {
         
         // Generate TTS for this line using backend with Studio voices
         try {
-          const ttsUrl = import.meta.env.DEV
-            ? '/api/tts/dual-line'
-            : `${import.meta.env.VITE_API_BASE_URL}/api/tts/dual-line`;
+          const ttsUrl = `${apiBase}/api/tts/dual-line`;
 
           const response = await axios.post(ttsUrl, {
             text: line.text,
@@ -237,9 +238,7 @@ export default function AnnouncerControls({ gameId }) {
           if (response.data.success && response.data.audioPath) {
             // prepend /api/audio/ to filename
             const audioFile = response.data.audioPath;
-            const audioUrl = import.meta.env.DEV
-              ? `/api/audio/${audioFile}`
-              : `${import.meta.env.VITE_API_BASE_URL}/api/audio/${audioFile}`;
+            const audioUrl = `${apiBase}/api/audio/${audioFile}`;
 
             // Play the generated audio
             await new Promise((resolve, reject) => {

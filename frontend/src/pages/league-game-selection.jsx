@@ -25,7 +25,8 @@ export default function LeagueGameSelection() {
 
       try {
         const requestId = Math.random().toString(36).substr(2, 9);
-        const res = await axios.get('/api/games', {
+        const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+        const res = await axios.get(`${apiBase}/api/games`, {
           params: { 
             division: 'all', 
             t: Date.now(),
@@ -44,7 +45,7 @@ export default function LeagueGameSelection() {
         // Process games and filter out submitted ones
 
         // Fetch submitted games to exclude them
-        const submittedRes = await axios.get('/api/games/submitted');
+        const submittedRes = await axios.get(`${apiBase}/api/games/submitted`);
         const submittedIds = new Set(submittedRes.data.map(g => g.id || g.gameId));
 
 
@@ -155,7 +156,7 @@ export default function LeagueGameSelection() {
       console.log('🥅 Checking for existing goals...');
       let goals = [];
       try {
-        const goalsResponse = await axios.get('/api/goals', { 
+        const goalsResponse = await axios.get(`${apiBase}/api/goals`, { 
           params: { gameId },
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -174,7 +175,7 @@ export default function LeagueGameSelection() {
       console.log('🚫 Checking for existing penalties...');
       let penalties = [];
       try {
-        const penaltiesResponse = await axios.get('/api/penalties', { 
+        const penaltiesResponse = await axios.get(`${apiBase}/api/penalties`, { 
           params: { gameId },
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -193,9 +194,7 @@ export default function LeagueGameSelection() {
       console.log('🎯 Checking for existing shots on goal...');
       let shots = { home: 0, away: 0 };
       try {
-        const shotsUrl = import.meta.env.DEV 
-          ? `/api/shots-on-goal/game/${gameId}` 
-          : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal/game/${gameId}`;
+        const shotsUrl = `${apiBase}/api/shots-on-goal/game/${gameId}`;
         const shotsResponse = await axios.get(shotsUrl, {
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -234,7 +233,7 @@ export default function LeagueGameSelection() {
           console.log('🎯 User chose to continue existing game - going to in-game menu');
           
           // Load existing rosters
-          const rostersResponse = await axios.get('/api/rosters', {
+          const rostersResponse = await axios.get(`${apiBase}/api/rosters`, {
             params: { gameId },
             headers: {
               'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -338,7 +337,7 @@ export default function LeagueGameSelection() {
 
       // Preload rosters so the roster page renders immediately
       try {
-        const rostersResponse = await axios.get('/api/rosters', {
+        const rostersResponse = await axios.get(`${apiBase}/api/rosters`, {
           params: { gameId },
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',

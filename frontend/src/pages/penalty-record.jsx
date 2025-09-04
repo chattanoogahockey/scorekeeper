@@ -24,6 +24,9 @@ export default function PenaltyRecord() {
   // Check if form is complete (like GoalRecord.jsx)
   const isFormComplete = formData.team && formData.player && formData.penaltyType && formData.penaltyLength && formData.period && formData.time && formData.time !== '00:00';
 
+  // API base URL
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+
   // Handle time button press (copy from GoalRecord.jsx)
   const handleTimeButtonPress = (digit) => {
     const currentTime = formData.time || '00:00';
@@ -113,9 +116,7 @@ export default function PenaltyRecord() {
     try {
       // In development: uses proxy (/api/penalties)
       // In production: uses full URL from environment variable
-      const apiUrl = import.meta.env.DEV 
-        ? '/api/penalties' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/penalties`;
+      const apiUrl = `${apiBase}/api/penalties`;
         
       const penaltyPayload = {
         gameId: selectedGame.id || selectedGame.gameId,

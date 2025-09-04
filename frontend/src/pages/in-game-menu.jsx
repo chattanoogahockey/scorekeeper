@@ -55,6 +55,9 @@ export default function InGameMenu() {
   const [shotsOnGoal, setShotsOnGoal] = useState({ away: 0, home: 0 });
   const [isSubmittingGame, setIsSubmittingGame] = useState(false);
 
+  // API base URL
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+
   // Function to refresh data (can be called from returning navigation)
   const refreshGameData = async () => {
     const gameToUse = selectedGame || location.state?.game;
@@ -62,15 +65,9 @@ export default function InGameMenu() {
     
     try {
       // Fetch penalties, goals, and shots on goal
-      const penaltiesUrl = import.meta.env.DEV 
-        ? '/api/penalties' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/penalties`;
-      const goalsUrl = import.meta.env.DEV 
-        ? '/api/goals' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/goals`;
-      const shotsUrl = import.meta.env.DEV 
-        ? `/api/shots-on-goal/game/${gameToUse.id || gameToUse.gameId}` 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal/game/${gameToUse.id || gameToUse.gameId}`;
+      const penaltiesUrl = `${apiBase}/api/penalties`;
+      const goalsUrl = `${apiBase}/api/goals`;
+      const shotsUrl = `${apiBase}/api/shots-on-goal/game/${gameToUse.id || gameToUse.gameId}`;
         
       const [penaltiesRes, goalsRes, shotsRes] = await Promise.all([
         axios.get(penaltiesUrl, { params: { gameId: gameToUse.id || gameToUse.gameId } }),
@@ -171,9 +168,7 @@ export default function InGameMenu() {
     
     try {
       // Send to backend first
-      const apiUrl = import.meta.env.DEV 
-        ? '/api/shots-on-goal' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/shots-on-goal`;
+      const apiUrl = `${apiBase}/api/shots-on-goal`;
       
       console.log(`🎯 Making API call to: ${apiUrl}`);
       console.log(`🎯 Request payload:`, {
@@ -213,9 +208,7 @@ export default function InGameMenu() {
     }
     
     try {
-      const apiUrl = import.meta.env.DEV 
-        ? '/api/undo-last-action' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/undo-last-action`;
+      const apiUrl = `${apiBase}/api/undo-last-action`;
       
       await axios.post(apiUrl, {
         gameId: currentGame.id || currentGame.gameId
@@ -237,9 +230,7 @@ export default function InGameMenu() {
     
     setIsSubmittingGame(true);
     try {
-      const apiUrl = import.meta.env.DEV 
-        ? '/api/games/submit' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/games/submit`;
+      const apiUrl = `${apiBase}/api/games/submit`;
       
       const response = await axios.post(apiUrl, {
         gameId: currentGame.id || currentGame.gameId,
@@ -277,7 +268,7 @@ export default function InGameMenu() {
     
     try {
       const gameId = currentGame.id || currentGame.gameId;
-  const resp = await axios.post(`/api/games/${gameId}/cancel`);
+      const resp = await axios.post(`${apiBase}/api/games/${gameId}/cancel`);
   alert(`Game cancelled: deleted ${resp.data.goalsDeleted} goals, ${resp.data.penaltiesDeleted} penalties, ${resp.data.shotsDeleted} shots record${resp.data.forceRemoved ? ' and base game' : ''}.`);
       navigate('/'); // Go back to home
     } catch (error) {

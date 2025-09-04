@@ -19,6 +19,9 @@ export default function RosterAttendance() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  // API base URL
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+
   if (!selectedGame) {
     // If no game selected, redirect back to home
     navigate('/');
@@ -82,9 +85,7 @@ export default function RosterAttendance() {
 
       // In development: uses proxy (/api/attendance)
       // In production: uses full URL from environment variable
-      const apiUrl = import.meta.env.DEV 
-        ? '/api/attendance' 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/attendance`;
+      const apiUrl = `${apiBase}/api/attendance`;
 
       console.log('🔗 Submitting to:', apiUrl);
       console.log('🌍 Environment mode:', import.meta.env.DEV ? 'Development' : 'Production');

@@ -15,6 +15,9 @@ export default function EditGame() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  // API base URL
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+
   // Form state for editing game details
   const [editedGame, setEditedGame] = useState({
     homeTeam: '',
@@ -33,7 +36,7 @@ export default function EditGame() {
       setLoading(true);
       
       // Fetch game details
-      const gameResponse = await axios.get(`/api/games/${gameId}`);
+      const gameResponse = await axios.get(`${apiBase}/api/games/${gameId}`);
       const gameData = gameResponse.data;
       setGame(gameData);
       
@@ -48,7 +51,7 @@ export default function EditGame() {
 
       // Fetch goals
       try {
-        const goalsResponse = await axios.get(`/api/goals/game/${gameId}`);
+        const goalsResponse = await axios.get(`${apiBase}/api/goals/game/${gameId}`);
         setGoals(goalsResponse.data || []);
       } catch (err) {
         console.log('No goals found for this game');
@@ -57,7 +60,7 @@ export default function EditGame() {
 
       // Fetch penalties
       try {
-        const penaltiesResponse = await axios.get(`/api/penalties/game/${gameId}`);
+        const penaltiesResponse = await axios.get(`${apiBase}/api/penalties/game/${gameId}`);
         setPenalties(penaltiesResponse.data || []);
       } catch (err) {
         console.log('No penalties found for this game');
@@ -66,7 +69,7 @@ export default function EditGame() {
 
       // Fetch teams for dropdowns (get all teams from rosters)
       try {
-        const teamsResponse = await axios.get('/api/rosters');
+        const teamsResponse = await axios.get(`${apiBase}/api/rosters`);
         const allTeams = teamsResponse.data || [];
         
         // Get unique teams grouped by division
@@ -116,7 +119,7 @@ export default function EditGame() {
         awayScore: parseInt(editedGame.awayScore) || 0
       };
       
-      const response = await axios.put(`/api/games/${gameId}`, updateData);
+      const response = await axios.put(`${apiBase}/api/games/${gameId}`, updateData);
       
       if (response.data.success) {
         setMessage('Game details updated successfully!');
@@ -134,7 +137,7 @@ export default function EditGame() {
     if (!confirm('Are you sure you want to delete this goal?')) return;
     
     try {
-      await axios.delete(`/api/goals/${goalId}`);
+      await axios.delete(`${apiBase}/api/goals/${goalId}`);
       setGoals(prev => prev.filter(goal => goal.id !== goalId));
       setMessage('Goal deleted successfully!');
       
@@ -158,7 +161,7 @@ export default function EditGame() {
     if (!confirm('Are you sure you want to delete this penalty?')) return;
     
     try {
-      await axios.delete(`/api/penalties/${penaltyId}`);
+      await axios.delete(`${apiBase}/api/penalties/${penaltyId}`);
       setPenalties(prev => prev.filter(penalty => penalty.id !== penaltyId));
       setMessage('Penalty deleted successfully!');
     } catch (error) {

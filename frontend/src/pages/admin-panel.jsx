@@ -6,12 +6,13 @@ import { GameContext } from '../contexts/game-context.jsx';
 // Version information component
 const VersionInfo = () => {
   const [versionInfo, setVersionInfo] = useState(null);
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
 
   useEffect(() => {
     const fetchVersionInfo = async () => {
       try {
         // Try backend API first with cache busting
-        const response = await axios.get('/api/version', {
+        const response = await axios.get(`${apiBase}/api/version`, {
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
@@ -78,6 +79,9 @@ export default function AdminPanel() {
   // Voice configuration state
   const [voiceConfig, setVoiceConfig] = useState({ maleVoice: '', femaleVoice: '' });
   const [availableVoices, setAvailableVoices] = useState([]);
+  
+  // API base URL
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
   const [voiceConfigLoading, setVoiceConfigLoading] = useState(false);
 
   // Check if there's an active game (has teams and not submitted)
@@ -102,7 +106,7 @@ export default function AdminPanel() {
 
   const fetchVoiceConfig = async () => {
     try {
-      const response = await axios.get('/api/admin/voice-config');
+      const response = await axios.get(`${apiBase}/api/admin/voice-config`);
       if (response.data.success) {
         setVoiceConfig({
           maleVoice: response.data.config.maleVoice || 'en-US-Studio-Q',
@@ -116,7 +120,7 @@ export default function AdminPanel() {
 
   const fetchAvailableVoices = async () => {
     try {
-      const response = await axios.get('/api/admin/available-voices');
+      const response = await axios.get(`${apiBase}/api/admin/available-voices`);
       if (response.data.success) {
         setAvailableVoices(response.data.voices);
       }
@@ -128,7 +132,7 @@ export default function AdminPanel() {
   const handleVoiceConfigSave = async () => {
     setVoiceConfigLoading(true);
     try {
-      const response = await axios.post('/api/admin/voice-config', voiceConfig);
+      const response = await axios.post(`${apiBase}/api/admin/voice-config`, voiceConfig);
       if (response.data.success) {
         setMessage(`Voice configuration saved! Al: ${voiceConfig.maleVoice}, Linda: ${voiceConfig.femaleVoice}`);
       }
@@ -151,9 +155,7 @@ export default function AdminPanel() {
     setMessage(''); // Clear any previous messages
     
     try {
-      const apiUrl = import.meta.env.DEV 
-        ? `/api/games/${gameId}/reset` 
-        : `${import.meta.env.VITE_API_BASE_URL}/api/games/${gameId}/reset`;
+      const apiUrl = `${apiBase}/api/games/${gameId}/reset`;
       
       console.log(`AdminPanel: Making DELETE request to ${apiUrl}`);
       const response = await axios.delete(apiUrl);

@@ -6,8 +6,8 @@ import axios from 'axios';
  */
 class StatisticsService {
   constructor() {
-    // In production on Azure, frontend and backend are on the same domain, so use relative URLs
-    this.apiBase = '';
+    // Use environment variable for API base URL in development, relative URLs in production
+    this.apiBase = import.meta.env.VITE_API_BASE_URL || '';
   }
 
   /**

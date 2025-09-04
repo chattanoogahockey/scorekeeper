@@ -71,7 +71,7 @@ export class RostersController {
       updatedAt: new Date().toISOString()
     };
 
-    const roster = await DatabaseService.create('team-rosters', rosterData);
+    const roster = await DatabaseService.create('rosters', rosterData);
 
     logger.info('Roster created', { rosterId, teamName });
     res.status(201).json(roster);
@@ -83,7 +83,7 @@ export class RostersController {
   static getRosterById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const roster = await DatabaseService.getById('team-rosters', id);
+    const roster = await DatabaseService.getById('rosters', id);
 
     if (!roster) {
       return res.status(404).json({ error: 'Roster not found' });
@@ -99,7 +99,7 @@ export class RostersController {
     const { id } = req.params;
     const updates = req.body;
 
-    const roster = await DatabaseService.update('team-rosters', id, updates);
+    const roster = await DatabaseService.update('rosters', id, updates);
 
     logger.info('Roster updated', { rosterId: id });
     res.json(roster);
@@ -111,7 +111,7 @@ export class RostersController {
   static deleteRoster = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    await DatabaseService.delete('team-rosters', id);
+    await DatabaseService.delete('rosters', id);
 
     logger.info('Roster deleted', { rosterId: id });
     res.json({ message: 'Roster deleted successfully' });

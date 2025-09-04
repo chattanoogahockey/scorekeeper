@@ -22,6 +22,10 @@
     "lint:fix": "eslint src/**/*.js tests/**/*.js --fix",
     "import-historical": "node ./scripts/importHistoricalStats.js",
     "import-historical-direct": "node ./scripts/importHistoricalStatsDirect.js",
+    "import-rosters": "node ./scripts/import-rosters.js",
+    "verify-rosters": "node ./scripts/verify-rosters.js",
+    "upload-games": "node ./scripts/upload-games.js",
+    "verify-games": "node ./scripts/verify-games.js",
     "build": "echo 'Backend build complete - no compilation needed'",
     "health-check": "node -e \"require('./server-refactored.js')\" --health"
   },
@@ -34,7 +38,8 @@
     "dotenv": "^16.6.1",
     "express": "^4.18.2",
     "node-fetch": "^3.3.2",
-    "openai": "^4.52.7"
+    "openai": "^4.52.7",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "chai": "^4.3.7",

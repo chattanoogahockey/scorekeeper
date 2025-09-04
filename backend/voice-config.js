@@ -1,4 +1,4 @@
-import { getSettingsContainer, getGamesContainer } from './cosmosClient.js';
+import { getGamesContainer } from './cosmosClient.js';
 
 /**
  * Voice configuration helper functions for production use

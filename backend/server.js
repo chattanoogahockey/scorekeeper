@@ -39,7 +39,6 @@ import {
   getPenaltiesContainer,
   getOTShootoutContainer,
   getRinkReportsContainer,
-  getSettingsContainer,
   getPlayerStatsContainer,
   getShotsOnGoalContainer,
   initializeContainers,

@@ -35,17 +35,6 @@ const containerNames = config.cosmos.containers;
  */
 
 const CONTAINER_DEFINITIONS = {
-  // Global application settings
-  'settings': {
-    name: containerNames.settings,
-    partitionKey: '/type',
-    indexingPolicy: {
-      indexingMode: 'consistent',
-      includedPaths: [{ path: '/*' }],
-      excludedPaths: [{ path: '/"_etag"/?' }]
-    }
-  },
-
   // Weekly rink reports and articles
   'rink-reports': {
     name: containerNames.rinkReports,
@@ -78,7 +67,7 @@ const CONTAINER_DEFINITIONS = {
   },
 
   // Team rosters and player assignments
-  'team-rosters': {
+  'rosters': {
     name: containerNames.rosters,
     partitionKey: '/teamName',
     indexingPolicy: {
@@ -122,6 +111,80 @@ const CONTAINER_DEFINITIONS = {
         { path: '/playerName/?' }
       ]
     }
+  },
+
+  // Game records and submissions
+  'games': {
+    name: containerNames.games,
+    partitionKey: '/league',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/homeTeam/?' },
+        { path: '/awayTeam/?' },
+        { path: '/date/?' },
+        { path: '/status/?' }
+      ]
+    }
+  },
+
+  // Goal events and scoring data
+  'goals': {
+    name: containerNames.goals,
+    partitionKey: '/gameId',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/gameId/?' },
+        { path: '/teamName/?' },
+        { path: '/playerName/?' }
+      ]
+    }
+  },
+
+  // Penalty events and infractions
+  'penalties': {
+    name: containerNames.penalties,
+    partitionKey: '/gameId',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/gameId/?' },
+        { path: '/teamName/?' },
+        { path: '/playerName/?' }
+      ]
+    }
+  },
+
+  // Game attendance tracking
+  'attendance': {
+    name: containerNames.attendance,
+    partitionKey: '/gameId',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/gameId/?' },
+        { path: '/teamName/?' }
+      ]
+    }
+  },
+
+  // Overtime and shootout results
+  'ot-shootout': {
+    name: containerNames.otShootout,
+    partitionKey: '/gameId',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/gameId/?' },
+        { path: '/winner/?' }
+      ]
+    }
   }
 };
 
@@ -160,14 +223,6 @@ export function getDatabase() {
  * Container accessor functions with proper error handling
  */
 
-// Settings container - Global application settings
-export function getSettingsContainer() {
-  if (!cosmosConfigured || !database) {
-    throw new Error('Cosmos DB not configured');
-  }
-  return database.container(CONTAINER_DEFINITIONS['settings'].name);
-}
-
 // Rink reports container - Weekly division summaries
 export function getRinkReportsContainer() {
   if (!cosmosConfigured || !database) {
@@ -181,7 +236,7 @@ export function getGamesContainer() {
   if (!cosmosConfigured || !database) {
     throw new Error('Cosmos DB not configured');
   }
-  return database.container(containerNames.games);
+  return database.container(CONTAINER_DEFINITIONS['games'].name);
 }
 
 // Player-stats container - Current season player statistics
@@ -213,7 +268,7 @@ export function getRostersContainer() {
   if (!cosmosConfigured || !database) {
     throw new Error('Cosmos DB not configured');
   }
-  return database.container(CONTAINER_DEFINITIONS['team-rosters'].name);
+  return database.container(CONTAINER_DEFINITIONS['rosters'].name);
 }
 
 // Attendance container - Game attendance tracking
@@ -221,7 +276,7 @@ export function getAttendanceContainer() {
   if (!cosmosConfigured || !database) {
     throw new Error('Cosmos DB not configured');
   }
-  return database.container(CONTAINER_DEFINITIONS['game-attendance'].name);
+  return database.container(CONTAINER_DEFINITIONS['attendance'].name);
 }
 
 // OT/Shootout container - Overtime and shootout results

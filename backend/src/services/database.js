@@ -6,7 +6,6 @@ import {
   getPenaltiesContainer,
   getOTShootoutContainer,
   getRinkReportsContainer,
-  getSettingsContainer,
   getPlayerStatsContainer,
   getShotsOnGoalContainer,
   getHistoricalPlayerStatsContainer
@@ -31,7 +30,6 @@ export class DatabaseService {
       'attendance': getAttendanceContainer, // Updated to use 'attendance' (has real data)
       'ot-shootout': getOTShootoutContainer, // Updated to use 'ot-shootout' (has real data)
       'rink-reports': getRinkReportsContainer,
-      'settings': getSettingsContainer, // Updated to use 'settings'
       'player-stats': getPlayerStatsContainer,
       'shots-on-goal': getShotsOnGoalContainer,
       'historical-player-stats': getHistoricalPlayerStatsContainer

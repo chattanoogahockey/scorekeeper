@@ -12,9 +12,7 @@ const db = client.database('scorekeeper');
 const containers = [
   'games',
   'ot-shootout',
-  'settings',
   'penalties',
-  'team-rosters',
   'shots-on-goal',
   'goals',
   'app-settings',

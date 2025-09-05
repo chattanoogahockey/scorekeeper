@@ -258,8 +258,8 @@ export class DatabaseService {
         throw new Error('Game not found');
       }
 
-      const homeTeam = game.homeTeam;
-      const awayTeam = game.awayTeam;
+      const homeTeam = game.hometeam;
+      const awayTeam = game.awayteam;
 
       const rosters = await this.query('rosters', {
         query: 'SELECT * FROM c WHERE LOWER(c.teamName) IN (LOWER(@home), LOWER(@away))',

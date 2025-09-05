@@ -85,7 +85,7 @@ export default function PenaltyRecord() {
   // Initialize with first team (away team) by default
   useEffect(() => {
     if (selectedGame && !formData.team) {
-      const defaultTeam = selectedGame.awayTeam;
+      const defaultTeam = selectedGame.awayteam;
       setFormData(prev => ({ ...prev, team: defaultTeam }));
     }
   }, [selectedGame, formData.team]);
@@ -141,7 +141,7 @@ export default function PenaltyRecord() {
       // Create user-friendly penalty summary
       const penaltySummary = `Penalty Recorded!
 
-${selectedGame.awayTeam} vs ${selectedGame.homeTeam}
+${selectedGame.awayteam} vs ${selectedGame.hometeam}
 ${formData.player} (${formData.team}) - ${formData.penaltyType}
 Time: ${formData.time} - Period ${formData.period}
 Length: ${formData.penaltyLength} minutes`;
@@ -150,7 +150,7 @@ Length: ${formData.penaltyLength} minutes`;
 
       // Reset form after successful submission
       setFormData({
-        team: selectedGame.awayTeam, // Keep default team selected
+        team: selectedGame.awayteam, // Keep default team selected
         player: '',
         penaltyType: '',
         penaltyLength: '2',
@@ -211,27 +211,27 @@ Length: ${formData.penaltyLength} minutes`;
                 <div className="grid grid-cols-2 gap-1">
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, team: selectedGame.awayTeam, player: '' }))}
+                    onClick={() => setFormData(prev => ({ ...prev, team: selectedGame.awayteam, player: '' }))}
                     className={`py-2 px-2 border-2 rounded-lg font-medium transition-colors ${
-                      formData.team === selectedGame.awayTeam
+                      formData.team === selectedGame.awayteam
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
                         : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
                     }`}
                     style={{ fontSize: '12px' }}
                   >
-                    {selectedGame.awayTeam}
+                    {selectedGame.awayteam}
                   </button>
                   <button
                     type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, team: selectedGame.homeTeam, player: '' }))}
+                    onClick={() => setFormData(prev => ({ ...prev, team: selectedGame.hometeam, player: '' }))}
                     className={`py-2 px-2 border-2 rounded-lg font-medium transition-colors ${
-                      formData.team === selectedGame.homeTeam
+                      formData.team === selectedGame.hometeam
                         ? 'border-blue-500 bg-blue-50 text-blue-700'
                         : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
                     }`}
                     style={{ fontSize: '12px' }}
                   >
-                    {selectedGame.homeTeam}
+                    {selectedGame.hometeam}
                   </button>
                 </div>
               </div>

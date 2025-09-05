@@ -42,8 +42,8 @@ export default function EditGame() {
       
       // Set initial form state
       setEditedGame({
-        homeTeam: gameData.homeTeam || '',
-        awayTeam: gameData.awayTeam || '',
+        homeTeam: gameData.hometeam || '',
+        awayTeam: gameData.awayteam || '',
         gameDate: gameData.gameDate ? gameData.gameDate.split('T')[0] : '',
         homeScore: gameData.homeScore || 0,
         awayScore: gameData.awayScore || 0

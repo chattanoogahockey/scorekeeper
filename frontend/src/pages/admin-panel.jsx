@@ -146,7 +146,7 @@ export default function AdminPanel() {
 
   const handleDeleteGameScore = async (gameId) => {
     const game = games.find(g => g.id === gameId);
-    const confirmMessage = `Delete all scoring data for ${game.awayTeam} vs ${game.homeTeam}? This will completely remove the game from the admin panel.`;
+    const confirmMessage = `Delete all scoring data for ${game.awayteam} vs ${game.hometeam}? This will completely remove the game from the admin panel.`;
     
     if (!confirm(confirmMessage)) return;
     
@@ -306,7 +306,7 @@ export default function AdminPanel() {
                   <div className="flex justify-between items-center">
                     <div>
                       <h3 className="text-lg font-semibold">
-                        {game.awayTeam} vs {game.homeTeam}
+                        {game.awayteam} vs {game.hometeam}
                       </h3>
                       <p className="text-gray-600">
                         {game.league} League • {new Date(game.gameDate).toLocaleDateString()}

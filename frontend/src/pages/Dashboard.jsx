@@ -175,7 +175,7 @@ export default function Dashboard() {
   return (
     <div className="p-4 max-w-5xl mx-auto">
       <h2 className="text-3xl font-bold mb-4 text-center">
-        Game Dashboard: {selectedGame.awayTeam} vs {selectedGame.homeTeam}
+        Game Dashboard: {selectedGame.awayTeam || selectedGame.awayteam} vs {selectedGame.homeTeam || selectedGame.hometeam}
       </h2>
       
       {/* Scorekeeper Section */}
@@ -211,8 +211,8 @@ export default function Dashboard() {
                 className="border rounded p-1"
               >
                 <option value="">Select Team</option>
-                <option value={selectedGame.awayTeam}>{selectedGame.awayTeam}</option>
-                <option value={selectedGame.homeTeam}>{selectedGame.homeTeam}</option>
+                <option value={selectedGame.awayTeam || selectedGame.awayteam}>{selectedGame.awayTeam || selectedGame.awayteam}</option>
+                <option value={selectedGame.homeTeam || selectedGame.hometeam}>{selectedGame.homeTeam || selectedGame.hometeam}</option>
               </select>
             </div>
             {goalForm.team && (
@@ -336,8 +336,8 @@ export default function Dashboard() {
                 className="border rounded p-1"
               >
                 <option value="">Select Team</option>
-                <option value={selectedGame.awayTeam}>{selectedGame.awayTeam}</option>
-                <option value={selectedGame.homeTeam}>{selectedGame.homeTeam}</option>
+                <option value={selectedGame.awayTeam || selectedGame.awayteam}>{selectedGame.awayTeam || selectedGame.awayteam}</option>
+                <option value={selectedGame.homeTeam || selectedGame.hometeam}>{selectedGame.homeTeam || selectedGame.hometeam}</option>
               </select>
             </div>
             {penaltyForm.team && (

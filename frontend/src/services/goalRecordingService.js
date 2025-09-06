@@ -14,8 +14,8 @@ class GoalRecordingService {
    * Calculate goal context for AI announcer
    */
   determineGoalContext(scoringTeam, currentScore, selectedGame) {
-    const awayTeam = selectedGame.awayTeam;
-    const homeTeam = selectedGame.homeTeam;
+    const awayTeam = selectedGame.awayTeam || selectedGame.awayteam;
+    const homeTeam = selectedGame.homeTeam || selectedGame.hometeam;
     const isAwayTeamScoring = scoringTeam === awayTeam;
 
     // Calculate score after this goal
@@ -89,8 +89,8 @@ class GoalRecordingService {
    * Calculate current score from goals
    */
   calculateCurrentScore(goals, selectedGame) {
-    const awayScore = goals.filter(g => g.scoringTeam === selectedGame.awayTeam).length;
-    const homeScore = goals.filter(g => g.scoringTeam === selectedGame.homeTeam).length;
+    const awayScore = goals.filter(g => g.scoringTeam === (selectedGame.awayTeam || selectedGame.awayteam)).length;
+    const homeScore = goals.filter(g => g.scoringTeam === (selectedGame.homeTeam || selectedGame.hometeam)).length;
     return { away: awayScore, home: homeScore };
   }
 

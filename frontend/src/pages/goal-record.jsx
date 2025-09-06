@@ -4,7 +4,9 @@ import { GameContext } from '../contexts/game-context.jsx';
 import { goalRecordingService } from '../services/goalRecordingService.js';
 
 /**
- * Goal Recording Page - Mobile-friendly goal entry form
+ *                  onClick={() => handleTeamSelect(selectedGame.awayTeam || selectedGame.awayteam)}
+                  className={`py-4 px-4 border-2 rounded-lg font-medium transition-colors ${
+                    formData.team === (selectedGame.awayTeam || selectedGame.awayteam)al Recording Page - Mobile-friendly goal entry form
  */
 export default function GoalRecord() {
   const { selectedGame, rosters } = useContext(GameContext);
@@ -61,7 +63,7 @@ export default function GoalRecord() {
   // Initialize with first team (away team) by default
   useEffect(() => {
     if (selectedGame && !formData.team) {
-      const defaultTeam = selectedGame.awayTeam;
+      const defaultTeam = selectedGame.awayTeam || selectedGame.awayteam;
       setFormData(prev => ({ ...prev, team: defaultTeam }));
     }
   }, [selectedGame, formData.team]);
@@ -243,7 +245,7 @@ export default function GoalRecord() {
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-blue-900 mb-2">Record Goal</h1>
           <p className="text-blue-700">
-            {selectedGame.homeTeam} vs {selectedGame.awayTeam}
+            {selectedGame.homeTeam || selectedGame.hometeam} vs {selectedGame.awayTeam || selectedGame.awayteam}
           </p>
         </div>
 
@@ -259,27 +261,27 @@ export default function GoalRecord() {
               <div className="grid grid-cols-2 gap-1">
                 <button
                   type="button"
-                  onClick={() => handleTeamSelect(selectedGame.awayTeam)}
+                  onClick={() => handleTeamSelect(selectedGame.awayTeam || selectedGame.awayteam)}
                   className={`py-2 px-2 border-2 rounded-lg font-medium transition-colors ${
-                    formData.team === selectedGame.awayTeam
+                    formData.team === (selectedGame.awayTeam || selectedGame.awayteam)
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
                   }`}
                   style={{ fontSize: '8px' }}
                 >
-                  {selectedGame.awayTeam}
+                  {selectedGame.awayTeam || selectedGame.awayteam}
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleTeamSelect(selectedGame.homeTeam)}
+                  onClick={() => handleTeamSelect(selectedGame.homeTeam || selectedGame.hometeam)}
                   className={`py-2 px-2 border-2 rounded-lg font-medium transition-colors ${
-                    formData.team === selectedGame.homeTeam
+                    formData.team === (selectedGame.homeTeam || selectedGame.hometeam)
                       ? 'border-blue-500 bg-blue-50 text-blue-700'
                       : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300'
                   }`}
                   style={{ fontSize: '8px' }}
                 >
-                  {selectedGame.homeTeam}
+                  {selectedGame.homeTeam || selectedGame.hometeam}
                 </button>
               </div>
             </div>
@@ -585,14 +587,14 @@ export default function GoalRecord() {
                     scoreBeforeGoal: {
                       away: currentScore.away,
                       home: currentScore.home,
-                      awayTeam: selectedGame.awayTeam,
-                      homeTeam: selectedGame.homeTeam
+                      awayTeam: selectedGame.awayTeam || selectedGame.awayteam,
+                      homeTeam: selectedGame.homeTeam || selectedGame.hometeam
                     },
                     scoreAfterGoal: {
-                      away: currentScore.away + (formData.team === selectedGame.awayTeam ? 1 : 0),
-                      home: currentScore.home + (formData.team === selectedGame.homeTeam ? 1 : 0),
-                      awayTeam: selectedGame.awayTeam,
-                      homeTeam: selectedGame.homeTeam
+                      away: currentScore.away + (formData.team === (selectedGame.awayTeam || selectedGame.awayteam) ? 1 : 0),
+                      home: currentScore.home + (formData.team === (selectedGame.homeTeam || selectedGame.hometeam) ? 1 : 0),
+                      awayTeam: selectedGame.awayTeam || selectedGame.awayteam,
+                      homeTeam: selectedGame.homeTeam || selectedGame.hometeam
                     },
                     totalGoalsInGame: existingGoals.length + 1,
                     period: formData.period,
@@ -611,7 +613,7 @@ export default function GoalRecord() {
                 const assistText = formData.assist ? ` (assist: ${formData.assist})` : '';
                 const goalSummary = `Goal Recorded!
 
-${selectedGame.awayTeam} vs ${selectedGame.homeTeam}
+${selectedGame.awayTeam || selectedGame.awayteam} vs ${selectedGame.homeTeam || selectedGame.hometeam}
 ${formData.player} scored for ${formData.team}${assistText}
 Time: ${formData.time} - Period ${formData.period}
 Shot Type: ${formData.shotType}`;
@@ -620,7 +622,7 @@ Shot Type: ${formData.shotType}`;
 
                 // Reset form after successful submission
                 setFormData({
-                  team: selectedGame.awayTeam, // Keep default team selected
+                  team: selectedGame.awayTeam || selectedGame.awayteam, // Keep default team selected
                   player: '',
                   assist: '',
                   period: '1',

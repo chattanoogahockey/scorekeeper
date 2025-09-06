@@ -19,6 +19,20 @@ class Logger {
   constructor() {
     this.isProduction = config.isProduction;
     this.shouldLog = config.env !== 'production' || config.logging?.enabled;
+    this.logLevel = process.env.LOG_LEVEL || (this.isProduction ? 'info' : 'debug');
+    this.logLevels = {
+      error: 0,
+      warn: 1,
+      info: 2,
+      debug: 3
+    };
+  }
+
+  /**
+   * Check if message should be logged based on level
+   */
+  shouldLogLevel(level) {
+    return this.logLevels[level] <= this.logLevels[this.logLevel];
   }
 
   /**
@@ -87,23 +101,31 @@ class Logger {
   }
 
   info(message, metadata = {}) {
-    return this.formatMessage('info', message, metadata);
+    if (this.shouldLogLevel('info')) {
+      return this.formatMessage('info', message, metadata);
+    }
   }
 
   warn(message, metadata = {}) {
-    return this.formatMessage('warn', message, metadata);
+    if (this.shouldLogLevel('warn')) {
+      return this.formatMessage('warn', message, metadata);
+    }
   }
 
   error(message, metadata = {}) {
-    return this.formatMessage('error', message, metadata);
+    if (this.shouldLogLevel('error')) {
+      return this.formatMessage('error', message, metadata);
+    }
   }
 
   success(message, metadata = {}) {
-    return this.formatMessage('success', message, metadata);
+    if (this.shouldLogLevel('info')) {
+      return this.formatMessage('success', message, metadata);
+    }
   }
 
   debug(message, metadata = {}) {
-    if (!this.isProduction) {
+    if (this.shouldLogLevel('debug')) {
       return this.formatMessage('debug', message, metadata);
     }
   }

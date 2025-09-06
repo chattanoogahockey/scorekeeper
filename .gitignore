@@ -118,7 +118,6 @@ backend/check*.js
 backend/migrate*.js
 backend/cleanup*.js
 backend/generateReport.js
-backend/basicRinkReport.js
 backend/calculateWeek.js
 backend/deleteNonGold.js
 backend/test*.js

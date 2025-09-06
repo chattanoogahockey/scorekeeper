@@ -6,6 +6,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
+import { APIResponse } from '../utils/apiResponse.js';
+import { getHealthMetrics, getDetailedMetrics } from '../utils/performance.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +20,9 @@ export class HealthController {
    * Get system health status
    */
   static getHealth = asyncHandler(async (req, res) => {
+    // Get comprehensive performance metrics
+    const performanceMetrics = getHealthMetrics();
+    
     // Check service availability
     const services = {
       database: {
@@ -49,18 +54,81 @@ export class HealthController {
     }
 
     const allServicesHealthy = services.database.available && services.tts.available;
-    const status = allServicesHealthy ? 'healthy' : 'degraded';
+    const systemStatus = allServicesHealthy ? 'healthy' : 'degraded';
 
-    res.json({
+    // Determine overall health based on performance and services
+    let status = systemStatus;
+    if (performanceMetrics.metrics.memory.used > 1024) { // >1GB memory usage
+      status = 'warning';
+    }
+    if (performanceMetrics.metrics.requests.errorRate > 0.1) { // >10% error rate
+      status = 'critical';
+    }
+
+    const healthData = {
       status,
       message: `Hockey Scorekeeper API is running in ${status} mode`,
       timestamp: new Date().toISOString(),
-      uptime: Math.floor(process.uptime()),
+      uptime: performanceMetrics.uptime,
       version: await this.getPackageVersion(),
       environment: config.env,
-      services
-    });
+      services,
+      performance: performanceMetrics.metrics,
+      alerts: this.generateHealthAlerts(performanceMetrics, services)
+    };
+
+    return APIResponse.success(res, healthData, 'Health status retrieved successfully');
   });
+
+  /**
+   * Get detailed system metrics (admin only)
+   */
+  static getDetailedHealth = asyncHandler(async (req, res) => {
+    const detailedMetrics = getDetailedMetrics();
+    
+    return APIResponse.success(res, detailedMetrics, 'Detailed metrics retrieved successfully');
+  });
+
+  /**
+   * Generate health alerts based on metrics
+   */
+  static generateHealthAlerts(metrics, services) {
+    const alerts = [];
+    
+    if (metrics.metrics.memory.used > 1024) {
+      alerts.push({
+        level: 'warning',
+        message: `High memory usage: ${metrics.metrics.memory.used}MB`,
+        suggestion: 'Consider restarting the service or investigating memory leaks'
+      });
+    }
+    
+    if (metrics.metrics.requests.errorRate > 0.05) {
+      alerts.push({
+        level: 'error',
+        message: `High error rate: ${(metrics.metrics.requests.errorRate * 100).toFixed(1)}%`,
+        suggestion: 'Check application logs for recurring errors'
+      });
+    }
+    
+    if (metrics.metrics.requests.avgResponseTime > 1000) {
+      alerts.push({
+        level: 'warning',
+        message: `Slow response times: ${metrics.metrics.requests.avgResponseTime}ms average`,
+        suggestion: 'Consider optimizing database queries or adding caching'
+      });
+    }
+    
+    if (services.database.status !== 'connected') {
+      alerts.push({
+        level: 'critical',
+        message: 'Database connection unavailable',
+        suggestion: 'Check database credentials and network connectivity'
+      });
+    }
+    
+    return alerts;
+  }
 
   /**
    * Get version information

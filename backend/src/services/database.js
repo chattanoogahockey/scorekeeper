@@ -13,6 +13,59 @@ import logger from '../../logger.js';
 import { getSchemaForContainer, validateData, GAME_STATUS } from '../schemas/dataSchemas.js';
 
 /**
+ * Simple in-memory cache for database queries
+ */
+class DatabaseCache {
+  constructor() {
+    this.cache = new Map();
+    this.defaultTtl = 5 * 60 * 1000; // 5 minutes
+  }
+
+  set(key, value, ttl = this.defaultTtl) {
+    this.cache.set(key, {
+      value,
+      expiry: Date.now() + ttl
+    });
+  }
+
+  get(key) {
+    const item = this.cache.get(key);
+    if (!item) return null;
+    
+    if (Date.now() > item.expiry) {
+      this.cache.delete(key);
+      return null;
+    }
+    
+    return item.value;
+  }
+
+  delete(key) {
+    this.cache.delete(key);
+  }
+
+  clear() {
+    this.cache.clear();
+  }
+
+  // Clear expired entries
+  cleanup() {
+    const now = Date.now();
+    for (const [key, item] of this.cache.entries()) {
+      if (now > item.expiry) {
+        this.cache.delete(key);
+      }
+    }
+  }
+}
+
+// Initialize cache instance
+const dbCache = new DatabaseCache();
+
+// Run cache cleanup every 10 minutes
+setInterval(() => dbCache.cleanup(), 10 * 60 * 1000);
+
+/**
  * Database service class for handling all database operations
  */
 export class DatabaseService {
@@ -40,6 +93,21 @@ export class DatabaseService {
     }
 
     return getter();
+  }
+
+  /**
+   * Clear cache for a specific container
+   * @param {string} containerName - Container name to clear cache for
+   */
+  static clearCache(containerName) {
+    const keysToDelete = [];
+    for (const key of dbCache.cache.keys()) {
+      if (key.startsWith(`${containerName}:`)) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach(key => dbCache.delete(key));
+    logger.debug(`Cleared cache for container: ${containerName}`, { keysCleared: keysToDelete.length });
   }
 
   /**
@@ -73,6 +141,10 @@ export class DatabaseService {
 
       const container = this.getContainer(containerName);
       const { resource } = await container.items.create(item);
+      
+      // Clear cache for this container since new data was added
+      this.clearCache(containerName);
+      
       logger.info(`Item created in ${containerName}`, { id: item.id });
       return resource;
     } catch (error) {
@@ -114,6 +186,9 @@ export class DatabaseService {
       }
 
       const { resource } = await container.item(id, partitionKey || id).replace(updatedItem);
+
+      // Clear cache for this container since data was modified
+      this.clearCache(containerName);
 
       logger.info(`Item updated in ${containerName}`, { id });
       return resource;
@@ -217,12 +292,24 @@ export class DatabaseService {
     }
   }
 
-  /**
-   * Get games with optional filtering
+    /**
+   * Get games with optional filters - with caching for performance
    * @param {Object} filters - Filters to apply
    * @returns {Promise<Object[]>} Games array with normalized field names
    */
   static async getGames(filters = {}) {
+    // Create cache key based on filters
+    const cacheKey = `games:${JSON.stringify(filters)}`;
+    
+    // Check cache first for non-specific queries
+    if (!filters.gameId) {
+      const cached = dbCache.get(cacheKey);
+      if (cached) {
+        logger.debug('Cache hit for games query', { cacheKey });
+        return cached;
+      }
+    }
+
     let querySpec;
 
     if (filters.gameId) {
@@ -263,7 +350,16 @@ export class DatabaseService {
       }
     }
 
-    return await this.query('games', querySpec);
+    const results = await this.query('games', querySpec);
+    
+    // Cache results for general queries (not specific game lookups)
+    if (!filters.gameId && results.length > 0) {
+      const ttl = filters.dateFrom || filters.dateTo ? 2 * 60 * 1000 : 5 * 60 * 1000; // Shorter TTL for date filters
+      dbCache.set(cacheKey, results, ttl);
+      logger.debug('Cached games query result', { cacheKey, count: results.length });
+    }
+
+    return results;
   }  /**
    * Get submitted games
    * @returns {Promise<Object[]>} Submitted games array

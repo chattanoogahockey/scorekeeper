@@ -9,6 +9,8 @@ import dotenv from 'dotenv';
 import { config } from './src/config/index.js';
 import OpenAI from 'openai';
 import logger from './logger.js';
+import { requestIdMiddleware, performanceMiddleware, createRateLimit } from './src/utils/performance.js';
+import { responseMiddleware, errorHandler } from './src/utils/apiResponse.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -89,6 +91,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Add request ID and performance monitoring middleware first
+app.use(requestIdMiddleware);
+app.use(performanceMiddleware);
+
+// Add API response middleware
+app.use(responseMiddleware);
+
+// Rate limiting for production security
+if (process.env.NODE_ENV === 'production') {
+  app.use(createRateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    message: 'Too many requests from this IP, please try again later.'
+  }));
+}
 
 // Security middleware - Add before other middleware
 app.use((req, res, next) => {
@@ -4820,11 +4838,8 @@ app.post('/api/generate-penalty-feed', async (req, res) => {
 // Add other unique routes from app.js as needed
 // ...
 
-// Centralized error handler
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
+// Centralized error handler - Use our standardized error handler
+app.use(errorHandler);
 
 // =============================================================================
 // EDIT GAME ENDPOINTS

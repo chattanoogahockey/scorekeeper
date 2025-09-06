@@ -189,7 +189,7 @@ export class HealthController {
       return packageJson.name;
     } catch (error) {
       logger.warn('Could not read package.json name', { error: error.message });
-      return 'hockey-scorekeeper';
+      return 'scorekeeper';
     }
   }
 }

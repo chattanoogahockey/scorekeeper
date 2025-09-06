@@ -14,7 +14,7 @@ export const config = {
   cosmos: {
     uri: process.env.COSMOS_DB_URI,
     key: process.env.COSMOS_DB_KEY,
-    databaseName: process.env.COSMOS_DB_DATABASE_NAME || 'hockey-scorekeeper',
+    databaseName: process.env.COSMOS_DB_DATABASE_NAME || 'scorekeeper',
     containers: {
       games: 'games', // Use 'games' (has real data)
       goals: 'goals', // Use 'goals' (has real data) 

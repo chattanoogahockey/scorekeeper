@@ -52,7 +52,7 @@ export class GameEventsController {
     const game = games[0];
 
     // Get existing goals for analytics
-    const existingGoals = await DatabaseService.query('goal-records', {
+    const existingGoals = await DatabaseService.query('goals', {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt ASC',
       parameters: [{ name: '@gameId', value: gameId }]
     });
@@ -94,7 +94,7 @@ export class GameEventsController {
       }
     };
 
-    const goal = await DatabaseService.create('goal-records', goalData);
+    const goal = await DatabaseService.create('goals', goalData);
 
     logger.info('Goal recorded', { goalId: goal.id, gameId, player, team });
     res.status(201).json(goal);
@@ -131,7 +131,7 @@ export class GameEventsController {
     const game = games[0];
 
     // Get existing penalties for analytics
-    const existingPenalties = await DatabaseService.query('penalty-records', {
+    const existingPenalties = await DatabaseService.query('penalties', {
       query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt ASC',
       parameters: [{ name: '@gameId', value: gameId }]
     });
@@ -157,7 +157,7 @@ export class GameEventsController {
       }
     };
 
-    const penalty = await DatabaseService.create('penalty-records', penaltyData);
+    const penalty = await DatabaseService.create('penalties', penaltyData);
 
     logger.info('Penalty recorded', { penaltyId: penalty.id, gameId, player, team, penaltyType });
     res.status(201).json(penalty);

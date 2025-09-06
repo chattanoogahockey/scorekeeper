@@ -69,7 +69,7 @@ export class GamesController {
     gameData.createdAt = new Date().toISOString();
     gameData.updatedAt = new Date().toISOString();
 
-    const game = await DatabaseService.create('game-records', gameData);
+    const game = await DatabaseService.create('games', gameData);
 
     logger.info('Game created', { gameId: game.id });
     res.status(201).json(game);
@@ -81,7 +81,7 @@ export class GamesController {
   static getGameById = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    const game = await DatabaseService.getById('game-records', id);
+    const game = await DatabaseService.getById('games', id);
 
     if (!game) {
       return res.status(404).json({ error: 'Game not found' });
@@ -97,7 +97,7 @@ export class GamesController {
     const { id } = req.params;
     const updates = req.body;
 
-    const game = await DatabaseService.update('game-records', id, updates);
+    const game = await DatabaseService.update('games', id, updates);
 
     logger.info('Game updated', { gameId: id });
     res.json(game);
@@ -109,7 +109,7 @@ export class GamesController {
   static deleteGame = asyncHandler(async (req, res) => {
     const { id } = req.params;
 
-    await DatabaseService.delete('game-records', id);
+    await DatabaseService.delete('games', id);
 
     logger.info('Game deleted', { gameId: id });
     res.json({ message: 'Game deleted successfully' });

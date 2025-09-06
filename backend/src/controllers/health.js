@@ -41,7 +41,7 @@ export class HealthController {
 
     // Try to test database connection
     try {
-      await DatabaseService.query('game-records', { query: 'SELECT TOP 1 * FROM c' });
+      await DatabaseService.query('games', { query: 'SELECT TOP 1 * FROM c' });
       services.database.status = 'connected';
     } catch (error) {
       services.database.status = 'error';

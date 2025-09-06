@@ -33,7 +33,7 @@ export class DatabaseService {
       'historical-player-stats': getHistoricalPlayerStatsContainer
     };
 
-    const getter = containers[containerName];
+    const getter = containerMap[containerName];
     if (!getter) {
       throw new Error(`Unknown container: ${containerName}`);
     }

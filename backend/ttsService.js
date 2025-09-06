@@ -2,7 +2,7 @@ import textToSpeech from '@google-cloud/text-to-speech';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { config } from './config/index.js';
+import { config } from './src/config/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

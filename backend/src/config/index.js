@@ -22,7 +22,6 @@ export const config = {
       rosters: 'rosters', // Use 'rosters' (has real data)
       attendance: 'attendance', // Use 'attendance' (has real data)
       otShootout: 'ot-shootout', // Use 'ot-shootout' (has real data)
-      rinkReports: 'rink-reports',
       playerStats: 'player-stats',
       shotsOnGoal: 'shots-on-goal',
       historicalPlayerStats: 'historical-player-stats'

@@ -1,12 +1,11 @@
 import {
   getGamesContainer,
-  getAttendanceContainer,
-  getRostersContainer,
+  getPlayerStatsContainer,
   getGoalsContainer,
   getPenaltiesContainer,
+  getRostersContainer,
+  getAttendanceContainer,
   getOTShootoutContainer,
-  getRinkReportsContainer,
-  getPlayerStatsContainer,
   getShotsOnGoalContainer,
   getHistoricalPlayerStatsContainer
 } from '../../cosmosClient.js';
@@ -22,15 +21,14 @@ export class DatabaseService {
    * @returns {Object} Container instance
    */
   static getContainer(containerName) {
-    const containers = {
-      'games': getGamesContainer, // Updated to use 'games' (has real data)
-      'goals': getGoalsContainer, // Updated to use 'goals' (has real data)
-      'penalties': getPenaltiesContainer, // Updated to use 'penalties' (has real data)
-      'rosters': getRostersContainer, // Updated to use 'rosters' (has real data)
-      'attendance': getAttendanceContainer, // Updated to use 'attendance' (has real data)
-      'ot-shootout': getOTShootoutContainer, // Updated to use 'ot-shootout' (has real data)
-      'rink-reports': getRinkReportsContainer,
+    const containerMap = {
+      'games': getGamesContainer,
       'player-stats': getPlayerStatsContainer,
+      'goals': getGoalsContainer,
+      'penalties': getPenaltiesContainer,
+      'rosters': getRostersContainer,
+      'attendance': getAttendanceContainer,
+      'ot-shootout': getOTShootoutContainer,
       'shots-on-goal': getShotsOnGoalContainer,
       'historical-player-stats': getHistoricalPlayerStatsContainer
     };

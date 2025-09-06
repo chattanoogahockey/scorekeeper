@@ -7,7 +7,7 @@ import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 import dotenv from 'dotenv';
-import { config } from './config/index.js';
+import { config } from './src/config/index.js';
 import OpenAI from 'openai';
 import logger from './logger.js';
 
@@ -38,7 +38,6 @@ import {
   getGoalsContainer,
   getPenaltiesContainer,
   getOTShootoutContainer,
-  getRinkReportsContainer,
   getPlayerStatsContainer,
   getShotsOnGoalContainer,
   initializeContainers,
@@ -53,9 +52,6 @@ const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 
 // Import TTS service
 import ttsService from './ttsService.js';
-
-// Import rink report generator
-import { generateRinkReport } from './rinkReportGenerator.js';
 
 // Conditionally import announcer service to prevent startup failures
 const createGoalAnnouncement = null;
@@ -3235,46 +3231,6 @@ app.post('/api/games/submit', async (req, res) => {
     const { resource } = await gamesContainer.items.create(gameSubmissionRecord);
     console.log('✅ Game submitted successfully');
 
-    // Trigger automatic rink report generation
-    try {
-      console.log('📰 Triggering rink report generation...');
-
-      // Get the game details to determine division
-      let gameDetails = null;
-      try {
-        const { resources: gameQuery } = await gamesContainer.items
-          .query({
-            query: 'SELECT * FROM c WHERE c.id = @gameId OR c.gameId = @gameId',
-            parameters: [{ name: '@gameId', value: gameId }]
-          })
-          .fetchAll();
-
-        if (gameQuery.length > 0) {
-          gameDetails = gameQuery[0];
-        }
-      } catch (gameQueryError) {
-        console.warn('⚠️ Could not fetch game details for report generation:', gameQueryError.message);
-      }
-
-      if (gameDetails && gameDetails.division) {
-        console.log(`📰 Generating report for ${gameDetails.division} division`);
-
-        // Generate report asynchronously (don't wait for completion)
-        generateRinkReport(gameDetails.division) // Generate for all submitted games
-          .then((report) => {
-            console.log(`✅ Rink report generated successfully for ${gameDetails.division} division`);
-          })
-          .catch((reportError) => {
-            console.error(`❌ Failed to generate rink report for ${gameDetails.division}:`, reportError.message);
-          });
-      } else {
-        console.log('ℹ️ Game division not found, skipping report generation');
-      }
-    } catch (reportGenError) {
-      console.error('❌ Error in report generation trigger:', reportGenError.message);
-      // Don't fail the game submission if report generation fails
-    }
-
     res.status(201).json({
       success: true,
       submissionRecord: resource,
@@ -5437,78 +5393,6 @@ app.post('/api/undo-shot-on-goal', async (req, res) => {
   } catch (error) {
     console.error('❌ Error undoing shot on goal:', error);
     handleError(res, error);
-  }
-});
-
-// Rink Reports API endpoint
-app.get('/api/rink-reports', async (req, res) => {
-  console.log('📰 Fetching rink reports...');
-  const { division } = req.query;
-
-  try {
-    const container = getRinkReportsContainer();
-    let querySpec;
-
-    if (division) {
-      // Get report for specific division
-      querySpec = {
-        query: 'SELECT * FROM c WHERE c.division = @division ORDER BY c.lastUpdated DESC',
-        parameters: [{ name: '@division', value: division }]
-      };
-    } else {
-      // Get all reports, ordered by last updated (most recent first)
-      querySpec = {
-        query: 'SELECT * FROM c ORDER BY c.lastUpdated DESC'
-      };
-    }
-
-    const { resources: reports } = await container.items.query(querySpec).fetchAll();
-
-    console.log(`✅ Found ${reports.length} rink reports`);
-    res.status(200).json(reports);
-  } catch (error) {
-    console.error('❌ Error fetching rink reports:', error);
-    res.status(500).json({
-      error: 'Failed to fetch rink reports',
-      message: error.message
-    });
-  }
-});
-
-// Manual rink report generation endpoint
-app.post('/api/rink-reports/generate', async (req, res) => {
-  console.log('📰 Manual rink report generation triggered...');
-  const { division } = req.body;
-
-  try {
-    if (!division) {
-      return res.status(400).json({
-        error: 'Division is required',
-        example: { division: 'Gold' }
-      });
-    }
-
-    console.log(`📰 Generating report for ${division} division`);
-
-    const report = await generateRinkReport(division);
-
-    res.status(201).json({
-      success: true,
-      message: `Rink report generated for ${division} division`,
-      report: {
-        id: report.id,
-        division: report.division,
-        title: report.title,
-        publishedAt: report.publishedAt,
-        generatedBy: report.generatedBy
-      }
-    });
-  } catch (error) {
-    console.error('❌ Error generating rink report:', error);
-    res.status(500).json({
-      error: 'Failed to generate rink report',
-      message: error.message
-    });
   }
 });
 

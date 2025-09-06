@@ -1,7 +1,7 @@
 // Import config with fallback
 let config;
 try {
-  const configModule = await import('./config/index.js');
+  const configModule = await import('./src/config/index.js');
   config = configModule.config || configModule.default;
 } catch (error) {
   // Fallback for missing config
@@ -18,7 +18,7 @@ try {
 class Logger {
   constructor() {
     this.isProduction = config.isProduction;
-    this.shouldLog = config.env !== 'test'; // Silence logs during testing
+    this.shouldLog = config.env !== 'production' || config.logging?.enabled;
   }
 
   /**

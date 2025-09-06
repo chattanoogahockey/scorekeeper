@@ -3,7 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join as pathJoin } from 'path';
 import dotenv from 'dotenv';
 import { CosmosClient } from '@azure/cosmos';
-import { config } from './config/index.js';
+import { config } from './src/config/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -21,34 +21,18 @@ const containerNames = config.cosmos.containers;
  * Production Cosmos DB Container Definitions
  *
  * Container Schema:
- * 1. rink-reports - Weekly division summaries and articles
- * 2. games - Game records and submissions
- * 3. player-stats - Current season player statistics (live aggregation)
- * 4. goals - Goal events and scoring data
- * 5. penalties - Penalty events and infractions
- * 6. rosters - Team rosters and player assignments
- * 7. attendance - Game attendance tracking
- * 8. ot-shootout - Overtime and shootout results
- * 9. shots-on-goal - Shots on goal tracking and analytics
- * 10. historical-player-stats - Historical player career statistics
+ * 1. games - Game records and submissions
+ * 2. player-stats - Current season player statistics (live aggregation)
+ * 3. goals - Goal events and scoring data
+ * 4. penalties - Penalty events and infractions
+ * 5. rosters - Team rosters and player assignments
+ * 6. attendance - Game attendance tracking
+ * 7. ot-shootout - Overtime and shootout results
+ * 8. shots-on-goal - Shots on goal tracking and analytics
+ * 9. historical-player-stats - Historical player career statistics
  */
 
 const CONTAINER_DEFINITIONS = {
-  // Weekly rink reports and articles
-  'rink-reports': {
-    name: containerNames.rinkReports,
-    partitionKey: '/division',
-    indexingPolicy: {
-      indexingMode: 'consistent',
-      includedPaths: [
-        { path: '/*' },
-        { path: '/division/?' },
-        { path: '/week/?' },
-        { path: '/publishedAt/?' }
-      ]
-    }
-  },
-
   // Current season player statistics
   'player-stats': {
     name: containerNames.playerStats,
@@ -217,14 +201,6 @@ export function getDatabase() {
 /**
  * Container accessor functions with proper error handling
  */
-
-// Rink reports container - Weekly division summaries
-export function getRinkReportsContainer() {
-  if (!cosmosConfigured || !database) {
-    throw new Error('Cosmos DB not configured');
-  }
-  return database.container(CONTAINER_DEFINITIONS['rink-reports'].name);
-}
 
 // Games container - Game records and submissions
 export function getGamesContainer() {

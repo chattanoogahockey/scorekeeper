@@ -85,7 +85,7 @@ export default function PenaltyRecord() {
   // Initialize with first team (away team) by default
   useEffect(() => {
     if (selectedGame && !formData.team) {
-      const defaultTeam = selectedGame.awayteam;
+      const defaultTeam = selectedGame.awayTeam;
       setFormData(prev => ({ ...prev, team: defaultTeam }));
     }
   }, [selectedGame, formData.team]);
@@ -141,7 +141,7 @@ export default function PenaltyRecord() {
       // Create user-friendly penalty summary
       const penaltySummary = `Penalty Recorded!
 
-${selectedGame.awayteam} vs ${selectedGame.hometeam}
+${selectedGame.awayTeam} vs ${selectedGame.homeTeam}
 ${formData.player} (${formData.team}) - ${formData.penaltyType}
 Time: ${formData.time} - Period ${formData.period}
 Length: ${formData.penaltyLength} minutes`;

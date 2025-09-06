@@ -87,8 +87,8 @@ export default function InGameMenu() {
       setEventsError(null);
       
       // Calculate current score
-  const awayScore = goals.filter(g => (g.teamName || g.scoringTeam) === (gameToUse.awayteam || gameToUse.awayTeamId)).length;
-  const homeScore = goals.filter(g => (g.teamName || g.scoringTeam) === (gameToUse.hometeam || gameToUse.homeTeamId)).length;
+  const awayScore = goals.filter(g => (g.teamName || g.scoringTeam) === (gameToUse.awayTeam || gameToUse.awayTeamId)).length;
+  const homeScore = goals.filter(g => (g.teamName || g.scoringTeam) === (gameToUse.homeTeam || gameToUse.homeTeamId)).length;
       setCurrentScore({ away: awayScore, home: homeScore });
       
       // Set shots on goal
@@ -235,8 +235,8 @@ export default function InGameMenu() {
       const response = await axios.post(apiUrl, {
         gameId: currentGame.id || currentGame.gameId,
         finalScore: {
-          [currentGame.awayteam || currentGame.awayTeamId]: currentScore.away,
-          [currentGame.hometeam || currentGame.homeTeamId]: currentScore.home
+          [currentGame.awayTeam || currentGame.awayTeamId]: currentScore.away,
+          [currentGame.homeTeam || currentGame.homeTeamId]: currentScore.home
         },
         submittedBy: 'Scorekeeper'
       });
@@ -286,14 +286,14 @@ export default function InGameMenu() {
             In-Game Dashboard
           </h1>
           <p className="text-md text-gray-600 font-medium">
-            {currentGame.awayteam || currentGame.awayTeamId} vs {currentGame.hometeam || currentGame.homeTeamId}
+            {currentGame.awayTeam || currentGame.awayTeamId} vs {currentGame.homeTeam || currentGame.homeTeamId}
           </p>
           
           {/* Current Score Display with Shots on Goal */}
           <div className="bg-gray-100 rounded-lg p-3 my-3">
             <div className="flex justify-between items-center text-lg font-bold">
               <div className="text-center">
-                <div className="text-xs text-gray-600">{currentGame.awayteam || currentGame.awayTeamId}</div>
+                <div className="text-xs text-gray-600">{currentGame.awayTeam || currentGame.awayTeamId}</div>
                 <div className="text-2xl">{currentScore.away}</div>
                 <button
                   onClick={() => handleShotsOnGoal('away')}
@@ -304,7 +304,7 @@ export default function InGameMenu() {
               </div>
               <div className="text-gray-400">-</div>
               <div className="text-center">
-                <div className="text-xs text-gray-600">{currentGame.hometeam || currentGame.homeTeamId}</div>
+                <div className="text-xs text-gray-600">{currentGame.homeTeam || currentGame.homeTeamId}</div>
                 <div className="text-2xl">{currentScore.home}</div>
                 <button
                   onClick={() => handleShotsOnGoal('home')}

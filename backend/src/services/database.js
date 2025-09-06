@@ -264,8 +264,8 @@ export class DatabaseService {
       }
 
       const game = games[0];
-      const homeTeam = game.hometeam;
-      const awayTeam = game.awayteam;
+      const homeTeam = game.homeTeam;
+      const awayTeam = game.awayTeam;
 
       if (!homeTeam || !awayTeam) {
         throw new Error(`Game missing team data: homeTeam=${homeTeam}, awayTeam=${awayTeam}`);

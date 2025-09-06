@@ -5,9 +5,14 @@
  */
 
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join as pathJoin } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables first
-dotenv.config({ path: './.env' });
+dotenv.config({ path: pathJoin(__dirname, '../.env') });
 
 const isProduction = process.env.NODE_ENV === 'production';
 const isDevelopment = !isProduction;

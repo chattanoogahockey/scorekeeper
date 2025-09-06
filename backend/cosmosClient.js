@@ -1,6 +1,6 @@
 // Production-ready Cosmos DB client configuration
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { dirname, join as pathJoin } from 'path';
 import dotenv from 'dotenv';
 import { CosmosClient } from '@azure/cosmos';
 import { config } from './config/index.js';
@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Configure environment variables
-dotenv.config({ path: './.env' });
+dotenv.config({ path: pathJoin(__dirname, '.env') });
 
 /**
  * Standardized Container Names (using hyphens consistently)

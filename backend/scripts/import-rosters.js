@@ -87,19 +87,13 @@ async function processRosterData() {
 
         const { resources: existingRosters } = await rostersContainer.items.query(querySpec).fetchAll();
 
-        if (existingRosters.length > 0) {
-          console.log(`Updating existing roster for ${roster.teamName}`);
-          const existingRoster = existingRosters[0];
-          existingRoster.players = roster.players; // Update players
-          await rostersContainer.item(existingRoster.id, existingRoster.teamName).replace(existingRoster);
-        } else {
-          console.log(`Creating new roster for ${roster.teamName}`);
-          const rosterDoc = {
-            id: `${roster.teamName.replace(/\s+/g, '_').toLowerCase()}_${roster.season}_${roster.year}`,
-            ...roster
-          };
-          await rostersContainer.items.create(rosterDoc);
-        }
+        // For first-time upload, always create new rosters
+        console.log(`Creating new roster for ${roster.teamName}`);
+        const rosterDoc = {
+          id: `${roster.teamName.replace(/\s+/g, '_').toLowerCase()}_${roster.season}_${roster.year}`,
+          ...roster
+        };
+        await rostersContainer.items.create(rosterDoc);
 
         successCount++;
       } catch (error) {

@@ -35,7 +35,7 @@ export default function RosterAttendance() {
           Loading Rosters...
         </h2>
         <p className="text-gray-600 text-center mb-4">
-          Loading player rosters for {selectedGame.awayteam || selectedGame.awayTeamId} vs {selectedGame.hometeam || selectedGame.homeTeamId}
+          Loading player rosters for {selectedGame.awayTeam || selectedGame.awayTeamId} vs {selectedGame.homeTeam || selectedGame.homeTeamId}
         </p>
         <div className="text-center">
           <button

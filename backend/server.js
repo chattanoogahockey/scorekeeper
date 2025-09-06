@@ -555,8 +555,8 @@ async function preGenerateGoalAssets(gameId) {
     const game = gamesByQuery[0];
     const lastGoal = goals[0];
 
-    const homeGoals = goals.filter(g => g.teamName === game.hometeam).length;
-    const awayGoals = goals.filter(g => g.teamName === game.awayteam).length;
+    const homeGoals = goals.filter(g => g.teamName === game.homeTeam).length;
+    const awayGoals = goals.filter(g => g.teamName === game.awayTeam).length;
 
     const playerName = lastGoal.playerName;
     const playerGoalsThisGame = goals.filter(g => (g.playerName) === playerName).length;
@@ -657,7 +657,7 @@ async function preGenerateGoalAssets(gameId) {
     try {
       if (generateDualRandomCommentary) {
         const randomKey = `${gameId}-random-${Date.now()}`;
-        const randomConvo = await generateDualRandomCommentary(gameId, { context: 'post-goal', homeTeam: game.hometeam, awayTeam: game.awayteam });
+        const randomConvo = await generateDualRandomCommentary(gameId, { context: 'post-goal', homeTeam: game.homeTeam, awayTeam: game.awayTeam });
         const randomGap = computeAdaptiveLineGap({ contextType: 'random', period: goalData.period, timeRemaining: goalData.timeRemaining });
         announcerCache.randomDual.set(randomKey, { conversation: trimConversationLines(randomConvo, 4), updatedAt: Date.now(), lineGapMs: randomGap });
         // Keep the map from growing unbounded: prune oldest after 10
@@ -701,8 +701,8 @@ async function preGeneratePenaltyAssets(gameId) {
     const game = gamesByQuery[0];
     const lastPenalty = penalties[0];
 
-    const homeGoals = goals.filter(g => g.teamName === game.hometeam).length;
-    const awayGoals = goals.filter(g => g.teamName === game.awayteam).length;
+    const homeGoals = goals.filter(g => g.teamName === game.homeTeam).length;
+    const awayGoals = goals.filter(g => g.teamName === game.awayTeam).length;
 
     const penaltyData = {
       playerName: lastPenalty.playerName,
@@ -714,8 +714,8 @@ async function preGeneratePenaltyAssets(gameId) {
     };
 
     const gameContext = {
-      homeTeam: game.hometeam,
-      awayTeam: game.awayteam,
+      homeTeam: game.homeTeam,
+      awayTeam: game.awayTeam,
       currentScore: { home: homeGoals, away: awayGoals }
     };
 
@@ -1393,8 +1393,8 @@ app.get('/api/rosters', async (req, res) => {
       }
 
       const game = games[0];
-      const homeTeam = game.hometeam || game.homeTeam || game.homeTeamId;
-      const awayTeam = game.awayteam || game.awayTeam || game.awayTeamId;
+      const homeTeam = game.homeTeam || game.hometeam || game.homeTeamId;
+      const awayTeam = game.awayTeam || game.awayteam || game.awayTeamId;
 
       // Use case-insensitive query for team names
       const rosterQuery = {

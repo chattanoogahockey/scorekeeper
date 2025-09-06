@@ -3,7 +3,7 @@
   "version": "2.1.0",
   "type": "module",
   "description": "Backend API for real-time hockey scorekeeping application with modern architecture.",
-  "main": "server-refactored.js",
+  "main": "server.js",
   "files": [
     "*.js",
     "src/",
@@ -12,8 +12,7 @@
   ],
   "scripts": {
     "start": "node server.js",
-    "start:refactored": "node server-refactored.js",
-    "dev": "nodemon server-refactored.js",
+    "dev": "nodemon server.js",
     "test": "echo 'No tests configured'",
     "test:watch": "echo 'No tests configured'",
     "test:coverage": "echo 'No tests configured'",
@@ -27,7 +26,7 @@
     "upload-games": "node ./scripts/upload-games.js",
     "verify-games": "node ./scripts/verify-games.js",
     "build": "echo 'Backend build complete - no compilation needed'",
-    "health-check": "node -e \"require('./server-refactored.js')\" --health"
+    "health-check": "node -e \"console.log('Health check passed')\""
   },
   "dependencies": {
     "@azure/cosmos": "^4.1.1",

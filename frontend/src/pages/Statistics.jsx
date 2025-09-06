@@ -818,7 +818,12 @@ const Statistics = React.memo(() => {
               </table>
             </div>
           ) : (
-            <p className="text-gray-500 text-center py-8">No player statistics available for the selected division.</p>
+            <p className="text-gray-500 text-center py-8">
+              {selectedYears.includes('2025') && selectedSeasons.includes('Fall') 
+                ? 'No games have been played yet for the 2025 Fall season. Statistics will appear here once games begin.'
+                : 'No player statistics available for the selected filters.'
+              }
+            </p>
           )}
         </>
         )}

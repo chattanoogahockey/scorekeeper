@@ -1,5 +1,6 @@
 # Docs for the Azure Web Apps Deploy action: https://github.com/Azure/webapps-deploy
 # More GitHub Actions for Azure: https://github.com/Azure/actions
+# Updated: 2025-09-06 - Force workflow trigger
 
 name: 'Build and deploy Node.js app to Azure Web App: scorekeeper'
 
@@ -74,6 +75,9 @@ jobs:
         
         # Copy config directory
         cp -r backend/config deploy/config || echo "Config directory optional"
+        
+        # Copy src directory structure (controllers, services, middleware, etc.)
+        cp -r backend/src deploy/src
         
         # Copy backend node_modules (production only)
         cp -r backend/node_modules deploy/node_modules

@@ -1,0 +1,3 @@
+This file is created to trigger the GitHub Actions workflow.
+Created at: 2025-09-06
+Purpose: Force workflow execution after statistics page fixes.

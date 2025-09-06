@@ -1,17 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import { Line, Bar } from 'react-chartjs-2';
 import { statisticsService } from '../services/statisticsService.js';
 
 // Chat components
@@ -118,24 +106,13 @@ const ChatPanel = ({ isOpen, onClose, messages, onSendMessage, isTyping }) => {
   );
 };
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
-
 const Statistics = React.memo(() => {
   const navigate = useNavigate();
   
   // State for data
   const [historicalStats, setHistoricalStats] = useState([]);
   const [teamStats, setTeamStats] = useState([]);
-  const [seasonalData, setSeasonalData] = useState([]); // For charts
+  const [seasonalData, setSeasonalData] = useState([]); // For historical data
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
@@ -187,7 +164,7 @@ const Statistics = React.memo(() => {
       });
       setSeasonalData(data);
     } catch (e) {
-      console.error('Failed to fetch seasonal data for charts:', e);
+      console.error('Failed to fetch seasonal data:', e);
       setSeasonalData([]);
     }
   }, [selectedDivisions]);
@@ -413,59 +390,6 @@ const Statistics = React.memo(() => {
     fetchPlayerStats();
     fetchTeamStats();
     fetchSeasonalData();
-  };
-
-  // Generate dynamic title for top scorers
-  const getTopScorersTitle = () => {
-    const divisions = selectedDivisions.includes('All') ? ['All Divisions'] : selectedDivisions;
-    const seasons = selectedSeasons.includes('All') ? ['All Seasons'] : selectedSeasons;
-    const years = selectedYears.includes('All') ? ['All Years'] : selectedYears;
-    
-    return `Top 10 Scorers - ${divisions.join(', ')} | ${seasons.join(', ')} | ${years.join(', ')}`;
-  };
-  const generateSeasonalTrendsChart = () => {
-    // Since historical data is aggregated, we'll create a simple comparison chart instead
-    if (!seasonalData.length) return null;
-    
-    // For now, create a simple bar chart showing top performers from historical data
-    const topHistorical = seasonalData
-      .filter(p => p.points > 0)
-      .sort((a, b) => b.points - a.points)
-      .slice(0, 10);
-
-    return {
-      labels: topHistorical.map(p => p.playerName),
-      datasets: [
-        {
-          label: 'Historical Career Points',
-          data: topHistorical.map(p => p.points || 0),
-          borderColor: 'rgb(59, 130, 246)',
-          backgroundColor: 'rgba(59, 130, 246, 0.6)',
-        }
-      ]
-    };
-  };
-
-  const generateTopScorersChart = () => {
-    if (!filteredPlayerStats.length) return null;
-    
-    const topScorers = filteredPlayerStats.slice(0, 10);
-    
-    return {
-      labels: topScorers.map(p => p.playerName),
-      datasets: [
-        {
-          label: 'Goals',
-          data: topScorers.map(p => p.goals || 0),
-          backgroundColor: 'rgba(59, 130, 246, 0.8)',
-        },
-        {
-          label: 'Assists',
-          data: topScorers.map(p => p.assists || 0),
-          backgroundColor: 'rgba(34, 197, 94, 0.8)',
-        }
-      ]
-    };
   };
 
   const sortPlayers = (field) => {
@@ -922,68 +846,6 @@ const Statistics = React.memo(() => {
               </div>
             ) : (
               <p className="text-gray-500 text-center py-8">No team statistics available for the selected division.</p>
-            )}
-          </div>
-
-          {/* Top 10 Scorers Chart */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">{getTopScorersTitle()}</h2>
-            {generateTopScorersChart() ? (
-              <div className="space-y-4">
-                {/* Legend */}
-                <div className="flex justify-center space-x-6">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                    <span className="text-sm font-medium text-gray-700">Goals</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 bg-green-500 rounded"></div>
-                    <span className="text-sm font-medium text-gray-700">Assists</span>
-                  </div>
-                </div>
-                <Bar
-                  data={generateTopScorersChart()}
-                  options={{
-                    responsive: true,
-                    plugins: {
-                      legend: { display: false },
-                      title: { display: false }
-                    },
-                    scales: {
-                      x: { stacked: true },
-                      y: { stacked: true, beginAtZero: true }
-                    }
-                  }}
-                />
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-8">No data available for chart</p>
-            )}
-          </div>
-        </div>
-
-        {/* Analytics Charts - Historical Data */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Analytics & Trends</h2>
-          
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Historical Career Leaders</h3>
-            {generateSeasonalTrendsChart() ? (
-              <Bar
-                data={generateSeasonalTrendsChart()}
-                options={{
-                  responsive: true,
-                  plugins: {
-                    legend: { position: 'top' },
-                    title: { display: true, text: 'Top Historical Performers by Career Points' }
-                  },
-                  scales: {
-                    y: { beginAtZero: true }
-                  }
-                }}
-              />
-            ) : (
-              <p className="text-gray-500 text-center py-8">No historical data available for trends</p>
             )}
           </div>
         </div>

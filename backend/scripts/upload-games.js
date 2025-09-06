@@ -167,7 +167,7 @@ async function main() {
 
   if (!csvPath) {
     console.error('Usage: node upload-games.js <path-to-csv-file>');
-    console.error('Example: node upload-games.js "C:\\Users\\marce\\OneDrive\\Documents\\CHAHKY\\data\\2025_fall_schedule.csv"');
+    console.error('Example: node upload-games.js "path/to/your/schedule.csv"');
     process.exit(1);
   }
 

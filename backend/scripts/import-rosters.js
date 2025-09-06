@@ -6,7 +6,7 @@ import { getRostersContainer } from '../cosmosClient.js';
 import logger from '../logger.js';
 
 const DRY_RUN = process.argv.includes('--dry');
-const excelPath = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'C:\\Users\\marce\\OneDrive\\Documents\\CHAHKY\\data\\fall_2025_rosters.xlsx';
+const excelPath = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : (process.env.EXCEL_ROSTERS_PATH || path.join(process.cwd(), '../../CHAHKY/data/fall_2025_rosters.xlsx'));
 
 async function processRosterData() {
   try {
@@ -14,6 +14,11 @@ async function processRosterData() {
     const workbook = XLSX.readFile(excelPath);
     const worksheet = workbook.Sheets['Sheet1'];
     const rawData = XLSX.utils.sheet_to_json(worksheet);
+
+    if (!rawData.length) {
+      console.log('No data found in the Excel file.');
+      return;
+    }
 
     console.log(`Found ${rawData.length} player records in Excel file`);
 

@@ -8,6 +8,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Use a relative path or env var for portability
+const excelFilePath = process.env.EXCEL_FILE_PATH || path.join(__dirname, '../../../CHAHKY/data/fall_2025_schedule.xlsx');
+
 // Load environment variables
 console.log('📂 Current directory:', __dirname);
 const envPath = path.join(__dirname, '..', '.env');
@@ -84,10 +87,15 @@ function parseExcelDate(excelDate) {
 async function importGames() {
   try {
     console.log('📊 Reading Excel file...');
-    const workbook = XLSX.readFile('C:/Users/marce/OneDrive/Documents/CHAHKY/data/fall_2025_schedule.xlsx');
+    const workbook = XLSX.readFile(excelFilePath);
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
     const rawData = XLSX.utils.sheet_to_json(worksheet);
+
+    if (!rawData.length) {
+      console.log('No data found in the Excel file.');
+      return;
+    }
 
     console.log(`📋 Found ${rawData.length} rows in Excel file`);
     console.log('📋 Headers:', Object.keys(rawData[0] || {}));

@@ -77,7 +77,6 @@ export class HealthController {
     const packageVersion = await this.getPackageVersion();
     let gitInfo = {};
     let buildTime;
-    let buildTimeSource = 'fallback';
 
     // First try environment variables (production deployment)
     if (process.env.BUILD_SOURCEVERSION || process.env.GITHUB_SHA) {
@@ -107,14 +106,11 @@ export class HealthController {
     if (process.env.DEPLOYMENT_TIMESTAMP) {
       try {
         buildTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
-        buildTimeSource = 'environment';
       } catch (parseError) {
         buildTime = new Date();
-        buildTimeSource = 'fallback-error';
       }
     } else {
       buildTime = new Date();
-      // buildTimeSource = 'current-time'; // Not used
     }
 
     // Format the time in Eastern timezone

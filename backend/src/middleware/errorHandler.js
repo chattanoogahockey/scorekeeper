@@ -27,6 +27,7 @@ export function createErrorResponse(error, context = 'API', requestId = null) {
     timestamp: new Date().toISOString(),
     canRetry: true,
     requestId,
+    context,
     type: ErrorTypes.INTERNAL
   };
 

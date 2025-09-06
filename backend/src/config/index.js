@@ -34,6 +34,13 @@ export const config = {
     keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS
   },
 
+  // Google TTS service configuration (for compatibility)
+  googleTts: {
+    credentialsPath: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+    credentialsJson: process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON,
+    enabled: process.env.GOOGLE_TTS_ENABLED !== 'false'
+  },
+
   openai: {
     apiKey: process.env.OPENAI_API_KEY,
     enabled: !!process.env.OPENAI_API_KEY

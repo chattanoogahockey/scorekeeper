@@ -202,6 +202,13 @@ class TTSService {
     try {
       console.log('🔑 Initializing Google Cloud TTS with credential file approach');
 
+      // Check if config.googleTts exists
+      if (!config.googleTts) {
+        console.log('⚠️  No Google TTS configuration found, TTS will be disabled');
+        this.client = null;
+        return;
+      }
+
       if (config.googleTts.credentialsPath) {
         console.log(`✅ GOOGLE_APPLICATION_CREDENTIALS found: ${config.googleTts.credentialsPath}`);
       } else if (config.googleTts.credentialsJson) {

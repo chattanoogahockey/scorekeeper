@@ -4543,7 +4543,13 @@ app.get('/api/player-stats', async (req, res) => {
       }
     }
 
-    const payload = response.sort((a,b) => b.points - a.points);
+    // Filter out 2025 Fall data to ensure no current season stats are shown
+    let filteredResponse = response;
+    if (req.query.year === '2025' && req.query.season === 'Fall') {
+      filteredResponse = response.filter(item => !(item.year === '2025' && item.season === 'Fall'));
+    }
+
+    const payload = filteredResponse.sort((a,b) => b.points - a.points);
 
     // Apply pagination
     const totalCount = payload.length;

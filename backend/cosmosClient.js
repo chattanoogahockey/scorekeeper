@@ -21,17 +21,16 @@ const containerNames = config.cosmos.containers;
  * Production Cosmos DB Container Definitions
  *
  * Container Schema:
- * 1. settings - Global application settings (voice config, etc.)
- * 2. rink-reports - Weekly division summaries and articles
- * 3. games - Game records and submissions
- * 4. player-stats - Current season player statistics (live aggregation)
- * 5. goals - Goal events and scoring data
- * 6. penalties - Penalty events and infractions
- * 7. rosters - Team rosters and player assignments
- * 8. attendance - Game attendance tracking
- * 9. ot-shootout - Overtime and shootout results
- * 10. shots-on-goal - Shots on goal tracking and analytics
- * 11. historical-player-stats - Historical player career statistics
+ * 1. rink-reports - Weekly division summaries and articles
+ * 2. games - Game records and submissions
+ * 3. player-stats - Current season player statistics (live aggregation)
+ * 4. goals - Goal events and scoring data
+ * 5. penalties - Penalty events and infractions
+ * 6. rosters - Team rosters and player assignments
+ * 7. attendance - Game attendance tracking
+ * 8. ot-shootout - Overtime and shootout results
+ * 9. shots-on-goal - Shots on goal tracking and analytics
+ * 10. historical-player-stats - Historical player career statistics
  */
 
 const CONTAINER_DEFINITIONS = {
@@ -218,14 +217,6 @@ export function getDatabase() {
 /**
  * Container accessor functions with proper error handling
  */
-
-// Settings container - Global application settings
-export function getSettingsContainer() {
-  if (!cosmosConfigured || !database) {
-    throw new Error('Cosmos DB not configured');
-  }
-  return database.container(CONTAINER_DEFINITIONS['settings'].name);
-}
 
 // Rink reports container - Weekly division summaries
 export function getRinkReportsContainer() {

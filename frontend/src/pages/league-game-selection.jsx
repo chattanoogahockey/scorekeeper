@@ -44,13 +44,35 @@ export default function LeagueGameSelection() {
 
         // Process games and filter out submitted ones
 
-        // Fetch submitted games to exclude them
-        const submittedRes = await axios.get(`${apiBase}/api/games/submitted`);
-        const submittedIds = new Set(submittedRes.data.map(g => g.id || g.gameId));
+        // Handle different response formats from backend
+        let gamesData = [];
+        if (Array.isArray(res.data)) {
+          gamesData = res.data;
+        } else if (res.data.data && Array.isArray(res.data.data)) {
+          gamesData = res.data.data;
+        } else if (res.data.value && Array.isArray(res.data.value)) {
+          gamesData = res.data.value;
+        }
+        let submittedIds = new Set();
+        try {
+          const submittedRes = await axios.get(`${apiBase}/api/games/submitted`);
+          let submittedData = [];
+          if (Array.isArray(submittedRes.data)) {
+            submittedData = submittedRes.data;
+          } else if (submittedRes.data.data && Array.isArray(submittedRes.data.data)) {
+            submittedData = submittedRes.data.data;
+          } else if (submittedRes.data.value && Array.isArray(submittedRes.data.value)) {
+            submittedData = submittedRes.data.value;
+          }
+          submittedIds = new Set(submittedData.map(g => g.id || g.gameId));
+        } catch (submittedError) {
+          console.warn('⚠️ Could not fetch submitted games, assuming none:', submittedError.message);
+          submittedIds = new Set();
+        }
 
 
         // Filter games - All divisions, not submitted, with valid teams
-        const availableGames = res.data.filter(game => {
+        const availableGames = gamesData.filter(game => {
           const id = game.id || game.gameId;
           const hasValidTeams = game.hometeam && game.awayteam && 
                                game.hometeam.trim() !== '' && game.awayteam.trim() !== '' &&

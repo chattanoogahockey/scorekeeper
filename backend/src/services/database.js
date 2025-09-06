@@ -253,21 +253,39 @@ export class DatabaseService {
    */
   static async getRosters(filters = {}) {
     if (filters.gameId) {
-      const game = await this.getById('games', filters.gameId);
-      if (!game) {
-        throw new Error('Game not found');
+      // Query for the game instead of using getById to avoid partition key issues
+      const games = await this.query('games', {
+        query: 'SELECT * FROM c WHERE c.id = @gameId',
+        parameters: [{ name: '@gameId', value: filters.gameId }]
+      });
+
+      if (!games || games.length === 0) {
+        throw new Error(`Game not found: ${filters.gameId}`);
       }
 
+      const game = games[0];
       const homeTeam = game.hometeam;
       const awayTeam = game.awayteam;
 
-      const rosters = await this.query('rosters', {
-        query: 'SELECT * FROM c WHERE LOWER(c.teamName) IN (LOWER(@home), LOWER(@away))',
-        parameters: [
-          { name: '@home', value: homeTeam },
-          { name: '@away', value: awayTeam }
-        ]
+      if (!homeTeam || !awayTeam) {
+        throw new Error(`Game missing team data: homeTeam=${homeTeam}, awayTeam=${awayTeam}`);
+      }
+
+      const rosters = [];
+
+      // Query for home team roster
+      const homeRosters = await this.query('rosters', {
+        query: 'SELECT * FROM c WHERE c.teamName = @home',
+        parameters: [{ name: '@home', value: homeTeam }]
       });
+
+      // Query for away team roster
+      const awayRosters = await this.query('rosters', {
+        query: 'SELECT * FROM c WHERE c.teamName = @away',
+        parameters: [{ name: '@away', value: awayTeam }]
+      });
+
+      rosters.push(...homeRosters, ...awayRosters);
 
       if (rosters.length === 0) {
         throw new Error(`No rosters found for teams: ${homeTeam} vs ${awayTeam}`);

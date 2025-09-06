@@ -5,8 +5,8 @@ import fs from 'fs';
 import { getRostersContainer } from '../cosmosClient.js';
 import logger from '../logger.js';
 
-const excelPath = 'C:\\Users\\marce\\OneDrive\\Documents\\CHAHKY\\data\\fall_2025_rosters_scheduling.xlsx';
 const DRY_RUN = process.argv.includes('--dry');
+const excelPath = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'C:\\Users\\marce\\OneDrive\\Documents\\CHAHKY\\data\\fall_2025_rosters.xlsx';
 
 async function processRosterData() {
   try {
@@ -25,18 +25,20 @@ async function processRosterData() {
       const division = row.Division?.trim();
       const position = row.Position?.trim() || 'Player';
       const teamName = row.Team?.trim();
+      // Handle team names with ">" symbol - extract name from right side
+      const processedTeamName = teamName?.includes('>') ? teamName.split('>')[1]?.trim() : teamName;
       const year = row.Year;
       const season = row.Season?.trim();
 
-      if (!playerName || !teamName || !division) {
-        console.warn(`Skipping row ${index + 2}: Missing required data (Name: ${playerName}, Team: ${teamName}, Division: ${division})`);
+      if (!playerName || !processedTeamName || !division) {
+        console.warn(`Skipping row ${index + 2}: Missing required data (Name: ${playerName}, Team: ${processedTeamName}, Division: ${division})`);
         return;
       }
 
       // Initialize team roster if it doesn't exist
-      if (!teamRosters[teamName]) {
-        teamRosters[teamName] = {
-          teamName,
+      if (!teamRosters[processedTeamName]) {
+        teamRosters[processedTeamName] = {
+          teamName: processedTeamName,
           division,
           season: season || 'Fall',
           year: year || 2025,
@@ -45,8 +47,8 @@ async function processRosterData() {
       }
 
       // Add player to team roster
-      const playerId = `p_${teamName.replace(/\s+/g, '_').toLowerCase()}_${index + 1}`;
-      teamRosters[teamName].players.push({
+      const playerId = `p_${processedTeamName.replace(/\s+/g, '_').toLowerCase()}_${index + 1}`;
+      teamRosters[processedTeamName].players.push({
         playerId,
         name: playerName,
         position

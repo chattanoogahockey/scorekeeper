@@ -14,14 +14,19 @@ export class RostersController {
 
     logger.info('Fetching rosters', { gameId, teamName, season, division });
 
-    const rosters = await DatabaseService.getRosters({
-      gameId,
-      teamName,
-      season,
-      division
-    });
+    try {
+      const rosters = await DatabaseService.getRosters({
+        gameId,
+        teamName,
+        season,
+        division
+      });
 
-    res.json(rosters);
+      res.json(rosters);
+    } catch (error) {
+      logger.error('Error fetching rosters', { error: error.message, gameId, teamName, season, division });
+      throw error;
+    }
   });
 
   /**

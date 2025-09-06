@@ -45,6 +45,9 @@ import {
   getHistoricalPlayerStatsContainer
 } from './cosmosClient.js';
 
+// Import API routes
+import apiRoutes from './src/routes/api.js';
+
 // Read package.json for version info
 const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
 
@@ -434,6 +437,9 @@ function sanitizeInput(req, res, next) {
 
 // Apply input sanitization to all routes
 app.use(sanitizeInput);
+
+// Register API routes
+app.use('/api', apiRoutes);
 
 function recordTiming(kind, ms) {
   const arr = announcerMetrics.timings[kind];
@@ -1377,7 +1383,7 @@ app.get('/api/rosters', async (req, res) => {
     // If gameId is provided, look up the game and fetch the rosters for its teams
     if (gameId) {
       const gameQuery = {
-        query: 'SELECT * FROM c WHERE c.id = @id OR c.gameId = @id',
+        query: 'SELECT * FROM c WHERE c.id = @id',
         parameters: [{ name: '@id', value: gameId }]
       };
 

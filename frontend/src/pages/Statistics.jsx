@@ -158,7 +158,7 @@ const Statistics = React.memo(() => {
 
   useEffect(() => { 
     fetchMeta(); 
-  }, [fetchMeta]); // Only run once on mount
+  }, []); // Only run once on mount
   
   useEffect(() => { 
     // Only fetch data after meta is loaded and we have valid options
@@ -177,7 +177,7 @@ const Statistics = React.memo(() => {
       };
       fetchData();
     }
-  }, [fetchPlayerStats, fetchTeamStats, fetchSeasonalData, seasonOptions.length, yearOptions.length]);
+  }, [seasonOptions.length, yearOptions.length]);
 
   const fetchSeasonalData = useCallback(async () => {
     try {

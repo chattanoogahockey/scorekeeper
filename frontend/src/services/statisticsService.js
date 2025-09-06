@@ -58,6 +58,8 @@ class StatisticsService {
         playerData = data;
       } else if (data.data) {
         playerData = Array.isArray(data.data) ? data.data : [];
+      } else if (data.value && Array.isArray(data.value)) {
+        playerData = data.value;
       }
 
       return playerData;
@@ -94,6 +96,8 @@ class StatisticsService {
         teamData = data;
       } else if (data.data && Array.isArray(data.data)) {
         teamData = data.data;
+      } else if (data.value && Array.isArray(data.value)) {
+        teamData = data.value;
       }
 
       return teamData;
@@ -130,6 +134,8 @@ class StatisticsService {
         seasonalData = data;
       } else if (data.data && Array.isArray(data.data)) {
         seasonalData = data.data;
+      } else if (data.value && Array.isArray(data.value)) {
+        seasonalData = data.value;
       }
 
       return seasonalData;
@@ -151,12 +157,27 @@ class StatisticsService {
         }
       });
 
-      const games = Array.isArray(data) ? data : [];
+      // Handle backend response format: {success: true, games: [...], meta: {...}}
+      let games = [];
+      if (data.games && Array.isArray(data.games)) {
+        games = data.games;
+      } else if (Array.isArray(data)) {
+        games = data;
+      } else if (data.value && Array.isArray(data.value)) {
+        games = data.value;
+      }
 
       // Extract unique values
       const divisions = [...new Set(games.map(game => game.division).filter(Boolean))];
       const seasons = ['All', 'Fall', 'Winter'];
-      const years = ['All', ...[...new Set(games.map(game => game.year).filter(Boolean))].sort().reverse()];
+      // Extract years from season field (format: "2025 Fall")
+      const years = ['All', ...[...new Set(games.map(game => {
+        if (game.season && typeof game.season === 'string') {
+          const yearMatch = game.season.match(/^(\d{4})/);
+          return yearMatch ? yearMatch[1] : null;
+        }
+        return null;
+      }).filter(Boolean))].sort().reverse()];
 
       return { divisions, seasons, years };
     } catch (error) {

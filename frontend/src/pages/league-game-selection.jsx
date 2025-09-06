@@ -76,9 +76,12 @@ export default function LeagueGameSelection() {
         // Filter games - All divisions, not submitted, with valid teams
         const availableGames = gamesData.filter(game => {
           const id = game.id || game.gameId;
-          const hasValidTeams = game.homeTeam && game.awayTeam && 
-                               game.homeTeam.trim() !== '' && game.awayTeam.trim() !== '' &&
-                               game.homeTeam !== 'vs' && game.awayTeam !== 'vs';
+          // Use lowercase field names from database (hometeam/awayteam) as fallback
+          const homeTeam = game.homeTeam || game.hometeam;
+          const awayTeam = game.awayTeam || game.awayteam;
+          const hasValidTeams = homeTeam && awayTeam && 
+                               homeTeam.trim() !== '' && awayTeam.trim() !== '' &&
+                               homeTeam !== 'vs' && awayTeam !== 'vs';
           const notSubmitted = !submittedIds.has(id);
           
           const isValid = hasValidTeams && notSubmitted;
@@ -442,7 +445,7 @@ export default function LeagueGameSelection() {
             >
               <div className="mb-3">
                 <h3 className="text-xl font-semibold text-gray-800">
-                  {game.awayTeam || game.awayTeamId} vs {game.homeTeam || game.homeTeamId}
+                  {game.awayTeam || game.awayteam || game.awayTeamId} vs {game.homeTeam || game.hometeam || game.homeTeamId}
                 </h3>
               </div>
               

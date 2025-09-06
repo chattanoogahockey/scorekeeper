@@ -30,8 +30,8 @@ export function GameProvider({ children }) {
 
   // Derived properties for OTShootoutButton
   const selectedGameId = selectedGame?.id || selectedGame?.gameId;
-  const homeTeam = selectedGame?.homeTeam || selectedGame?.homeTeamId;
-  const awayTeam = selectedGame?.awayTeam || selectedGame?.awayTeamId;
+  const homeTeam = selectedGame?.homeTeam || selectedGame?.hometeam || selectedGame?.homeTeamId;
+  const awayTeam = selectedGame?.awayTeam || selectedGame?.awayteam || selectedGame?.awayTeamId;
 
   const reset = () => {
   setSelectedDivision(null);

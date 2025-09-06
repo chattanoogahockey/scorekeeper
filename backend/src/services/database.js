@@ -203,16 +203,7 @@ export class DatabaseService {
       querySpec = { query: 'SELECT * FROM c' };
     }
 
-    const games = await this.query('games', querySpec);
-
-    // Normalize field names for frontend compatibility
-    return games.map(game => ({
-      ...game,
-      // Map lowercase field names to camelCase
-      homeTeam: game.homeTeam || game.hometeam,
-      awayTeam: game.awayTeam || game.awayteam,
-      gameId: game.gameId || game.id
-    }));
+    return await this.query('games', querySpec);
   }  /**
    * Get submitted games
    * @returns {Promise<Object[]>} Submitted games array

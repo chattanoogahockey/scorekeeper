@@ -842,7 +842,7 @@ logger.info('Starting Hockey Scorekeeper API', {
 });
 
 // Add startup safety check using centralized config
-const cosmosConfigured = Boolean(config.cosmos.uri && config.cosmos.key && config.cosmos.database);
+const cosmosConfigured = Boolean(config.cosmos.uri && config.cosmos.key && config.cosmos.databaseName);
 
 if (config.isProduction && !cosmosConfigured) {
   logger.error('Missing Cosmos DB configuration', {

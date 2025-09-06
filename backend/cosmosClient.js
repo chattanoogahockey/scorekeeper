@@ -174,7 +174,7 @@ const CONTAINER_DEFINITIONS = {
 // Environment variable configuration
 const cosmosUri = config.cosmos.uri;
 const cosmosKey = config.cosmos.key;
-const cosmosDatabase = config.cosmos.database;
+const cosmosDatabase = config.cosmos.databaseName;
 
 const cosmosConfigured = Boolean(cosmosUri && cosmosKey && cosmosDatabase);
 let client = null;

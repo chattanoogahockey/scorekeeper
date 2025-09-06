@@ -262,6 +262,7 @@ export default function LeagueGameSelection() {
           console.log('🎯 User chose to continue existing game - going to in-game menu');
           
           // Load existing rosters
+          console.log('🔄 Loading rosters for continuing game, gameId:', gameId);
           const rostersResponse = await axios.get(`${apiBase}/api/rosters`, {
             params: { gameId },
             headers: {
@@ -270,7 +271,16 @@ export default function LeagueGameSelection() {
               'Expires': '0'
             }
           });
+          
+          console.log('✅ Rosters response for continuing game:', rostersResponse.status, rostersResponse.data);
           const existingRosters = rostersResponse.data || [];
+          console.log('📋 Number of rosters for continuing game:', existingRosters.length);
+          
+          if (existingRosters.length === 0) {
+            console.error('❌ No rosters found for continuing game');
+            alert('No rosters found for this game. Cannot continue without team rosters.');
+            return;
+          }
           
           const processedRosters = existingRosters.map(roster => ({
             teamName: roster.teamName,
@@ -366,6 +376,9 @@ export default function LeagueGameSelection() {
 
       // Preload rosters so the roster page renders immediately
       try {
+        console.log('🔄 Loading rosters for gameId:', gameId);
+        console.log('🔗 Roster API URL:', `${apiBase}/api/rosters?gameId=${gameId}`);
+        
         const rostersResponse = await axios.get(`${apiBase}/api/rosters`, {
           params: { gameId },
           headers: {
@@ -374,24 +387,57 @@ export default function LeagueGameSelection() {
             'Expires': '0'
           }
         });
+        
+        console.log('✅ Rosters API response:', rostersResponse.status, rostersResponse.data);
         const existingRosters = rostersResponse.data || [];
-        const processedRosters = existingRosters.map(roster => ({
-          teamName: roster.teamName,
-          teamId: roster.teamName,
-          players: roster.players.map(player => ({
-            name: player.name,
-            firstName: player.firstName || player.name.split(' ')[0],
-            lastName: player.lastName || player.name.split(' ').slice(1).join(' '),
-            jerseyNumber: player.jerseyNumber,
-            position: player.position || 'Player'
-          }))
-        }));
+        console.log('📋 Number of rosters loaded:', existingRosters.length);
+        
+        if (existingRosters.length === 0) {
+          console.warn('⚠️ No rosters found for this game. Teams may not have rosters uploaded.');
+          alert(`No rosters found for this game.\n\nGame: ${game.homeTeam || game.hometeam} vs ${game.awayTeam || game.awayteam}\n\nPlease ensure both teams have uploaded their rosters before starting the game.`);
+          return;
+        }
+        
+        const processedRosters = existingRosters.map(roster => {
+          console.log(`📝 Processing roster for team: ${roster.teamName} (${roster.players.length} players)`);
+          return {
+            teamName: roster.teamName,
+            teamId: roster.teamName,
+            players: roster.players.map(player => ({
+              name: player.name,
+              firstName: player.firstName || player.name.split(' ')[0],
+              lastName: player.lastName || player.name.split(' ').slice(1).join(' '),
+              jerseyNumber: player.jerseyNumber,
+              position: player.position || 'Player'
+            }))
+          };
+        });
+        
         setRosters(processedRosters);
+        console.log('✅ Rosters set in context:', processedRosters.length, 'teams');
+        
         try {
           sessionStorage.setItem('selectedRosters', JSON.stringify(processedRosters));
-        } catch {}
+          console.log('✅ Rosters saved to sessionStorage');
+        } catch (storageError) {
+          console.warn('⚠️ Failed to save rosters to sessionStorage:', storageError);
+        }
       } catch (e) {
-        console.warn('⚠️ Failed to preload rosters, roster page will handle display', e);
+        console.error('❌ Failed to preload rosters:', e);
+        if (e.response) {
+          console.error('Response status:', e.response.status);
+          console.error('Response data:', e.response.data);
+          if (e.response.status === 500) {
+            alert(`Failed to load rosters (Server Error).\n\nThis may mean:\n- The teams don't have rosters uploaded\n- There's a database issue\n\nError: ${e.response.data?.error || e.message}`);
+          } else if (e.response.status === 404) {
+            alert(`Game or rosters not found.\n\nPlease ensure both teams have uploaded their rosters before starting the game.`);
+          } else {
+            alert(`Failed to load rosters: ${e.response.data?.error || e.message}`);
+          }
+        } else {
+          alert(`Network error loading rosters: ${e.message}`);
+        }
+        return;
       }
 
       navigate('/roster');

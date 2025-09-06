@@ -5,7 +5,6 @@ import compression from 'compression';
 import fs from 'fs';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { readFileSync } from 'fs';
 import dotenv from 'dotenv';
 import { config } from './src/config/index.js';
 import OpenAI from 'openai';
@@ -26,9 +25,9 @@ if (process.env.OPENAI_API_KEY) {
   openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
   });
-  console.log('✅ OpenAI client initialized');
+  logger.info('OpenAI client initialized');
 } else {
-  console.log('⚠️  OpenAI API key not found - chat functionality will be disabled');
+  logger.warn('OpenAI API key not found - chat functionality will be disabled');
 }
 
 import {
@@ -48,7 +47,7 @@ import {
 import apiRoutes from './src/routes/api.js';
 
 // Read package.json for version info
-const pkg = JSON.parse(readFileSync('./package.json', 'utf8'));
+const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
 // Import TTS service
 import ttsService from './ttsService.js';
@@ -151,7 +150,7 @@ const corsOptions = {
     }
 
     // For debugging, log the rejected origin but don't fail
-    console.log(`CORS origin check: ${origin} (rejected, but allowing for Azure compatibility)`);
+    logger.debug(`CORS origin check: ${origin} (rejected, but allowing for Azure compatibility)`);
     // In production, be more permissive to avoid deployment issues
     if (process.env.NODE_ENV === 'production') {
       return callback(null, true);
@@ -958,7 +957,7 @@ app.get('/api/version', (req, res) => {
       try {
         deploymentTime = new Date(process.env.DEPLOYMENT_TIMESTAMP);
         buildTimeSource = 'environment';
-        console.log('Using deployment timestamp from environment:', process.env.DEPLOYMENT_TIMESTAMP);
+        logger.info('Using deployment timestamp from environment:', process.env.DEPLOYMENT_TIMESTAMP);
       } catch (parseError) {
         console.warn('Invalid deployment timestamp format:', process.env.DEPLOYMENT_TIMESTAMP);
         deploymentTime = new Date();
@@ -968,7 +967,7 @@ app.get('/api/version', (req, res) => {
       // Fallback to current time (local dev or first boot before workflow update)
       deploymentTime = new Date();
       buildTimeSource = 'current-time';
-      console.log('Using current time for local build');
+      logger.info('Using current time for local build');
     }
 
     // Format the time in Eastern timezone with explicit formatting
@@ -983,7 +982,7 @@ app.get('/api/version', (req, res) => {
       timeZoneName: 'short'
     });
 
-    console.log(`Final backend buildTime: ${buildTime} (source: ${buildTimeSource})`);
+    logger.info(`Final backend buildTime: ${buildTime} (source: ${buildTimeSource})`);
 
 
     const responseData = {
@@ -1014,7 +1013,7 @@ app.post('/api/admin/update-deployment-time', requireAdminAuth, (req, res) => {
   try {
     const { deploymentTimestamp, githubSha } = req.body;
 
-    console.log('🔄 Deployment timestamp update request:', { deploymentTimestamp, githubSha });
+    logger.info('Deployment timestamp update request:', { deploymentTimestamp, githubSha });
 
     if (!deploymentTimestamp) {
       return res.status(400).json({ error: 'Missing deploymentTimestamp' });
@@ -1023,18 +1022,18 @@ app.post('/api/admin/update-deployment-time', requireAdminAuth, (req, res) => {
     // Verify this is a valid GitHub deployment by checking SHA (lenient check)
     if (githubSha && process.env.BUILD_SOURCEVERSION) {
       if (githubSha !== process.env.BUILD_SOURCEVERSION) {
-        console.log('ℹ️ GitHub SHA differs (common during concurrent deployments):', {
+        logger.info('GitHub SHA differs (common during concurrent deployments):', {
           provided: githubSha.substring(0, 8),
           expected: process.env.BUILD_SOURCEVERSION.substring(0, 8)
         });
       } else {
-        console.log('✅ GitHub SHA matches deployment');
+        logger.info('GitHub SHA matches deployment');
       }
     }
 
     // Update the environment variable for this process instance
     process.env.DEPLOYMENT_TIMESTAMP = deploymentTimestamp;
-    console.log('✅ Updated deployment timestamp to:', deploymentTimestamp);
+    logger.info('Updated deployment timestamp to:', deploymentTimestamp);
 
     res.json({
       success: true,
@@ -1774,7 +1773,7 @@ app.post('/api/goals', async (req, res) => {
 
 // Add the `/api/penalties` POST endpoint for creating penalties
 app.post('/api/penalties', async (req, res) => {
-  console.log('🚨 Recording penalty...');
+  logger.info('Recording penalty...');
 
   const {
     gameId,
@@ -1926,7 +1925,7 @@ app.post('/api/penalties', async (req, res) => {
     };
 
     const { resource } = await container.items.create(penalty);
-    console.log('✅ Penalty recorded successfully with enhanced metadata');
+    logger.info('Penalty recorded successfully with enhanced metadata');
 
     // Kick off background pre-generation for announcer assets
     // preGeneratePenaltyAssets(gameId);
@@ -1992,7 +1991,7 @@ app.get('/api/goals', async (req, res) => {
 
 // DELETE endpoint for removing specific goal
 app.delete('/api/goals/:id', async (req, res) => {
-  console.log('🗑️ Deleting goal...');
+  logger.info('Deleting goal...');
   const { id } = req.params;
   const { gameId } = req.query;
 
@@ -2005,7 +2004,7 @@ app.delete('/api/goals/:id', async (req, res) => {
   try {
     const container = getGoalsContainer();
     await container.item(id, gameId).delete();
-    console.log('✅ Goal deleted successfully');
+    logger.info('Goal deleted successfully');
     res.status(200).json({ success: true, message: 'Goal deleted' });
   } catch (error) {
     console.error('❌ Error deleting goal:', error.message);
@@ -2286,7 +2285,7 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
       });
       const conversation = trimConversationLines(await generateDualGoalAnnouncement(goalData, playerStats), 4);
 
-      console.log('✅ Dual goal announcement generated successfully');
+      logger.info('Dual goal announcement generated successfully');
       // update cache (ensure lastGoalId set)
       const entry = announcerCache.goals.get(gameId) || { single: {} };
       entry.lastGoalId = latestGoalId;

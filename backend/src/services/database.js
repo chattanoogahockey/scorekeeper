@@ -10,6 +10,7 @@ import {
   getHistoricalPlayerStatsContainer
 } from '../../cosmosClient.js';
 import logger from '../../logger.js';
+import { getSchemaForContainer, validateData, GAME_STATUS } from '../schemas/dataSchemas.js';
 
 /**
  * Database service class for handling all database operations
@@ -42,13 +43,34 @@ export class DatabaseService {
   }
 
   /**
-   * Create a new item in a container
+   * Create a new item in a container with strict schema validation
    * @param {string} containerName - Container name
    * @param {Object} item - Item to create
    * @returns {Promise<Object>} Created item
    */
   static async create(containerName, item) {
     try {
+      // Strict schema validation - NO FALLBACKS
+      const schema = getSchemaForContainer(containerName);
+      if (schema) {
+        const validation = validateData(item, schema);
+        if (!validation.isValid) {
+          throw new Error(`Schema validation failed for ${containerName}: ${validation.errors.join(', ')}`);
+        }
+        if (validation.warnings.length > 0) {
+          logger.warn(`Schema warnings for ${containerName}`, { warnings: validation.warnings });
+        }
+      }
+
+      // Add timestamps for system fields
+      const now = new Date().toISOString();
+      if (schema && 'createdAt' in schema) {
+        item.createdAt = now;
+      }
+      if (schema && 'updatedAt' in schema) {
+        item.updatedAt = now;
+      }
+
       const container = this.getContainer(containerName);
       const { resource } = await container.items.create(item);
       logger.info(`Item created in ${containerName}`, { id: item.id });
@@ -63,7 +85,7 @@ export class DatabaseService {
   }
 
   /**
-   * Update an item in a container
+   * Update an item in a container with strict schema validation
    * @param {string} containerName - Container name
    * @param {string} id - Item ID
    * @param {Object} updates - Updates to apply
@@ -79,7 +101,18 @@ export class DatabaseService {
         throw new Error(`Item not found: ${id}`);
       }
 
+      // Add updatedAt timestamp
       const updatedItem = { ...existingItem, ...updates, updatedAt: new Date().toISOString() };
+
+      // Validate the updated item against schema
+      const schema = getSchemaForContainer(containerName);
+      if (schema) {
+        const validation = validateData(updatedItem, schema);
+        if (!validation.isValid) {
+          throw new Error(`Schema validation failed for ${containerName} update: ${validation.errors.join(', ')}`);
+        }
+      }
+
       const { resource } = await container.item(id, partitionKey || id).replace(updatedItem);
 
       logger.info(`Item updated in ${containerName}`, { id });
@@ -136,90 +169,18 @@ export class DatabaseService {
   }
 
   /**
-   * Normalize field names for backward compatibility
-   * @param {Object} item - Database item
-   * @param {string} containerName - Container name for specific normalization rules
-   * @returns {Object} Normalized item
-   */
-  static normalizeFieldNames(item, containerName) {
-    if (!item || typeof item !== 'object') return item;
-
-    const normalized = { ...item };
-
-    // Games container normalization
-    if (containerName === 'games') {
-      // Normalize team names: ensure camelCase versions exist
-      normalized.homeTeam = normalized.homeTeam || normalized.hometeam || normalized.homeTeamId;
-      normalized.awayTeam = normalized.awayTeam || normalized.awayteam || normalized.awayTeamId;
-      
-      // Remove lowercase versions to avoid duplicates
-      delete normalized.hometeam;
-      delete normalized.awayteam;
-      
-      // Normalize status to proper case
-      if (normalized.status) {
-        switch (normalized.status.toLowerCase()) {
-          case 'scheduled':
-            normalized.status = 'Scheduled';
-            break;
-          case 'in progress':
-          case 'in-progress':
-          case 'inprogress':
-            normalized.status = 'In Progress';
-            break;
-          case 'completed':
-          case 'complete':
-          case 'finished':
-          case 'final':
-            normalized.status = 'Completed';
-            break;
-          default:
-            // Capitalize first letter
-            normalized.status = normalized.status.charAt(0).toUpperCase() + normalized.status.slice(1).toLowerCase();
-        }
-      }
-    }
-
-    // Goals container normalization
-    if (containerName === 'goals') {
-      normalized.teamName = normalized.teamName || normalized.scoringTeam;
-      normalized.playerName = normalized.playerName || normalized.player || normalized.scorer;
-    }
-
-    // Penalties container normalization  
-    if (containerName === 'penalties') {
-      normalized.teamName = normalized.teamName || normalized.penalizedTeam;
-      normalized.playerName = normalized.playerName || normalized.penalizedPlayer || normalized.player;
-    }
-
-    // Rosters container normalization
-    if (containerName === 'rosters') {
-      normalized.teamName = normalized.teamName || normalized.team;
-      if (normalized.players && Array.isArray(normalized.players)) {
-        normalized.players = normalized.players.map(player => ({
-          ...player,
-          playerId: player.playerId || player.id,
-          name: player.name || player.playerName
-        }));
-      }
-    }
-
-    return normalized;
-  }
-
-  /**
-   * Execute a query on a container with field normalization
+   * Execute a query on a container with strict field standards
    * @param {string} containerName - Container name
    * @param {Object} querySpec - Query specification
-   * @returns {Promise<Object[]>} Query results with normalized field names
+   * @returns {Promise<Object[]>} Query results
    */
   static async query(containerName, querySpec) {
     try {
       const container = this.getContainer(containerName);
       const { resources } = await container.items.query(querySpec).fetchAll();
       
-      // Normalize field names for consistency
-      return resources.map(item => this.normalizeFieldNames(item, containerName));
+      // Return raw results - NO NORMALIZATION (gold standard approach)
+      return resources;
     } catch (error) {
       logger.error(`Database query error on ${containerName}`, {
         error: error.message,
@@ -230,19 +191,19 @@ export class DatabaseService {
   }
 
   /**
-   * Get an item by ID with field normalization
+   * Get an item by ID - strict field standards only
    * @param {string} containerName - Container name
    * @param {string} id - Item ID
    * @param {string} [partitionKey] - Partition key
-   * @returns {Promise<Object|null>} Found item with normalized fields or null
+   * @returns {Promise<Object|null>} Found item or null
    */
   static async getById(containerName, id, partitionKey) {
     try {
       const container = this.getContainer(containerName);
       const { resource } = await container.item(id, partitionKey || id).read();
       
-      // Normalize field names for consistency
-      return resource ? this.normalizeFieldNames(resource, containerName) : null;
+      // Return raw result - NO NORMALIZATION (gold standard approach)
+      return resource || null;
     } catch (error) {
       if (error.code === 404) {
         return null;

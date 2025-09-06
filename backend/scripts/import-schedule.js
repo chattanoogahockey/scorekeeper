@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Use a relative path or env var for portability
-const excelFilePath = process.env.EXCEL_FILE_PATH || path.join(__dirname, '../../../CHAHKY/data/fall_2025_schedule.xlsx');
+const excelFilePath = process.env.EXCEL_FILE_PATH || 'C:\\Users\\marce\\OneDrive\\Documents\\CHAHKY\\data\\fall_2025_schedule.xlsx';
 
 // Load environment variables
 console.log('📂 Current directory:', __dirname);
@@ -123,6 +123,9 @@ async function importGames() {
         // Parse date/time
         const gameDate = parseExcelDate(row['Date'] || row['Game Date'] || row['date']);
         const gameTime = row['Time'] || row['Game Time'] || row['time'] || '';
+        
+        // Extract week number
+        const week = row['Week'] || row['week'] || null;
 
         // Create game object matching frontend expectations
         const game = {
@@ -132,10 +135,11 @@ async function importGames() {
           division: row['Division'] || 'Unknown',
           season: 'Fall',
           year: 2025,
+          week: week, // Add week number for tracking "just finished week X"
           gameDate: gameDate,
           gameTime: gameTime,
           location: row['Location'] || row['Rink'] || '',
-          status: 'scheduled',
+          status: 'Scheduled', // Capitalize status to match existing data
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
@@ -161,7 +165,7 @@ async function importGames() {
     // Show sample of processed games
     console.log('\n📋 Sample processed games:');
     games.slice(0, 3).forEach((game, i) => {
-      console.log(`${i+1}. ${game.awayTeam} vs ${game.homeTeam} (${game.division})`);
+      console.log(`${i+1}. ${game.awayTeam} vs ${game.homeTeam} (${game.division}) - Week ${game.week || 'TBD'}`);
     });
 
     // Upload to CosmosDB

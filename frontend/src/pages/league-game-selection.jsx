@@ -74,7 +74,7 @@ export default function LeagueGameSelection() {
           } else if (submittedRes.data.value && Array.isArray(submittedRes.data.value)) {
             submittedData = submittedRes.data.value;
           }
-          submittedIds = new Set(submittedData.map(g => g.id || g.gameId));
+          submittedIds = new Set(submittedData.map(g => g.id));
         } catch (submittedError) {
           console.warn('⚠️ Could not fetch submitted games, assuming none:', submittedError.message);
           submittedIds = new Set();
@@ -83,10 +83,10 @@ export default function LeagueGameSelection() {
 
         // Filter games - All divisions, not submitted, with valid teams
         const availableGames = gamesData.filter(game => {
-          const id = game.id || game.gameId;
-          // Use lowercase field names from database (hometeam/awayteam) as fallback
-          const homeTeam = game.homeTeam || game.hometeam;
-          const awayTeam = game.awayTeam || game.awayteam;
+          const id = game.id;
+          // Use standard camelCase field names consistently
+          const homeTeam = game.homeTeam;
+          const awayTeam = game.awayTeam;
           const hasValidTeams = homeTeam && awayTeam && 
                                homeTeam.trim() !== '' && awayTeam.trim() !== '' &&
                                homeTeam !== 'vs' && awayTeam !== 'vs';
@@ -184,7 +184,7 @@ export default function LeagueGameSelection() {
 
   const handleGameSelect = async (game) => {
     try {
-      const gameId = game.id || game.gameId;
+      const gameId = game.id;
       console.log('📋 Checking game status for gameId:', gameId);
       
       // Check for existing game data to determine if this is a new game or continuation
@@ -400,7 +400,7 @@ export default function LeagueGameSelection() {
         
         if (existingRosters.length === 0) {
           console.warn('⚠️ No rosters found for this game. Teams may not have rosters uploaded.');
-          alert(`No rosters found for this game.\n\nGame: ${game.homeTeam || game.hometeam} vs ${game.awayTeam || game.awayteam}\n\nPlease ensure both teams have uploaded their rosters before starting the game.`);
+          alert(`No rosters found for this game.\n\nGame: ${game.homeTeam} vs ${game.awayTeam}\n\nPlease ensure both teams have uploaded their rosters before starting the game.`);
           return;
         }
         
@@ -509,7 +509,7 @@ export default function LeagueGameSelection() {
             >
               <div className="mb-3">
                 <h3 className="text-xl font-semibold text-gray-800">
-                  {game.awayTeam || game.awayteam || game.awayTeamId} vs {game.homeTeam || game.hometeam || game.homeTeamId}
+                  {game.awayTeam} vs {game.homeTeam}
                 </h3>
               </div>
               

@@ -35,7 +35,7 @@ export default function GoalRecord() {
     const fetchExistingGoals = async () => {
       try {
         const goals = await goalRecordingService.fetchExistingGoals(
-          selectedGame.id || selectedGame.gameId
+          selectedGame.id
         );
         setExistingGoals(goals);
 
@@ -547,7 +547,7 @@ export default function GoalRecord() {
                 return;
               }
               
-              if (!selectedGame.id && !selectedGame.gameId) {
+              if (!selectedGame.id) {
                 console.error('❌ Game has no ID:', selectedGame);
                 alert('Error: Selected game has no ID');
                 return;
@@ -572,7 +572,7 @@ export default function GoalRecord() {
                 const goalContext = determineGoalContext(formData.team);
 
                 const goalPayload = {
-                  gameId: selectedGame.id || selectedGame.gameId,
+                  gameId: selectedGame.id,
                   team: formData.team,
                   player: formData.player,
                   period: formData.period,

@@ -17,7 +17,6 @@ router.post('/admin/update-deployment-time', HealthController.updateDeploymentTi
 router.get('/games', cacheControl, GamesController.getGames);
 router.get('/games/submitted', GamesController.getSubmittedGames);
 router.post('/games', GamesController.createGame);
-router.post('/games/clear-all', GamesController.clearAllGames);
 router.get('/games/:id', GamesController.getGameById);
 router.put('/games/:id', GamesController.updateGame);
 router.delete('/games/:id', GamesController.deleteGame);

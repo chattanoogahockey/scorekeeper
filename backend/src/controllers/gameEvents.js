@@ -1,6 +1,7 @@
 import { DatabaseService } from '../services/database.js';
 import { asyncHandler } from '../middleware/index.js';
 import logger from '../../logger.js';
+import { GOALS_SCHEMA, PENALTIES_SCHEMA } from '../schemas/dataSchemas.js';
 
 /**
  * Game Events controller for handling goals and penalties
@@ -20,7 +21,7 @@ export class GameEventsController {
   });
 
   /**
-   * Create a goal
+   * Create a goal with strict field validation
    */
   static createGoal = asyncHandler(async (req, res) => {
     const {
@@ -36,11 +37,24 @@ export class GameEventsController {
       gameContext
     } = req.body;
 
-    // Validation
-    if (!gameId || !team || !player || !period || !time) {
+    // Strict validation - use exact field names from schema
+    const requiredFields = ['gameId', 'teamName', 'playerName', 'period', 'time'];
+    const goalData = {
+      gameId,
+      teamName: team, // Map from request field to schema field
+      playerName: player, // Map from request field to schema field
+      period,
+      time
+    };
+
+    // Check required fields
+    const missingFields = requiredFields.filter(field => !goalData[field]);
+    if (missingFields.length > 0) {
       return res.status(400).json({
         error: 'Missing required fields',
-        required: ['gameId', 'team', 'player', 'period', 'time']
+        required: requiredFields,
+        missing: missingFields,
+        received: Object.keys(req.body)
       });
     }
 
@@ -53,50 +67,20 @@ export class GameEventsController {
 
     // Get existing goals for analytics
     const existingGoals = await DatabaseService.query('goals', {
-      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.recordedAt ASC',
+      query: 'SELECT * FROM c WHERE c.gameId = @gameId ORDER BY c.createdAt ASC',
       parameters: [{ name: '@gameId', value: gameId }]
     });
 
-    // Calculate analytics
-    const goalSequenceNumber = existingGoals.length + 1;
-    const homeGoals = existingGoals.filter(g => g.teamName === game.homeTeam).length;
-    const awayGoals = existingGoals.filter(g => g.teamName === game.awayTeam).length;
+    // Add optional fields and generate ID
+    goalData.id = `${gameId}-goal-${Date.now()}`;
+    if (assist) goalData.assist1 = assist;
+    if (shotType) goalData.shotType = shotType;
+    if (goalType) goalData.goalType = goalType;
 
-    const goalData = {
-      id: `${gameId}-goal-${Date.now()}`,
-      eventType: 'goal',
-      gameId,
-      period,
-      division: game.division || 'Unknown',
-      teamName: team,
-      playerName: player,
-      assistedBy: assist ? [assist] : [],
-      timeRemaining: time,
-      shotType: shotType || 'Wrist Shot',
-      goalType: goalType || 'even strength',
-      breakaway: breakaway || false,
-      recordedAt: new Date().toISOString(),
-      gameStatus: 'in-progress',
-      analytics: {
-        goalSequenceNumber,
-        scoreBeforeGoal: {
-          [game.homeTeam]: game.homeTeam === team ? homeGoals : awayGoals,
-          [game.awayTeam]: game.awayTeam === team ? homeGoals : awayGoals
-        },
-        scoreAfterGoal: {
-          [game.homeTeam]: game.homeTeam === team ? homeGoals + 1 : awayGoals,
-          [game.awayTeam]: game.awayTeam === team ? homeGoals : awayGoals + 1
-        },
-        totalGoalsInGame: goalSequenceNumber,
-        gameSituation: period > 3 ? 'Overtime' : 'Regular',
-        absoluteTimestamp: new Date().toISOString(),
-        ...(gameContext || {})
-      }
-    };
-
+    // Create goal using DatabaseService with schema validation
     const goal = await DatabaseService.create('goals', goalData);
 
-    logger.info('Goal recorded', { goalId: goal.id, gameId, player, team });
+    logger.info('Goal recorded', { goalId: goal.id, gameId, playerName: player, teamName: team });
     res.status(201).json(goal);
   });
 

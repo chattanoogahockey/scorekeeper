@@ -30,7 +30,7 @@ export default function Dashboard() {
 
     const fetchEvents = async () => {
       try {
-        const data = await dashboardService.fetchEvents(selectedGame.id || selectedGame.gameId);
+        const data = await dashboardService.fetchEvents(selectedGame.id);
         setEvents(data);
       } catch (err) {
         console.error('Failed to fetch events', err);
@@ -80,7 +80,7 @@ export default function Dashboard() {
   const refreshEvents = async () => {
     if (!selectedGame) return;
     try {
-      const events = await dashboardService.fetchEvents(selectedGame.id || selectedGame.gameId);
+      const events = await dashboardService.fetchEvents(selectedGame.id);
       setEvents(events);
     } catch (err) {
       console.error('Failed to refresh events', err);
@@ -101,7 +101,7 @@ export default function Dashboard() {
     setGoalError(null);
     try {
       await dashboardService.submitGoal({
-        gameId: selectedGame.id || selectedGame.gameId,
+        gameId: selectedGame.id,
         period: goalForm.period,
         team: goalForm.team,
         player: goalForm.player,
@@ -144,7 +144,7 @@ export default function Dashboard() {
     setPenaltyError(null);
     try {
       await dashboardService.submitPenalty({
-        gameId: selectedGame.id || selectedGame.gameId,
+        gameId: selectedGame.id,
         period: penaltyForm.period,
         team: penaltyForm.team,
         penalizedPlayer: penaltyForm.penalizedPlayer,
@@ -175,7 +175,7 @@ export default function Dashboard() {
   return (
     <div className="p-4 max-w-5xl mx-auto">
       <h2 className="text-3xl font-bold mb-4 text-center">
-        Game Dashboard: {selectedGame.awayTeam || selectedGame.awayteam} vs {selectedGame.homeTeam || selectedGame.hometeam}
+        Game Dashboard: {selectedGame.awayTeam} vs {selectedGame.homeTeam}
       </h2>
       
       {/* Scorekeeper Section */}
@@ -211,8 +211,8 @@ export default function Dashboard() {
                 className="border rounded p-1"
               >
                 <option value="">Select Team</option>
-                <option value={selectedGame.awayTeam || selectedGame.awayteam}>{selectedGame.awayTeam || selectedGame.awayteam}</option>
-                <option value={selectedGame.homeTeam || selectedGame.hometeam}>{selectedGame.homeTeam || selectedGame.hometeam}</option>
+                <option value={selectedGame.awayTeam}>{selectedGame.awayTeam}</option>
+                <option value={selectedGame.homeTeam}>{selectedGame.homeTeam}</option>
               </select>
             </div>
             {goalForm.team && (
@@ -336,8 +336,8 @@ export default function Dashboard() {
                 className="border rounded p-1"
               >
                 <option value="">Select Team</option>
-                <option value={selectedGame.awayTeam || selectedGame.awayteam}>{selectedGame.awayTeam || selectedGame.awayteam}</option>
-                <option value={selectedGame.homeTeam || selectedGame.hometeam}>{selectedGame.homeTeam || selectedGame.hometeam}</option>
+                <option value={selectedGame.awayTeam}>{selectedGame.awayTeam}</option>
+                <option value={selectedGame.homeTeam}>{selectedGame.homeTeam}</option>
               </select>
             </div>
             {penaltyForm.team && (
@@ -412,7 +412,7 @@ export default function Dashboard() {
       
       {/* Announcer and DJ controls */}
       <div className="grid gap-8 md:grid-cols-2 mt-8">
-        <AnnouncerControls gameId={selectedGame.id || selectedGame.gameId} />
+        <AnnouncerControls gameId={selectedGame.id} />
         <DJPanel />
       </div>
       {/* Live event feed */}

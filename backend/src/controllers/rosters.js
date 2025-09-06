@@ -1,6 +1,7 @@
 import { DatabaseService } from '../services/database.js';
 import { asyncHandler } from '../middleware/index.js';
 import logger from '../../logger.js';
+import { ROSTERS_SCHEMA, DIVISIONS, SEASONS } from '../schemas/dataSchemas.js';
 
 /**
  * Rosters controller for handling roster-related endpoints
@@ -30,16 +31,39 @@ export class RostersController {
   });
 
   /**
-   * Create a new roster
+   * Create a new roster with strict field validation
    */
   static createRoster = asyncHandler(async (req, res) => {
-    const { teamName, season, division, players } = req.body;
+    const { teamName, season, division, players, year } = req.body;
 
-    // Validation
-    if (!teamName || !season || !division || !players) {
+    // Strict validation using schema requirements
+    const requiredFields = ['teamName', 'season', 'division', 'players', 'year'];
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    if (missingFields.length > 0) {
       return res.status(400).json({
         error: 'Missing required fields',
-        required: ['teamName', 'season', 'division', 'players']
+        required: requiredFields,
+        missing: missingFields,
+        received: Object.keys(req.body)
+      });
+    }
+
+    // Validate division enum
+    if (!Object.values(DIVISIONS).includes(division)) {
+      return res.status(400).json({
+        error: 'Invalid division',
+        validDivisions: Object.values(DIVISIONS),
+        received: division
+      });
+    }
+
+    // Validate season enum
+    if (!Object.values(SEASONS).includes(season)) {
+      return res.status(400).json({
+        error: 'Invalid season',
+        validSeasons: Object.values(SEASONS),
+        received: season
       });
     }
 
@@ -49,20 +73,14 @@ export class RostersController {
       });
     }
 
-    // Parse season format
-    const seasonParts = season.trim().split(/\s+/);
-    const year = seasonParts[0];
-    const seasonType = seasonParts[1] || 'Fall';
-
-    // Generate ID
-    const rosterId = `${teamName.replace(/\s+/g, '_').toLowerCase()}_${year}_${seasonType.toLowerCase()}`;
+    // Generate ID using strict naming convention
+    const rosterId = `${teamName.replace(/\s+/g, '_').toLowerCase()}_${season.toLowerCase()}_${year}`;
 
     const rosterData = {
       id: rosterId,
       teamName,
       season,
-      year: parseInt(year),
-      seasonType,
+      year,
       division,
       players: players.map(player => ({
         name: player.name,
@@ -70,12 +88,10 @@ export class RostersController {
         lastName: player.lastName || player.name.split(' ').slice(1).join(' '),
         jerseyNumber: player.jerseyNumber,
         position: player.position || 'Player'
-      })),
-      totalPlayers: players.length,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      }))
     };
 
+    // Create roster using DatabaseService with schema validation
     const roster = await DatabaseService.create('rosters', rosterData);
 
     logger.info('Roster created', { rosterId, teamName });

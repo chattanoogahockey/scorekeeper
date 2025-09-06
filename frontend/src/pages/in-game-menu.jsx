@@ -87,8 +87,8 @@ export default function InGameMenu() {
       setEventsError(null);
       
       // Calculate current score
-  const awayScore = goals.filter(g => (g.teamName || g.scoringTeam) === (gameToUse.awayTeam || gameToUse.awayTeamId)).length;
-  const homeScore = goals.filter(g => (g.teamName || g.scoringTeam) === (gameToUse.homeTeam || gameToUse.homeTeamId)).length;
+  const awayScore = goals.filter(g => (g.teamName || g.scoringTeam) === gameToUse.awayTeam).length;
+  const homeScore = goals.filter(g => (g.teamName || g.scoringTeam) === gameToUse.homeTeam).length;
       setCurrentScore({ away: awayScore, home: homeScore });
       
       // Set shots on goal
@@ -235,8 +235,8 @@ export default function InGameMenu() {
       const response = await axios.post(apiUrl, {
         gameId: currentGame.id || currentGame.gameId,
         finalScore: {
-          [currentGame.awayTeam || currentGame.awayTeamId]: currentScore.away,
-          [currentGame.homeTeam || currentGame.homeTeamId]: currentScore.home
+          [currentGame.awayTeam]: currentScore.away,
+          [currentGame.homeTeam]: currentScore.home
         },
         submittedBy: 'Scorekeeper'
       });
@@ -286,7 +286,7 @@ export default function InGameMenu() {
             In-Game Dashboard
           </h1>
           <p className="text-md text-gray-600 font-medium">
-            {currentGame.awayTeam || currentGame.awayTeamId} vs {currentGame.homeTeam || currentGame.homeTeamId}
+            {currentGame.awayTeam} vs {currentGame.homeTeam}
           </p>
           
           {/* Current Score Display with Shots on Goal */}

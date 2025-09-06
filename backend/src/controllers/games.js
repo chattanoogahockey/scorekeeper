@@ -1,6 +1,7 @@
 import { DatabaseService } from '../services/database.js';
 import { asyncHandler } from '../middleware/index.js';
 import logger from '../../logger.js';
+import { GAME_STATUS, DIVISIONS, SEASONS } from '../schemas/dataSchemas.js';
 
 /**
  * Games controller for handling game-related endpoints
@@ -104,29 +105,64 @@ export class GamesController {
   });
 
   /**
-   * Create a new game
+   * Create a new game with strict field validation
    */
   static createGame = asyncHandler(async (req, res) => {
     const gameData = req.body;
 
-    // Basic validation
-    if (!gameData.homeTeam || !gameData.awayTeam) {
+    // Enforce required fields for games schema
+    const requiredFields = ['homeTeam', 'awayTeam', 'gameDate', 'gameTime', 'division', 'season', 'year'];
+    const missingFields = requiredFields.filter(field => !gameData[field]);
+    
+    if (missingFields.length > 0) {
       return res.status(400).json({
         error: 'Missing required fields',
-        required: ['homeTeam', 'awayTeam'],
+        required: requiredFields,
+        missing: missingFields,
         received: Object.keys(gameData)
       });
     }
 
-    // Generate ID if not provided
+    // Generate ID if not provided (following standard pattern)
     if (!gameData.id) {
-      gameData.id = `${gameData.homeTeam.replace(/\s+/g, '_')}_vs_${gameData.awayTeam.replace(/\s+/g, '_')}_${Date.now()}`;
+      const homeTeamSafe = gameData.homeTeam.replace(/\s+/g, '_').toLowerCase();
+      const awayTeamSafe = gameData.awayTeam.replace(/\s+/g, '_').toLowerCase();
+      gameData.id = `${gameData.season.toLowerCase()}_${gameData.year}_${homeTeamSafe}_vs_${awayTeamSafe}_${Date.now()}`;
     }
 
-    // Add timestamps
-    gameData.createdAt = new Date().toISOString();
-    gameData.updatedAt = new Date().toISOString();
+    // Set default status if not provided
+    if (!gameData.status) {
+      gameData.status = GAME_STATUS.SCHEDULED;
+    }
 
+    // Validate status enum
+    if (!Object.values(GAME_STATUS).includes(gameData.status)) {
+      return res.status(400).json({
+        error: 'Invalid game status',
+        validStatuses: Object.values(GAME_STATUS),
+        received: gameData.status
+      });
+    }
+
+    // Validate division enum
+    if (!Object.values(DIVISIONS).includes(gameData.division)) {
+      return res.status(400).json({
+        error: 'Invalid division',
+        validDivisions: Object.values(DIVISIONS),
+        received: gameData.division
+      });
+    }
+
+    // Validate season enum
+    if (!Object.values(SEASONS).includes(gameData.season)) {
+      return res.status(400).json({
+        error: 'Invalid season',
+        validSeasons: Object.values(SEASONS),
+        received: gameData.season
+      });
+    }
+
+    // Create game (DatabaseService.create will handle schema validation and timestamps)
     const game = await DatabaseService.create('games', gameData);
 
     logger.info('Game created', { gameId: game.id });
@@ -171,55 +207,5 @@ export class GamesController {
 
     logger.info('Game deleted', { gameId: id });
     res.json({ message: 'Game deleted successfully' });
-  });
-
-  /**
-   * Clear all games (for data reset)
-   */
-  static clearAllGames = asyncHandler(async (req, res) => {
-    const { confirm } = req.body;
-
-    if (confirm !== 'DELETE_ALL_GAMES') {
-      return res.status(400).json({
-        error: 'Confirmation required',
-        message: 'Send { "confirm": "DELETE_ALL_GAMES" } to proceed'
-      });
-    }
-
-    logger.info('Clearing all games from database');
-
-    try {
-      // Get all games
-      const allGames = await DatabaseService.getGames({});
-      logger.info(`Found ${allGames.length} games to delete`);
-
-      let deleteCount = 0;
-      let errorCount = 0;
-
-      // Delete each game
-      for (const game of allGames) {
-        try {
-          await DatabaseService.delete('games', game.id, game.id);
-          deleteCount++;
-          if (deleteCount % 10 === 0) {
-            logger.info(`Deleted ${deleteCount} games so far...`);
-          }
-        } catch (error) {
-          logger.error(`Failed to delete game ${game.id}`, { error: error.message });
-          errorCount++;
-        }
-      }
-
-      logger.info('Game deletion complete', { deleteCount, errorCount });
-      res.json({
-        message: 'All games cleared successfully',
-        deleted: deleteCount,
-        errors: errorCount,
-        total: allGames.length
-      });
-    } catch (error) {
-      logger.error('Error during bulk game deletion', { error: error.message });
-      throw error;
-    }
   });
 }

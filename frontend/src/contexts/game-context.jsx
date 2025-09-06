@@ -28,10 +28,15 @@ export function GameProvider({ children }) {
     rosters.length > 0 &&
     rosters.every((team) => attendance[team.teamName] && attendance[team.teamName].length >= 0);
 
-  // Derived properties for OTShootoutButton
-  const selectedGameId = selectedGame?.id || selectedGame?.gameId;
-  const homeTeam = selectedGame?.homeTeam || selectedGame?.hometeam || selectedGame?.homeTeamId;
-  const awayTeam = selectedGame?.awayTeam || selectedGame?.awayteam || selectedGame?.awayTeamId;
+  // Derived properties - STRICT field access, NO FALLBACKS (gold standard)
+  const selectedGameId = selectedGame?.id;
+  const homeTeam = selectedGame?.homeTeam;
+  const awayTeam = selectedGame?.awayTeam;
+  const gameDate = selectedGame?.gameDate;
+  const gameTime = selectedGame?.gameTime;
+  const division = selectedGame?.division;
+  const season = selectedGame?.season;
+  const year = selectedGame?.year;
 
   const reset = () => {
   setSelectedDivision(null);
@@ -43,13 +48,18 @@ export function GameProvider({ children }) {
   return (
     <GameContext.Provider
       value={{
-  selectedDivision,
-  setSelectedDivision,
+        selectedDivision,
+        setSelectedDivision,
         selectedGame,
         setSelectedGame,
         selectedGameId,
         homeTeam,
         awayTeam,
+        gameDate,
+        gameTime,
+        division,
+        season,
+        year,
         rosters,
         setRosters,
         attendance,

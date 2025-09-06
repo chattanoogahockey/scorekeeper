@@ -35,7 +35,7 @@ export default function RosterAttendance() {
           Loading Rosters...
         </h2>
         <p className="text-gray-600 text-center mb-4">
-          Loading player rosters for {selectedGame.awayTeam || selectedGame.awayteam || selectedGame.awayTeamId} vs {selectedGame.homeTeam || selectedGame.hometeam || selectedGame.homeTeamId}
+          Loading player rosters for {selectedGame.awayTeam} vs {selectedGame.homeTeam}
         </p>
         <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4 max-w-md">
           <strong>Note:</strong> If rosters don't load, please go back and ensure both teams have uploaded their rosters to the system.
@@ -74,7 +74,7 @@ export default function RosterAttendance() {
       }
 
       const submitData = {
-        gameId: selectedGame.gameId || selectedGame.id || `game-${Date.now()}`,
+        gameId: selectedGame.id,
         attendance: attendanceData,
         totalRoster: rosters.map(team => ({
           teamName: team.teamName,

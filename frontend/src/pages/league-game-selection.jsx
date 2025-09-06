@@ -11,6 +11,9 @@ export default function LeagueGameSelection() {
   const [error, setError] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // API base URL - define at component level so it's available everywhere
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+
   useEffect(() => {
     // Reset context when visiting selection page
     reset();
@@ -25,7 +28,6 @@ export default function LeagueGameSelection() {
 
       try {
         const requestId = Math.random().toString(36).substr(2, 9);
-        const apiBase = import.meta.env.VITE_API_BASE_URL || '';
         const res = await axios.get(`${apiBase}/api/games`, {
           params: { 
             division: 'all', 

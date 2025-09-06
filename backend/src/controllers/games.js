@@ -172,4 +172,54 @@ export class GamesController {
     logger.info('Game deleted', { gameId: id });
     res.json({ message: 'Game deleted successfully' });
   });
+
+  /**
+   * Clear all games (for data reset)
+   */
+  static clearAllGames = asyncHandler(async (req, res) => {
+    const { confirm } = req.body;
+
+    if (confirm !== 'DELETE_ALL_GAMES') {
+      return res.status(400).json({
+        error: 'Confirmation required',
+        message: 'Send { "confirm": "DELETE_ALL_GAMES" } to proceed'
+      });
+    }
+
+    logger.info('Clearing all games from database');
+
+    try {
+      // Get all games
+      const allGames = await DatabaseService.getGames({});
+      logger.info(`Found ${allGames.length} games to delete`);
+
+      let deleteCount = 0;
+      let errorCount = 0;
+
+      // Delete each game
+      for (const game of allGames) {
+        try {
+          await DatabaseService.delete('games', game.id, game.id);
+          deleteCount++;
+          if (deleteCount % 10 === 0) {
+            logger.info(`Deleted ${deleteCount} games so far...`);
+          }
+        } catch (error) {
+          logger.error(`Failed to delete game ${game.id}`, { error: error.message });
+          errorCount++;
+        }
+      }
+
+      logger.info('Game deletion complete', { deleteCount, errorCount });
+      res.json({
+        message: 'All games cleared successfully',
+        deleted: deleteCount,
+        errors: errorCount,
+        total: allGames.length
+      });
+    } catch (error) {
+      logger.error('Error during bulk game deletion', { error: error.message });
+      throw error;
+    }
+  });
 }

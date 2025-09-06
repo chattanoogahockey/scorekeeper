@@ -183,10 +183,8 @@ export class DatabaseService {
 
   /**
    * Get games with optional filtering
-   * @param {Object} filters - Filter options
-   * @param {string} [filters.division] - Division filter
-   * @param {string} [filters.gameId] - Specific game ID
-   * @returns {Promise<Object[]>} Games array
+   * @param {Object} filters - Filters to apply
+   * @returns {Promise<Object[]>} Games array with normalized field names
    */
   static async getGames(filters = {}) {
     let querySpec;
@@ -205,10 +203,17 @@ export class DatabaseService {
       querySpec = { query: 'SELECT * FROM c' };
     }
 
-    return this.query('games', querySpec);
-  }
+    const games = await this.query('games', querySpec);
 
-  /**
+    // Normalize field names for frontend compatibility
+    return games.map(game => ({
+      ...game,
+      // Map lowercase field names to camelCase
+      homeTeam: game.homeTeam || game.hometeam,
+      awayTeam: game.awayTeam || game.awayteam,
+      gameId: game.gameId || game.id
+    }));
+  }  /**
    * Get submitted games
    * @returns {Promise<Object[]>} Submitted games array
    */

@@ -48,6 +48,8 @@ export default function LeagueGameSelection() {
         let gamesData = [];
         if (Array.isArray(res.data)) {
           gamesData = res.data;
+        } else if (res.data.games && Array.isArray(res.data.games)) {
+          gamesData = res.data.games;
         } else if (res.data.data && Array.isArray(res.data.data)) {
           gamesData = res.data.data;
         } else if (res.data.value && Array.isArray(res.data.value)) {

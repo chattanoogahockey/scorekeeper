@@ -300,24 +300,42 @@ export async function initializeContainers() {
     const containerPromises = Object.values(CONTAINER_DEFINITIONS).map(async (definition) => {
       const { name, partitionKey, indexingPolicy } = definition;
       try {
-        const { container } = await database.containers.createIfNotExists({
-          id: name,
-          partitionKey,
-          indexingPolicy
-        });
-        console.log(`✅ Container '${name}' ready`);
+        // First try to get existing container
+        let container;
+        try {
+          const containerResponse = await database.container(name).read();
+          container = containerResponse.container;
+          console.log(`✅ Container '${name}' ready (existing)`);
+        } catch (error) {
+          if (error.code === 404) {
+            // Container doesn't exist, create it
+            const { container: newContainer } = await database.containers.createIfNotExists({
+              id: name,
+              partitionKey,
+              indexingPolicy
+            });
+            container = newContainer;
+            console.log(`✅ Container '${name}' ready (created)`);
+          } else {
+            throw error;
+          }
+        }
         return container;
       } catch (error) {
         console.error(`❌ Failed to initialize container '${name}':`, error.message);
-        throw error;
+        // Don't throw - continue with other containers
+        return null;
       }
     });
-    await Promise.all(containerPromises);
-    console.log('🎉 All Cosmos DB containers initialized successfully');
-    return true;
+    
+    const containers = await Promise.all(containerPromises);
+    const successfulContainers = containers.filter(c => c !== null);
+    console.log(`🎉 ${successfulContainers.length}/${Object.keys(CONTAINER_DEFINITIONS).length} Cosmos DB containers initialized successfully`);
+    return successfulContainers.length > 0;
   } catch (error) {
     console.error('💥 Failed to initialize Cosmos DB containers:', error);
-    throw error;
+    // Don't throw - let the application continue with degraded functionality
+    return false;
   }
 }
 

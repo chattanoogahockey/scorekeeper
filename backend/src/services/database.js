@@ -152,9 +152,32 @@ export class DatabaseService {
       normalized.homeTeam = normalized.homeTeam || normalized.hometeam || normalized.homeTeamId;
       normalized.awayTeam = normalized.awayTeam || normalized.awayteam || normalized.awayTeamId;
       
-      // Also keep lowercase versions for backward compatibility
-      normalized.hometeam = normalized.hometeam || normalized.homeTeam;
-      normalized.awayteam = normalized.awayteam || normalized.awayTeam;
+      // Remove lowercase versions to avoid duplicates
+      delete normalized.hometeam;
+      delete normalized.awayteam;
+      
+      // Normalize status to proper case
+      if (normalized.status) {
+        switch (normalized.status.toLowerCase()) {
+          case 'scheduled':
+            normalized.status = 'Scheduled';
+            break;
+          case 'in progress':
+          case 'in-progress':
+          case 'inprogress':
+            normalized.status = 'In Progress';
+            break;
+          case 'completed':
+          case 'complete':
+          case 'finished':
+          case 'final':
+            normalized.status = 'Completed';
+            break;
+          default:
+            // Capitalize first letter
+            normalized.status = normalized.status.charAt(0).toUpperCase() + normalized.status.slice(1).toLowerCase();
+        }
+      }
     }
 
     // Goals container normalization
@@ -411,5 +434,42 @@ export class DatabaseService {
     ];
 
     return events.sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt));
+  }
+
+  /**
+   * Get team division from roster data
+   * @param {string} teamName - Team name to look up
+   * @param {string} [season='Fall'] - Season to filter by
+   * @param {number} [year=2025] - Year to filter by
+   * @returns {Promise<string>} Team division or 'Unknown' if not found
+   */
+  static async getTeamDivision(teamName, season = 'Fall', year = 2025) {
+    try {
+      // Query for roster with matching team name, season, and year
+      const query = {
+        query: `SELECT c.division FROM c WHERE LOWER(c.teamName) = LOWER(@teamName) AND c.season = @season AND c.year = @year`,
+        parameters: [
+          { name: '@teamName', value: teamName },
+          { name: '@season', value: season },
+          { name: '@year', value: year }
+        ]
+      };
+
+      const results = await this.query('rosters', query);
+      
+      if (results.length > 0) {
+        return results[0].division;
+      }
+      
+      return 'Unknown';
+    } catch (error) {
+      logger.error('Error getting team division:', {
+        error: error.message,
+        teamName,
+        season,
+        year
+      });
+      return 'Unknown';
+    }
   }
 }

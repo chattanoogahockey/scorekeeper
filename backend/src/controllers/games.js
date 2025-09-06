@@ -20,18 +20,55 @@ export class GamesController {
       gameId
     });
 
+    // Enrich games with actual division information from rosters
+    const enrichedGames = await Promise.all(games.map(async (game) => {
+      try {
+        // Only update division if it's currently "Unknown"
+        if (game.division === 'Unknown' && game.homeTeam) {
+          // Try to get division from home team roster
+          const homeDivision = await DatabaseService.getTeamDivision(
+            game.homeTeam, 
+            game.season || 'Fall', 
+            game.year || 2025
+          );
+          
+          if (homeDivision !== 'Unknown') {
+            game.division = homeDivision;
+          } else if (game.awayTeam) {
+            // If home team division not found, try away team
+            const awayDivision = await DatabaseService.getTeamDivision(
+              game.awayTeam, 
+              game.season || 'Fall', 
+              game.year || 2025
+            );
+            if (awayDivision !== 'Unknown') {
+              game.division = awayDivision;
+            }
+          }
+        }
+        
+        return game;
+      } catch (error) {
+        logger.warn('Failed to enrich game division', { 
+          gameId: game.id, 
+          error: error.message 
+        });
+        return game;
+      }
+    }));
+
     const response = {
       success: true,
-      games,
+      games: enrichedGames,
       meta: {
-        count: games.length,
+        count: enrichedGames.length,
         division,
         requestId,
         timestamp: new Date().toISOString()
       }
     };
 
-    res.json(gameId ? games : response);
+    res.json(gameId ? enrichedGames : response);
   });
 
   /**

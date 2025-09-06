@@ -22,17 +22,21 @@ export default function LeagueGameSelection() {
 
     const fetchGames = async () => {
       // Fetch games with cache busting for real-time data
+      // Only fetch upcoming games (today + 6 days) for faster loading
       
       setLoading(true);
       setError(null);
 
       try {
         const requestId = Math.random().toString(36).substr(2, 9);
+        console.log('🔄 Fetching upcoming games (today + 6 days) for faster loading...');
+        
         const res = await axios.get(`${apiBase}/api/games`, {
           params: { 
             division: 'all', 
+            includeUpcoming: 'true', // This tells backend to filter to today + 6 days
             t: Date.now(),
-            v: '4',
+            v: '5', // Updated version for date filtering
             rid: requestId
           },
           signal: abortController.signal,
@@ -43,6 +47,8 @@ export default function LeagueGameSelection() {
             'X-Request-ID': requestId
           }
         });
+
+        console.log('✅ Games API response received:', res.status, 'games in response');
 
         // Process games and filter out submitted ones
 
@@ -481,11 +487,21 @@ export default function LeagueGameSelection() {
         </div>
       </div>
       
-      {loading && <p className="text-lg">Loading games...</p>}
+      {loading && <p className="text-lg">Loading upcoming games...</p>}
       {error && <p className="text-red-500 text-lg">{error}</p>}
       
       {!loading && !error && (
-        <div className="grid md:grid-cols-2 gap-4 w-full max-w-4xl">
+        <>
+          <div className="w-full max-w-4xl mb-4 text-center">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-blue-700 text-sm">
+                📅 Showing games for today through {new Date(Date.now() + 6 * 24 * 60 * 60 * 1000).toLocaleDateString()} 
+                <span className="text-blue-600"> (next 7 days)</span>
+              </p>
+            </div>
+          </div>
+          
+          <div className="grid md:grid-cols-2 gap-4 w-full max-w-4xl">
           {games.map((game) => (
             <div
               key={game.id || game.gameId}
@@ -533,10 +549,12 @@ export default function LeagueGameSelection() {
           
           {!loading && games.length === 0 && (
             <div className="col-span-2 text-center py-8">
-              <p className="text-gray-500 text-lg">No games available</p>
+              <p className="text-gray-500 text-lg">No games available for the next 7 days</p>
+              <p className="text-gray-400 text-sm mt-2">Games are filtered to show only upcoming games (today + 6 days)</p>
             </div>
           )}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

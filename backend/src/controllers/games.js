@@ -10,15 +10,36 @@ export class GamesController {
    * Get games with optional filtering
    */
   static getGames = asyncHandler(async (req, res) => {
-    const { division = 'all', gameId, rid } = req.query;
+    const { division = 'all', gameId, rid, dateFrom, dateTo, includeUpcoming } = req.query;
     const requestId = rid || req.requestId || Math.random().toString(36).substr(2, 9);
 
-    logger.info('Fetching games', { division, gameId, requestId });
+    logger.info('Fetching games', { division, gameId, dateFrom, dateTo, includeUpcoming, requestId });
 
-    const games = await DatabaseService.getGames({
-      division: division.toLowerCase(),
-      gameId
-    });
+    // Calculate date range for upcoming games (today + 6 days) if includeUpcoming is true
+    let filters = { division: division.toLowerCase(), gameId };
+    
+    if (includeUpcoming === 'true' && !dateFrom && !dateTo) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Start of today
+      
+      const endDate = new Date(today);
+      endDate.setDate(today.getDate() + 6); // 6 days from today
+      endDate.setHours(23, 59, 59, 999); // End of day
+      
+      filters.dateFrom = today.toISOString();
+      filters.dateTo = endDate.toISOString();
+      
+      logger.info('Using upcoming games filter', { 
+        dateFrom: filters.dateFrom, 
+        dateTo: filters.dateTo,
+        requestId 
+      });
+    } else if (dateFrom || dateTo) {
+      if (dateFrom) filters.dateFrom = dateFrom;
+      if (dateTo) filters.dateTo = dateTo;
+    }
+
+    const games = await DatabaseService.getGames(filters);
 
     // Enrich games with actual division information from rosters
     const enrichedGames = await Promise.all(games.map(async (game) => {

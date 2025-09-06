@@ -269,13 +269,37 @@ export class DatabaseService {
         query: 'SELECT * FROM c WHERE c.id = @id OR c.gameId = @id',
         parameters: [{ name: '@id', value: filters.gameId }]
       };
-    } else if (filters.division && filters.division.toLowerCase() !== 'all') {
-      querySpec = {
-        query: 'SELECT * FROM c WHERE LOWER(c.division) = LOWER(@division)',
-        parameters: [{ name: '@division', value: filters.division }]
-      };
     } else {
-      querySpec = { query: 'SELECT * FROM c' };
+      // Build dynamic query with multiple filters
+      const conditions = [];
+      const parameters = [];
+      
+      // Division filter
+      if (filters.division && filters.division.toLowerCase() !== 'all') {
+        conditions.push('LOWER(c.division) = LOWER(@division)');
+        parameters.push({ name: '@division', value: filters.division });
+      }
+      
+      // Date range filter (today to next 6 days by default for game selection)
+      if (filters.dateFrom || filters.dateTo) {
+        if (filters.dateFrom) {
+          conditions.push('c.gameDate >= @dateFrom');
+          parameters.push({ name: '@dateFrom', value: filters.dateFrom });
+        }
+        if (filters.dateTo) {
+          conditions.push('c.gameDate <= @dateTo');
+          parameters.push({ name: '@dateTo', value: filters.dateTo });
+        }
+      }
+      
+      if (conditions.length > 0) {
+        querySpec = {
+          query: `SELECT * FROM c WHERE ${conditions.join(' AND ')} ORDER BY c.gameDate ASC`,
+          parameters
+        };
+      } else {
+        querySpec = { query: 'SELECT * FROM c ORDER BY c.gameDate ASC' };
+      }
     }
 
     return await this.query('games', querySpec);

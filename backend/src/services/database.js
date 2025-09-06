@@ -42,26 +42,6 @@ export class DatabaseService {
   }
 
   /**
-   * Execute a query on a container
-   * @param {string} containerName - Container name
-   * @param {Object} querySpec - Query specification
-   * @returns {Promise<Object[]>} Query results
-   */
-  static async query(containerName, querySpec) {
-    try {
-      const container = this.getContainer(containerName);
-      const { resources } = await container.items.query(querySpec).fetchAll();
-      return resources;
-    } catch (error) {
-      logger.error(`Database query error on ${containerName}`, {
-        error: error.message,
-        query: querySpec
-      });
-      throw error;
-    }
-  }
-
-  /**
    * Create a new item in a container
    * @param {string} containerName - Container name
    * @param {Object} item - Item to create
@@ -77,30 +57,6 @@ export class DatabaseService {
       logger.error(`Database create error on ${containerName}`, {
         error: error.message,
         itemId: item.id
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Get an item by ID
-   * @param {string} containerName - Container name
-   * @param {string} id - Item ID
-   * @param {string} [partitionKey] - Partition key
-   * @returns {Promise<Object|null>} Found item or null
-   */
-  static async getById(containerName, id, partitionKey) {
-    try {
-      const container = this.getContainer(containerName);
-      const { resource } = await container.item(id, partitionKey || id).read();
-      return resource;
-    } catch (error) {
-      if (error.code === 404) {
-        return null;
-      }
-      logger.error(`Database get error on ${containerName}`, {
-        error: error.message,
-        id
       });
       throw error;
     }
@@ -174,6 +130,104 @@ export class DatabaseService {
       logger.error(`Database delete error on ${containerName}`, {
         error: error.message,
         id
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Normalize field names for backward compatibility
+   * @param {Object} item - Database item
+   * @param {string} containerName - Container name for specific normalization rules
+   * @returns {Object} Normalized item
+   */
+  static normalizeFieldNames(item, containerName) {
+    if (!item || typeof item !== 'object') return item;
+
+    const normalized = { ...item };
+
+    // Games container normalization
+    if (containerName === 'games') {
+      // Normalize team names: ensure camelCase versions exist
+      normalized.homeTeam = normalized.homeTeam || normalized.hometeam || normalized.homeTeamId;
+      normalized.awayTeam = normalized.awayTeam || normalized.awayteam || normalized.awayTeamId;
+      
+      // Also keep lowercase versions for backward compatibility
+      normalized.hometeam = normalized.hometeam || normalized.homeTeam;
+      normalized.awayteam = normalized.awayteam || normalized.awayTeam;
+    }
+
+    // Goals container normalization
+    if (containerName === 'goals') {
+      normalized.teamName = normalized.teamName || normalized.scoringTeam;
+      normalized.playerName = normalized.playerName || normalized.player || normalized.scorer;
+    }
+
+    // Penalties container normalization  
+    if (containerName === 'penalties') {
+      normalized.teamName = normalized.teamName || normalized.penalizedTeam;
+      normalized.playerName = normalized.playerName || normalized.penalizedPlayer || normalized.player;
+    }
+
+    // Rosters container normalization
+    if (containerName === 'rosters') {
+      normalized.teamName = normalized.teamName || normalized.team;
+      if (normalized.players && Array.isArray(normalized.players)) {
+        normalized.players = normalized.players.map(player => ({
+          ...player,
+          playerId: player.playerId || player.id,
+          name: player.name || player.playerName
+        }));
+      }
+    }
+
+    return normalized;
+  }
+
+  /**
+   * Execute a query on a container with field normalization
+   * @param {string} containerName - Container name
+   * @param {Object} querySpec - Query specification
+   * @returns {Promise<Object[]>} Query results with normalized field names
+   */
+  static async query(containerName, querySpec) {
+    try {
+      const container = this.getContainer(containerName);
+      const { resources } = await container.items.query(querySpec).fetchAll();
+      
+      // Normalize field names for consistency
+      return resources.map(item => this.normalizeFieldNames(item, containerName));
+    } catch (error) {
+      logger.error(`Database query error on ${containerName}`, {
+        error: error.message,
+        query: querySpec
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get an item by ID with field normalization
+   * @param {string} containerName - Container name
+   * @param {string} id - Item ID
+   * @param {string} [partitionKey] - Partition key
+   * @returns {Promise<Object|null>} Found item with normalized fields or null
+   */
+  static async getById(containerName, id, partitionKey) {
+    try {
+      const container = this.getContainer(containerName);
+      const { resource } = await container.item(id, partitionKey || id).read();
+      
+      // Normalize field names for consistency
+      return resource ? this.normalizeFieldNames(resource, containerName) : null;
+    } catch (error) {
+      if (error.code === 404) {
+        return null;
+      }
+      logger.error(`Database getById error on ${containerName}`, {
+        error: error.message,
+        id,
+        partitionKey
       });
       throw error;
     }

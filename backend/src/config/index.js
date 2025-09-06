@@ -16,15 +16,15 @@ export const config = {
     key: process.env.COSMOS_DB_KEY,
     databaseName: process.env.COSMOS_DB_DATABASE_NAME || 'hockey-scorekeeper',
     containers: {
-      games: 'GAMES', // Use 'GAMES' (has real data)
-      goals: 'GOALS', // Use 'GOALS' (has real data) 
-      penalties: 'PENALTIES', // Use 'PENALTIES' (has real data)
-      rosters: 'ROSTERS', // Use 'ROSTERS' (has real data)
-      attendance: 'ATTENDANCE', // Use 'ATTENDANCE' (has real data)
-      otShootout: 'OTSHOOTOUT', // Use 'OTSHOOTOUT' (has real data)
-      playerStats: 'PLAYER-STATS',
-      shotsOnGoal: 'SHOTS-ON-GOAL',
-      historicalPlayerStats: 'HISTORICAL-PLAYER-STATS'
+      games: 'games', // Use 'games' (has real data)
+      goals: 'goals', // Use 'goals' (has real data) 
+      penalties: 'penalties', // Use 'penalties' (has real data)
+      rosters: 'rosters', // Use 'rosters' (has real data)
+      attendance: 'attendance', // Use 'attendance' (has real data)
+      otShootout: 'ot-shootout', // Use 'ot-shootout' (has real data)
+      playerStats: 'player-stats',
+      shotsOnGoal: 'shots-on-goal',
+      historicalPlayerStats: 'historical-player-stats'
     }
   },
 

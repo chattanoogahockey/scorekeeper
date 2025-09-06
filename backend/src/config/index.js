@@ -14,17 +14,17 @@ export const config = {
   cosmos: {
     uri: process.env.COSMOS_DB_URI,
     key: process.env.COSMOS_DB_KEY,
-    databaseName: process.env.COSMOS_DB_DATABASE_NAME || 'scorekeeper',
+    databaseName: process.env.COSMOS_DB_DATABASE_NAME || process.env.COSMOS_DB_NAME || 'scorekeeper',
     containers: {
-      games: 'games', // Use 'games' (has real data)
-      goals: 'goals', // Use 'goals' (has real data) 
-      penalties: 'penalties', // Use 'penalties' (has real data)
-      rosters: 'rosters', // Use 'rosters' (has real data)
-      attendance: 'attendance', // Use 'attendance' (has real data)
-      otShootout: 'ot-shootout', // Use 'ot-shootout' (has real data)
-      playerStats: 'player-stats',
-      shotsOnGoal: 'shots-on-goal',
-      historicalPlayerStats: 'historical-player-stats'
+      games: process.env.COSMOS_DB_GAMES_CONTAINER || 'games',
+      goals: process.env.COSMOS_DB_GOALS_CONTAINER || 'goals',
+      penalties: process.env.COSMOS_DB_PENALTIES_CONTAINER || 'penalties',
+      rosters: process.env.COSMOS_DB_ROSTERS_CONTAINER || 'rosters',
+      attendance: process.env.COSMOS_DB_ATTENDANCE_CONTAINER || 'attendance',
+      otShootout: process.env.COSMOS_DB_OTSHOOTOUT_CONTAINER || 'ot-shootout',
+      playerStats: process.env.COSMOS_DB_PLAYER_STATS_CONTAINER || 'player-stats',
+      shotsOnGoal: process.env.COSMOS_DB_SHOTS_ON_GOAL_CONTAINER || 'shots-on-goal',
+      historicalPlayerStats: process.env.COSMOS_DB_HISTORICAL_PLAYER_STATS_CONTAINER || 'historical-player-stats'
     }
   },
 

@@ -3,18 +3,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join as pathJoin } from 'path';
 import dotenv from 'dotenv';
 import { CosmosClient } from '@azure/cosmos';
-import { config } from // Container accessor functions with proper error handling
- */
-
-// Settings container - Global application settings
-export function getSettingsContainer() {
-  if (!cosmosConfigured || !database) {
-    throw new Error('Cosmos DB not configured');
-  }
-  return database.container(CONTAINER_DEFINITIONS['settings'].name);
-}
-
-// Rink reports container - Weekly division summariesonfig/index.js';
+import { config } from './config/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -46,20 +35,6 @@ const containerNames = config.cosmos.containers;
  */
 
 const CONTAINER_DEFINITIONS = {
-  // Global application settings
-  'settings': {
-    name: containerNames.settings,
-    partitionKey: '/id',
-    indexingPolicy: {
-      indexingMode: 'consistent',
-      includedPaths: [
-        { path: '/*' },
-        { path: '/id/?' },
-        { path: '/type/?' }
-      ]
-    }
-  },
-
   // Weekly rink reports and articles
   'rink-reports': {
     name: containerNames.rinkReports,

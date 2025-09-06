@@ -1,3 +1,4 @@
 This file is created to trigger the GitHub Actions workflow.
 Created at: 2025-09-06
-Purpose: Force workflow execution after statistics page fixes.
+Purpose: Force workflow execution after roster loading fixes.
+Updated: 2025-09-06 21:10 - Fixed apiBase scope issue for roster loading

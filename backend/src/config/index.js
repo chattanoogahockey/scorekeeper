@@ -23,7 +23,6 @@ export const config = {
       attendance: 'attendance', // Use 'attendance' (has real data)
       otShootout: 'ot-shootout', // Use 'ot-shootout' (has real data)
       rinkReports: 'rink-reports',
-      settings: 'settings', // Use 'settings' (consistent)
       playerStats: 'player-stats',
       shotsOnGoal: 'shots-on-goal',
       historicalPlayerStats: 'historical-player-stats'

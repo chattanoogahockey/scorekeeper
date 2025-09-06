@@ -3996,58 +3996,16 @@ app.get('/api/player-stats', async (req, res) => {
   try {
     const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions, getRostersContainer } = await import('./cosmosClient.js');
 
-    // Check if database is configured - if not, return demo data
+    // Check if database is configured
     let db = null;
     try {
       db = getDatabase();
     } catch (error) {
-      logger.warn('Database not available, returning demo player stats');
-    }
-
-    if (!db) {
-      logger.warn('Database not available, returning demo player stats');
-
-      // Return demo data for testing performance optimizations
-      const demoData = [
-        { playerName: 'Demo Player 1', division: 'Gold', goals: 25, assists: 15, points: 40, pim: 4, gp: 20 },
-        { playerName: 'Demo Player 2', division: 'Silver', goals: 20, assists: 18, points: 38, pim: 6, gp: 18 },
-        { playerName: 'Demo Player 3', division: 'Bronze', goals: 18, assists: 12, points: 30, pim: 8, gp: 16 },
-        { playerName: 'Demo Player 4', division: 'Gold', goals: 15, assists: 20, points: 35, pim: 2, gp: 22 },
-        { playerName: 'Demo Player 5', division: 'Silver', goals: 22, assists: 10, points: 32, pim: 10, gp: 19 }
-      ];
-
-      const totalCount = demoData.length;
-      const startIndex = parseInt(offset) || 0;
-      const limitNum = parseInt(limit) || 100;
-      const paginatedData = demoData.slice(startIndex, startIndex + limitNum);
-
-      const pagination = {
-        total: totalCount,
-        limit: limitNum,
-        offset: startIndex,
-        hasNext: startIndex + limitNum < totalCount,
-        hasPrev: startIndex > 0
-      };
-
-      if (debug === 'true') {
-        return res.json({
-          debug: {
-            historicalCount: 0,
-            liveCount: 0,
-            divisionFilter: division || null,
-            autoRebuilt: false,
-            scopeRequested: scope || 'totals',
-            rosterFiltering: false,
-            rosteredPlayersCount: 0,
-            filteredResultCount: paginatedData.length,
-            pagination
-          },
-          data: paginatedData,
-          pagination
-        });
-      }
-
-      return res.json({ data: paginatedData, pagination });
+      logger.warn('Database not available for player stats');
+      return res.status(503).json({
+        error: 'Database not configured',
+        message: 'Player statistics are not available - database not configured'
+      });
     }
 
     // Database is available, proceed with normal operation
@@ -4504,33 +4462,18 @@ app.get('/api/team-stats', async (req, res) => {
   try {
     const { getDatabase } = await import('./cosmosClient.js');
 
-    // Check if database is configured - if not, return demo data
+    // Check if database is configured
     let db = null;
     try {
       db = getDatabase();
       console.log('Team stats: Database available');
     } catch (error) {
-      console.log('Team stats: Database not available, returning demo team stats');
-      logger.warn('Database not available, returning demo team stats');
-    }
-
-    // TEMP: Force demo data for testing
-    if (!db) {
-      console.log('Team stats: Using demo data (database not available)');
-      logger.warn('Database not available, returning demo team stats');
-
-      // Return demo team stats data
-      const demoData = [
-        { teamName: 'Demo Team A', division: 'Gold', gamesPlayed: 20, wins: 15, losses: 3, ties: 2, goalsFor: 85, goalsAgainst: 45, points: 32 },
-        { teamName: 'Demo Team B', division: 'Silver', gamesPlayed: 18, wins: 12, losses: 4, ties: 2, goalsFor: 72, goalsAgainst: 38, points: 26 },
-        { teamName: 'Demo Team C', division: 'Bronze', gamesPlayed: 16, wins: 8, losses: 6, ties: 2, goalsFor: 58, goalsAgainst: 52, points: 18 },
-        { teamName: 'Demo Team D', division: 'Gold', gamesPlayed: 22, wins: 14, losses: 5, ties: 3, goalsFor: 78, goalsAgainst: 48, points: 31 },
-        { teamName: 'Demo Team E', division: 'Silver', gamesPlayed: 19, wins: 10, losses: 7, ties: 2, goalsFor: 65, goalsAgainst: 55, points: 22 }
-      ];
-
-      const filteredData = division ? demoData.filter(team => team.division === division) : demoData;
-
-      return res.json(filteredData);
+      console.log('Team stats: Database not available');
+      logger.warn('Database not available for team stats');
+      return res.status(503).json({ 
+        error: 'Database not configured',
+        message: 'Team statistics are not available - database not configured'
+      });
     }
 
     console.log('Team stats: Database available, proceeding with normal operation');
@@ -4548,59 +4491,45 @@ app.get('/api/team-stats', async (req, res) => {
     console.log('Team stats: Found', submissions.length, 'submissions');
 
     if (!submissions.length) {
-      // No submitted games yet, generate demo stats from rosters and upcoming games
-      console.log('📊 No submitted games found, generating demo team stats from rosters and games');
+      // No submitted games yet, show real teams with zero stats from rosters
+      console.log('📊 No submitted games found, showing real teams with zero stats');
 
       const rostersC = db.container('rosters');
       const { resources: rosters } = await rostersC.items.query('SELECT * FROM c').fetchAll();
 
-      // Also get upcoming games to understand team structure
-      const { resources: upcomingGames } = await gamesC.items.query({
-        query: 'SELECT c.homeTeam, c.awayTeam, c.division FROM c WHERE c.status = \'upcoming\'',
-        parameters: []
-      }).fetchAll();
+      const realTeamStats = [];
 
-      const demoTeamStats = [];
-
-      // Create stats from rosters
+      // Create zero stats from actual rosters
       for (const roster of rosters) {
         if (roster.teamName) {
-          // Find games for this team
-          const teamGames = upcomingGames.filter(game =>
-            game.homeTeam === roster.teamName || game.awayTeam === roster.teamName
-          );
-
-          // Create realistic demo stats
-          const gamesPlayed = Math.min(teamGames.length, 20); // Simulate some games played
-          const wins = Math.floor(gamesPlayed * (0.6 + Math.random() * 0.3)); // 60-90% win rate
-          const losses = gamesPlayed - wins;
-          const goalsFor = wins * 3 + Math.floor(Math.random() * 20);
-          const goalsAgainst = losses * 2 + Math.floor(Math.random() * 15);
-
-          demoTeamStats.push({
+          realTeamStats.push({
             teamName: roster.teamName,
-            division: roster.division,
-            gamesPlayed,
-            wins,
-            losses,
+            division: roster.division || 'Unknown',
+            gamesPlayed: 0,
+            wins: 0,
+            losses: 0,
             ties: 0,
-            goalsFor,
-            goalsAgainst,
-            points: wins * 2, // 2 points per win
-            winPercentage: gamesPlayed > 0 ? ((wins / gamesPlayed) * 100).toFixed(1) : '0.0'
+            goalsFor: 0,
+            goalsAgainst: 0,
+            goalDifferential: 0,
+            points: 0,
+            winPercentage: 0
           });
         }
       }
 
       // Apply division filter
-      let filteredStats = demoTeamStats;
+      let filteredStats = realTeamStats;
       if (division && division.toLowerCase() !== 'all') {
-        filteredStats = filteredStats.filter(team => team.division?.toLowerCase() === division.toLowerCase());
+        filteredStats = filteredStats.filter(team => 
+          team.division?.toLowerCase() === division.toLowerCase()
+        );
       }
 
-      // Sort by points descending
-      filteredStats.sort((a, b) => b.points - a.points);
+      // Sort by team name since all stats are zero
+      filteredStats.sort((a, b) => a.teamName.localeCompare(b.teamName));
 
+      console.log('📊 Returning', filteredStats.length, 'teams with zero stats');
       return res.json(filteredStats);
     }
 

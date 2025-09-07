@@ -6266,13 +6266,37 @@ async function executeAggregateStats(args) {
 
 // Serve static frontend files only in production (after all API routes)
 if (config.isProduction) {
-  const frontendDist = path.resolve(__dirname, 'frontend/dist');
+  let frontendDist = path.resolve(__dirname, 'frontend/dist');
   console.log('🔍 Debug paths:');
   console.log('  __dirname:', __dirname);
-  console.log('  frontendDist:', frontendDist);
+  console.log('  frontendDist (first attempt):', frontendDist);
   console.log('  Does frontendDist exist?:', fs.existsSync(frontendDist));
+  
+  // Azure fallback: if the path doesn't exist, try alternative paths
+  if (!fs.existsSync(frontendDist)) {
+    const alternatePaths = [
+      path.resolve('/home/site/wwwroot/frontend/dist'),
+      path.resolve(process.cwd(), 'frontend/dist'),
+      path.resolve('.', 'frontend/dist')
+    ];
+    
+    for (const alternatePath of alternatePaths) {
+      console.log('  Trying alternate path:', alternatePath);
+      if (fs.existsSync(alternatePath)) {
+        frontendDist = alternatePath;
+        console.log('  ✅ Found frontend files at:', frontendDist);
+        break;
+      }
+    }
+  }
+  
+  console.log('  Final frontendDist:', frontendDist);
   if (fs.existsSync(frontendDist)) {
     console.log('  frontendDist contents:', fs.readdirSync(frontendDist));
+  } else {
+    console.log('  ❌ Frontend dist directory not found!');
+    console.log('  Current working directory:', process.cwd());
+    console.log('  CWD contents:', fs.readdirSync(process.cwd()));
   }
   
   app.use(express.static(frontendDist, {

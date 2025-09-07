@@ -64,19 +64,20 @@ export default function InGameMenu() {
     if (!gameToUse) return;
     
     try {
-      // Fetch penalties, goals, and shots on goal
+      // Fetch penalties, goals, and game data (which now includes shots)
       const penaltiesUrl = `${apiBase}/api/penalties`;
       const goalsUrl = `${apiBase}/api/goals`;
-      const shotsUrl = `${apiBase}/api/shots-on-goal/game/${gameToUse.id || gameToUse.gameId}`;
+      const gameUrl = `${apiBase}/api/games/${gameToUse.id || gameToUse.gameId}`;
         
-      const [penaltiesRes, goalsRes, shotsRes] = await Promise.all([
+      const [penaltiesRes, goalsRes, gameRes] = await Promise.all([
         axios.get(penaltiesUrl, { params: { gameId: gameToUse.id || gameToUse.gameId } }),
         axios.get(goalsUrl, { params: { gameId: gameToUse.id || gameToUse.gameId } }),
-        axios.get(shotsUrl)
+        axios.get(gameUrl)
       ]);
       
       const penalties = (penaltiesRes.data || []).map(p => ({ ...p, eventType: 'penalty' }));
       const goals = (goalsRes.data || []).map(g => ({ ...g, eventType: 'goal' }));
+      const gameData = gameRes.data;
       
       // Combine and sort by recorded time
       const allEvents = [...penalties, ...goals].sort((a, b) => 
@@ -86,13 +87,18 @@ export default function InGameMenu() {
       setEvents(allEvents);
       setEventsError(null);
       
-      // Calculate current score
-  const awayScore = goals.filter(g => (g.teamName || g.scoringTeam) === gameToUse.awayTeam).length;
-  const homeScore = goals.filter(g => (g.teamName || g.scoringTeam) === gameToUse.homeTeam).length;
-      setCurrentScore({ away: awayScore, home: homeScore });
+      // Get current score and shots from game data
+      const currentGameStats = {
+        away: gameData.awayTeamGoals || 0,
+        home: gameData.homeTeamGoals || 0
+      };
+      setCurrentScore(currentGameStats);
       
-      // Set shots on goal
-      setShotsOnGoal(shotsRes.data || { home: 0, away: 0 });
+      // Set shots on goal from game data
+      setShotsOnGoal({
+        home: gameData.homeTeamShots || 0,
+        away: gameData.awayTeamShots || 0
+      });
       
     } catch (err) {
       console.error('Failed to refresh game data', err);
@@ -167,29 +173,29 @@ export default function InGameMenu() {
     console.log(`🎯 Current game:`, currentGame);
     
     try {
-      // Send to backend first
-      const apiUrl = `${apiBase}/api/shots-on-goal`;
+      // Use new increment shot endpoint
+      const apiUrl = `${apiBase}/api/games/${currentGame.id || currentGame.gameId}/increment-shot/${team}`;
       
       console.log(`🎯 Making API call to: ${apiUrl}`);
-      console.log(`🎯 Request payload:`, {
-        gameId: currentGame.id || currentGame.gameId,
-        team: team
-      });
       
-      const response = await axios.post(apiUrl, {
-        gameId: currentGame.id || currentGame.gameId,
-        team: team
-      });
+      const response = await axios.post(apiUrl);
       
       console.log(`✅ Response received:`, response.data);
       
       // Update local state with the server response to ensure consistency
       if (response.data) {
         setShotsOnGoal({
-          home: response.data.home || 0,
-          away: response.data.away || 0
+          home: response.data.homeTeamShots || 0,
+          away: response.data.awayTeamShots || 0
         });
-        console.log(`✅ Local state updated: home=${response.data.home}, away=${response.data.away}`);
+        
+        // Also update the score display in case goals changed
+        setCurrentScore({
+          home: response.data.homeTeamGoals || 0,
+          away: response.data.awayTeamGoals || 0
+        });
+        
+        console.log(`✅ Local state updated: shots H${response.data.homeTeamShots}/A${response.data.awayTeamShots}, goals H${response.data.homeTeamGoals}/A${response.data.awayTeamGoals}`);
       }
       
       console.log(`✅ Shot on goal recorded for ${team}`);

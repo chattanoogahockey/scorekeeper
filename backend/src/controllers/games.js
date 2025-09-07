@@ -97,18 +97,18 @@ export class GamesController {
       if (!game) {
         throw new NotFoundError(`Game with ID ${gameId} not found`);
       }
-      return APIResponse.success(res, game, 'Game retrieved successfully', {
+      return res.json(APIResponse.success(game, {
         gameId,
         requestId
-      });
+      }));
     }
 
-    return APIResponse.success(res, enrichedGames, 'Games retrieved successfully', {
+    return res.json(APIResponse.success(enrichedGames, {
       count: enrichedGames.length,
       division,
       filters: Object.keys(filters).filter(key => filters[key] !== undefined),
       requestId
-    });
+    }));
   });
 
   /**
@@ -119,9 +119,9 @@ export class GamesController {
 
     const submittedGames = await DatabaseService.getSubmittedGames();
 
-    return APIResponse.success(res, submittedGames, 'Submitted games retrieved successfully', {
+    return res.json(APIResponse.success(submittedGames, {
       count: submittedGames.length
-    });
+    }));
   });
 
   /**
@@ -171,9 +171,9 @@ export class GamesController {
       gameDate: game.gameDate
     });
 
-    return APIResponse.success(res, game, 'Game created successfully', {
+    return res.status(201).json(APIResponse.success(game, {
       gameId: game.id
-    }, 201);
+    }));
   });
 
   /**
@@ -186,15 +186,21 @@ export class GamesController {
       throw new ValidationError('Game ID is required');
     }
 
-    const game = await DatabaseService.getById('games', id);
+    // Use query instead of getById to avoid partition key issues
+    const games = await DatabaseService.query('games', {
+      query: 'SELECT * FROM c WHERE c.id = @gameId',
+      parameters: [{ name: '@gameId', value: id }]
+    });
 
-    if (!game) {
+    if (!games || games.length === 0) {
       throw new NotFoundError(`Game with ID ${id} not found`);
     }
 
-    return APIResponse.success(res, game, 'Game retrieved successfully', {
+    const game = games[0];
+
+    return res.json(APIResponse.success(game, {
       gameId: id
-    });
+    }));
   });
 
   /**
@@ -229,10 +235,10 @@ export class GamesController {
       updatedFields: Object.keys(updates)
     });
 
-    return APIResponse.success(res, game, 'Game updated successfully', {
+    return res.json(APIResponse.success(game, {
       gameId: id,
       updatedFields: Object.keys(updates)
-    });
+    }));
   });
 
   /**
@@ -255,8 +261,8 @@ export class GamesController {
 
     logger.info('Game deleted successfully', { gameId: id });
 
-    return APIResponse.success(res, null, 'Game deleted successfully', {
+    return res.json(APIResponse.success(null, {
       gameId: id
-    });
+    }));
   });
 }

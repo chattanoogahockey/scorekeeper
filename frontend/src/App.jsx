@@ -13,6 +13,7 @@ const GoalRecord = React.lazy(() => import('./pages/goal-record.jsx'));
 const PenaltyRecord = React.lazy(() => import('./pages/penalty-record.jsx'));
 const Dashboard = React.lazy(() => import('./pages/Dashboard.jsx'));
 const Statistics = React.lazy(() => import('./pages/Statistics.jsx'));
+const ApiTest = React.lazy(() => import('./pages/api-test.jsx'));
 
 // Loading component
 const LoadingSpinner = () => (
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/penalty" element={<PenaltyRecord />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/statistics" element={<Statistics />} />
+          <Route path="/test" element={<ApiTest />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Suspense>

@@ -36,7 +36,7 @@ export default function InitialMenu() {
           The Scorekeeper
         </h1>
         <p className="text-xl text-blue-700 mb-8">
-          Professional Roller Hockey Scoring & Analytics
+          Chattanooga Roller Hockey Scoring & Analytics
         </p>
       </div>
 

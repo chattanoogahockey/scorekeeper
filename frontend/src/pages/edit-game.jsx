@@ -70,7 +70,8 @@ export default function EditGame() {
       // Fetch teams for dropdowns (get all teams from rosters)
       try {
         const teamsResponse = await axios.get(`${apiBase}/api/rosters`);
-        const allTeams = teamsResponse.data || [];
+        // Handle both legacy format (direct array) and new standardized format ({success: true, data: []})
+        const allTeams = teamsResponse.data?.data || teamsResponse.data || [];
         
         // Get unique teams grouped by division
         const teamsByDivision = allTeams.reduce((acc, roster) => {

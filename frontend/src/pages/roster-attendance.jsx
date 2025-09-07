@@ -136,7 +136,7 @@ export default function RosterAttendance() {
                   const isSub = player.position === 'Sub' || player.name === 'Sub';
                   const isDisabled = submitted;
                   return (
-                    <label key={player.name} className="flex items-center space-x-2 p-2 rounded">
+                    <label key={player.name} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50">
                       <input
                         type="checkbox"
                         name={`attendance-${teamName}`}
@@ -147,6 +147,7 @@ export default function RosterAttendance() {
                       />
                       <span>
                         {isSub ? 'Sub' : player.name}
+                        {player.jerseyNumber ? ` (#${player.jerseyNumber})` : ''}
                       </span>
                     </label>
                   );

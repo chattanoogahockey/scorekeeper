@@ -2,6 +2,7 @@ import { DatabaseService } from '../services/database.js';
 import { asyncHandler } from '../middleware/index.js';
 import logger from '../../logger.js';
 import { ROSTERS_SCHEMA, DIVISIONS, SEASONS } from '../schemas/dataSchemas.js';
+import { APIResponse } from '../utils/apiResponse.js';
 
 /**
  * Rosters controller for handling roster-related endpoints
@@ -23,7 +24,7 @@ export class RostersController {
         division
       });
 
-      res.json(rosters);
+      res.json(APIResponse.success(rosters, { count: rosters.length }));
     } catch (error) {
       logger.error('Error fetching rosters', { error: error.message, gameId, teamName, season, division });
       throw error;

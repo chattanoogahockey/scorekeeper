@@ -31,50 +31,64 @@ export default function LeagueGameSelection() {
         const requestId = Math.random().toString(36).substr(2, 9);
         console.log('🔄 Fetching upcoming games (today + 6 days) for faster loading...');
         
+        // Simplified request with timeout
         const res = await axios.get(`${apiBase}/api/games`, {
           params: { 
             division: 'all', 
             includeUpcoming: 'true', // This tells backend to filter to today + 6 days
-            t: Date.now(),
-            v: '5', // Updated version for date filtering
             rid: requestId
           },
-          signal: abortController.signal,
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-            'X-Request-ID': requestId
-          }
+          timeout: 10000, // 10 second timeout
+          signal: abortController.signal
         });
 
         console.log('✅ Games API response received:', res.status, 'games in response');
 
         // Process games and filter out submitted ones
 
-        // Handle different response formats from backend
+        // Handle new standardized API response format
         let gamesData = [];
-        if (Array.isArray(res.data)) {
+        
+        // New standardized format: { success: true, data: [...], meta: {...} }
+        if (res.data.success && res.data.data && Array.isArray(res.data.data)) {
+          gamesData = res.data.data;
+          console.log('📊 Using new standardized API format, found', gamesData.length, 'games');
+        }
+        // Legacy formats for backward compatibility
+        else if (Array.isArray(res.data)) {
           gamesData = res.data;
+          console.log('📊 Using legacy array format, found', gamesData.length, 'games');
         } else if (res.data.games && Array.isArray(res.data.games)) {
           gamesData = res.data.games;
-        } else if (res.data.data && Array.isArray(res.data.data)) {
-          gamesData = res.data.data;
+          console.log('📊 Using legacy games property format, found', gamesData.length, 'games');
         } else if (res.data.value && Array.isArray(res.data.value)) {
           gamesData = res.data.value;
+          console.log('📊 Using legacy value property format, found', gamesData.length, 'games');
+        } else {
+          console.warn('⚠️ Unexpected response format:', res.data);
+          gamesData = [];
         }
+
         let submittedIds = new Set();
         try {
           const submittedRes = await axios.get(`${apiBase}/api/games/submitted`);
           let submittedData = [];
-          if (Array.isArray(submittedRes.data)) {
+          
+          // Handle new standardized format for submitted games too
+          if (submittedRes.data.success && submittedRes.data.data && Array.isArray(submittedRes.data.data)) {
+            submittedData = submittedRes.data.data;
+          }
+          // Legacy formats
+          else if (Array.isArray(submittedRes.data)) {
             submittedData = submittedRes.data;
           } else if (submittedRes.data.data && Array.isArray(submittedRes.data.data)) {
             submittedData = submittedRes.data.data;
           } else if (submittedRes.data.value && Array.isArray(submittedRes.data.value)) {
             submittedData = submittedRes.data.value;
           }
+          
           submittedIds = new Set(submittedData.map(g => g.id));
+          console.log('📝 Found', submittedIds.size, 'submitted games to exclude');
         } catch (submittedError) {
           console.warn('⚠️ Could not fetch submitted games, assuming none:', submittedError.message);
           submittedIds = new Set();
@@ -112,12 +126,22 @@ export default function LeagueGameSelection() {
         console.error('❌ Failed to load games:', err);
         console.error('Error details:', err.response?.data || err.message);
         
-        // Handle structured error responses from backend
+        // Handle new standardized error responses from backend
         const errorData = err.response?.data;
         let errorMessage = 'Failed to load games from server.';
         
-        if (errorData?.error && typeof errorData === 'object') {
-          // New structured error format
+        if (errorData?.success === false && errorData?.error) {
+          // New standardized error format: { success: false, error: { code, message }, meta: {...} }
+          errorMessage = errorData.error.message || errorMessage;
+          if (errorData.error.code === 'DATABASE_ERROR') {
+            errorMessage += ' Database temporarily unavailable.';
+          }
+          if (errorData.error.code === 'VALIDATION_ERROR') {
+            errorMessage += ' Invalid request parameters.';
+          }
+          errorMessage += ' Please try refreshing the page.';
+        } else if (errorData?.error && typeof errorData === 'object') {
+          // Legacy structured error format
           errorMessage = errorData.message || errorMessage;
           if (errorData.code === 'DB_UNAVAILABLE') {
             errorMessage += ' Database temporarily unavailable.';
@@ -199,7 +223,14 @@ export default function LeagueGameSelection() {
             'Expires': '0'
           }
         });
-        goals = goalsResponse.data || [];
+        
+        // Handle new standardized API response format
+        if (goalsResponse.data.success && goalsResponse.data.data) {
+          goals = goalsResponse.data.data || [];
+        } else {
+          // Legacy format
+          goals = goalsResponse.data || [];
+        }
       } catch (goalsError) {
         console.warn('⚠️ Could not check existing goals, assuming none:', goalsError.message);
         goals = [];
@@ -218,7 +249,14 @@ export default function LeagueGameSelection() {
             'Expires': '0'
           }
         });
-        penalties = penaltiesResponse.data || [];
+        
+        // Handle new standardized API response format
+        if (penaltiesResponse.data.success && penaltiesResponse.data.data) {
+          penalties = penaltiesResponse.data.data || [];
+        } else {
+          // Legacy format
+          penalties = penaltiesResponse.data || [];
+        }
       } catch (penaltiesError) {
         console.warn('⚠️ Could not check existing penalties, assuming none:', penaltiesError.message);
         penalties = [];
@@ -237,7 +275,14 @@ export default function LeagueGameSelection() {
             'Expires': '0'
           }
         });
-        shots = shotsResponse.data || { home: 0, away: 0 };
+        
+        // Handle new standardized API response format
+        if (shotsResponse.data.success && shotsResponse.data.data) {
+          shots = shotsResponse.data.data || { home: 0, away: 0 };
+        } else {
+          // Legacy format
+          shots = shotsResponse.data || { home: 0, away: 0 };
+        }
       } catch (shotsError) {
         console.warn('⚠️ Could not check existing shots, assuming none:', shotsError.message);
         shots = { home: 0, away: 0 };
@@ -279,7 +324,8 @@ export default function LeagueGameSelection() {
           });
           
           console.log('✅ Rosters response for continuing game:', rostersResponse.status, rostersResponse.data);
-          const existingRosters = rostersResponse.data || [];
+          // Handle both legacy format (direct array) and new standardized format ({success: true, data: []})
+          const existingRosters = rostersResponse.data?.data || rostersResponse.data || [];
           console.log('📋 Number of rosters for continuing game:', existingRosters.length);
           
           if (existingRosters.length === 0) {
@@ -395,7 +441,8 @@ export default function LeagueGameSelection() {
         });
         
         console.log('✅ Rosters API response:', rostersResponse.status, rostersResponse.data);
-        const existingRosters = rostersResponse.data || [];
+        // Handle both legacy format (direct array) and new standardized format ({success: true, data: []})
+        const existingRosters = rostersResponse.data?.data || rostersResponse.data || [];
         console.log('📋 Number of rosters loaded:', existingRosters.length);
         
         if (existingRosters.length === 0) {

@@ -95,8 +95,8 @@ export default function AdminPanel() {
 
   const fetchGames = async () => {
     try {
-
-      setGames(response.data);
+      const response = await axios.get(`${apiBase}/api/games/submitted`);
+      setGames(response.data.data || response.data);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching submitted games:', error);

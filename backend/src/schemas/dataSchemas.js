@@ -23,6 +23,12 @@ export const GAMES_SCHEMA = {
   venue: { type: 'string', required: false },
   rink: { type: 'string', required: false },
   
+  // Game statistics (aggregated totals)
+  homeTeamGoals: { type: 'number', required: false, default: 0 },
+  awayTeamGoals: { type: 'number', required: false, default: 0 },
+  homeTeamShots: { type: 'number', required: false, default: 0 },
+  awayTeamShots: { type: 'number', required: false, default: 0 },
+  
   // System fields
   createdAt: { type: 'string', required: true }, // ISO string
   updatedAt: { type: 'string', required: true }  // ISO string

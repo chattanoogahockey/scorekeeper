@@ -138,48 +138,70 @@ app.use(compression({
 
 // Configure CORS with restrictions
 const corsOptions = {
-  origin (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl requests, etc.)
-    if (!origin) {
-      return callback(null, true);
-    }
-
-    // In development, allow localhost
-    if (process.env.NODE_ENV === 'development') {
-      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
-        return callback(null, true);
-      }
-    }
-
-    // In production, allow Azure domains and common origins
-    const allowedOrigins = process.env.ALLOWED_ORIGINS ?
-      process.env.ALLOWED_ORIGINS.split(',') : [];
-
-    // Always allow Azure App Service domains
-    const azureOrigins = [
-      'https://scorekeeper.azurewebsites.net',
-      'https://www.scorekeeper.azurewebsites.net',
-      'http://scorekeeper.azurewebsites.net',
-      'http://www.scorekeeper.azurewebsites.net'
-    ];
-
-    if (allowedOrigins.includes(origin) || azureOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    // For debugging, log the rejected origin but don't fail
-    logger.debug(`CORS origin check: ${origin} (rejected, but allowing for Azure compatibility)`);
-    // In production, be more permissive to avoid deployment issues
-    if (process.env.NODE_ENV === 'production') {
-      return callback(null, true);
-    }
-
-    return callback(new Error('Not allowed by CORS'));
-  },
+  origin: true, // Allow all origins in development for now
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With',
+    'Cache-Control',
+    'Pragma',
+    'Expires'
+  ]
 };
+
+// Original CORS configuration (commented out for debugging)
+// const corsOptions = {
+//   origin (origin, callback) {
+//     // Allow requests with no origin (mobile apps, curl requests, etc.)
+//     if (!origin) {
+//       return callback(null, true);
+//     }
+
+//     // In development, allow localhost
+//     if (process.env.NODE_ENV === 'development') {
+//       if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+//         return callback(null, true);
+//       }
+//     }
+
+//     // In production, allow Azure domains and common origins
+//     const allowedOrigins = process.env.ALLOWED_ORIGINS ?
+//       process.env.ALLOWED_ORIGINS.split(',') : [];
+
+//     // Always allow Azure App Service domains
+//     const azureOrigins = [
+//       'https://scorekeeper.azurewebsites.net',
+//       'https://www.scorekeeper.azurewebsites.net',
+//       'http://scorekeeper.azurewebsites.net',
+//       'http://www.scorekeeper.azurewebsites.net'
+//     ];
+
+//     if (allowedOrigins.includes(origin) || azureOrigins.includes(origin)) {
+//       return callback(null, true);
+//     }
+
+//     // For debugging, log the rejected origin but don't fail
+//     logger.debug(`CORS origin check: ${origin} (rejected, but allowing for Azure compatibility)`);
+//     // In production, be more permissive to avoid deployment issues
+//     if (process.env.NODE_ENV === 'production') {
+//       return callback(null, true);
+//     }
+
+//     return callback(new Error('Not allowed by CORS'));
+//   },
+//   credentials: true,
+//   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+//   allowedHeaders: [
+//     'Content-Type', 
+//     'Authorization', 
+//     'X-Requested-With',
+//     'Cache-Control',
+//     'Pragma',
+//     'Expires'
+//   ]
+// };
 
 app.use(cors(corsOptions));
 
@@ -1775,6 +1797,39 @@ app.post('/api/goals', async (req, res) => {
 
     const { resource } = await container.items.create(goal);
 
+    // Update game stats in the games container
+    try {
+      const gameStatsQuery = {
+        query: 'SELECT * FROM c WHERE c.id = @gameId',
+        parameters: [{ name: '@gameId', value: gameId }]
+      };
+      const { resources: games } = await gamesContainer.items.query(gameStatsQuery).fetchAll();
+      
+      if (games.length > 0) {
+        const game = games[0];
+        
+        // Initialize stats if they don't exist
+        game.homeTeamGoals = game.homeTeamGoals || 0;
+        game.awayTeamGoals = game.awayTeamGoals || 0;
+        game.homeTeamShots = game.homeTeamShots || 0;
+        game.awayTeamShots = game.awayTeamShots || 0;
+        
+        // Increment the appropriate team's goal count
+        if (teamName === game.homeTeam) {
+          game.homeTeamGoals += 1;
+        } else if (teamName === game.awayTeam) {
+          game.awayTeamGoals += 1;
+        }
+        
+        game.updatedAt = new Date().toISOString();
+        await gamesContainer.item(game.id, game.id).replace(game);
+        
+        console.log(`✅ Updated game stats after goal: ${game.homeTeam} ${game.homeTeamGoals} - ${game.awayTeamGoals} ${game.awayTeam}`);
+      }
+    } catch (statsError) {
+      console.warn('⚠️ Could not update game stats after goal:', statsError.message);
+    }
+
     // Kick off background pre-generation for announcer assets
     // preGenerateGoalAssets(gameId);
     // setTimeout(() => preGenerateGoalAssets(gameId), 1500);
@@ -2021,7 +2076,49 @@ app.delete('/api/goals/:id', async (req, res) => {
 
   try {
     const container = getGoalsContainer();
-    await container.item(id, gameId).delete();
+    const gamesContainer = getGamesContainer();
+    
+    // Get the goal before deleting to know which team scored
+    const { resource: goal } = await container.item(id, gameId).read();
+    
+    if (goal) {
+      // Delete the goal
+      await container.item(id, gameId).delete();
+      
+      // Update game stats in the games container
+      try {
+        const gameStatsQuery = {
+          query: 'SELECT * FROM c WHERE c.id = @gameId',
+          parameters: [{ name: '@gameId', value: gameId }]
+        };
+        const { resources: games } = await gamesContainer.items.query(gameStatsQuery).fetchAll();
+        
+        if (games.length > 0) {
+          const game = games[0];
+          
+          // Initialize stats if they don't exist
+          game.homeTeamGoals = game.homeTeamGoals || 0;
+          game.awayTeamGoals = game.awayTeamGoals || 0;
+          game.homeTeamShots = game.homeTeamShots || 0;
+          game.awayTeamShots = game.awayTeamShots || 0;
+          
+          // Decrement the appropriate team's goal count
+          if (goal.teamName === game.homeTeam && game.homeTeamGoals > 0) {
+            game.homeTeamGoals -= 1;
+          } else if (goal.teamName === game.awayTeam && game.awayTeamGoals > 0) {
+            game.awayTeamGoals -= 1;
+          }
+          
+          game.updatedAt = new Date().toISOString();
+          await gamesContainer.item(game.id, game.id).replace(game);
+          
+          console.log(`✅ Updated game stats after goal deletion: ${game.homeTeam} ${game.homeTeamGoals} - ${game.awayTeamGoals} ${game.awayTeam}`);
+        }
+      } catch (statsError) {
+        console.warn('⚠️ Could not update game stats after goal deletion:', statsError.message);
+      }
+    }
+    
     logger.info('Goal deleted successfully');
     res.status(200).json({ success: true, message: 'Goal deleted' });
   } catch (error) {
@@ -4975,6 +5072,96 @@ app.get('/api/penalties/game/:gameId', async (req, res) => {
 });
 
 // Shots on Goal API endpoints
+// NEW: Game stats management endpoints
+app.put('/api/games/:gameId/stats', async (req, res) => {
+  console.log(`📊 Updating game stats for game ID: ${req.params.gameId}`);
+
+  try {
+    const { gameId } = req.params;
+    const { homeTeamGoals, awayTeamGoals, homeTeamShots, awayTeamShots } = req.body;
+    const container = getGamesContainer();
+
+    // Get the current game
+    const { resource: game } = await container.item(gameId, gameId).read();
+    
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    // Update the game stats
+    game.homeTeamGoals = homeTeamGoals !== undefined ? homeTeamGoals : (game.homeTeamGoals || 0);
+    game.awayTeamGoals = awayTeamGoals !== undefined ? awayTeamGoals : (game.awayTeamGoals || 0);
+    game.homeTeamShots = homeTeamShots !== undefined ? homeTeamShots : (game.homeTeamShots || 0);
+    game.awayTeamShots = awayTeamShots !== undefined ? awayTeamShots : (game.awayTeamShots || 0);
+    game.updatedAt = new Date().toISOString();
+
+    await container.item(gameId, gameId).replace(game);
+
+    console.log(`✅ Updated game stats: H-${game.homeTeamGoals}/${game.homeTeamShots}, A-${game.awayTeamGoals}/${game.awayTeamShots}`);
+
+    res.status(200).json({
+      gameId: game.id,
+      homeTeamGoals: game.homeTeamGoals,
+      awayTeamGoals: game.awayTeamGoals,
+      homeTeamShots: game.homeTeamShots,
+      awayTeamShots: game.awayTeamShots,
+      updatedAt: game.updatedAt
+    });
+  } catch (error) {
+    console.error('❌ Error updating game stats:', error);
+    handleError(res, error);
+  }
+});
+
+// Increment shot count for a team
+app.post('/api/games/:gameId/increment-shot/:team', async (req, res) => {
+  console.log(`🎯 Incrementing shot for team: ${req.params.team} in game: ${req.params.gameId}`);
+
+  try {
+    const { gameId, team } = req.params;
+    const container = getGamesContainer();
+
+    // Get the current game
+    const { resource: game } = await container.item(gameId, gameId).read();
+    
+    if (!game) {
+      return res.status(404).json({ error: 'Game not found' });
+    }
+
+    // Initialize stats if they don't exist
+    game.homeTeamGoals = game.homeTeamGoals || 0;
+    game.awayTeamGoals = game.awayTeamGoals || 0;
+    game.homeTeamShots = game.homeTeamShots || 0;
+    game.awayTeamShots = game.awayTeamShots || 0;
+
+    // Increment the appropriate shot count
+    if (team === 'home') {
+      game.homeTeamShots += 1;
+    } else if (team === 'away') {
+      game.awayTeamShots += 1;
+    } else {
+      return res.status(400).json({ error: 'Team must be "home" or "away"' });
+    }
+
+    game.updatedAt = new Date().toISOString();
+    await container.item(gameId, gameId).replace(game);
+
+    console.log(`✅ Shot incremented for ${team}: H-${game.homeTeamShots}, A-${game.awayTeamShots}`);
+
+    res.status(200).json({
+      gameId: game.id,
+      homeTeamGoals: game.homeTeamGoals,
+      awayTeamGoals: game.awayTeamGoals,
+      homeTeamShots: game.homeTeamShots,
+      awayTeamShots: game.awayTeamShots,
+      updatedAt: game.updatedAt
+    });
+  } catch (error) {
+    console.error('❌ Error incrementing shot:', error);
+    handleError(res, error);
+  }
+});
+
 app.post('/api/shots-on-goal', async (req, res) => {
   console.log('🥅 Recording shot on goal...');
   const { gameId, team } = req.body;
@@ -6118,7 +6305,7 @@ if (config.isProduction) {
   logger.info('Development mode: Frontend should be served by Vite dev server');
 }
 
-const server = app.listen(config.port, () => {
+const server = app.listen(config.port, 'localhost', () => {
   const memUsage = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
 
   logger.success('Hockey Scorekeeper API started successfully', {
@@ -6159,6 +6346,16 @@ const server = app.listen(config.port, () => {
     console.log(`\n[Production Echo] THE SCOREKEEPER v${pkg.version} is live at ${new Date().toISOString()}`);
     console.log(`[System Status] Memory: ${memUsage}MB, Uptime: ${Math.floor(process.uptime())}s`);
   }, 5000);
+});
+
+// Add error handling for server
+server.on('error', (error) => {
+  console.error('❌ Server error:', error);
+  process.exit(1);
+});
+
+server.on('listening', () => {
+  console.log(`✅ Server is actually listening on http://localhost:${config.port}`);
 });
 
 // Handle server errors

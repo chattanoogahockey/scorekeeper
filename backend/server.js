@@ -476,10 +476,7 @@ app.use(sanitizeInput);
 // Register API routes
 app.use('/api', apiRoutes);
 
-// Immediate health check for Azure warmup (responds instantly)
-app.get('/', (req, res) => {
-  res.status(200).send('OK - Chattanooga Roller Hockey Scoring & Analytics Ready');
-});
+// NOTE: Root path (/) will be handled by the catch-all SPA route in production mode
 
 function recordTiming(kind, ms) {
   const arr = announcerMetrics.timings[kind];
@@ -6269,7 +6266,7 @@ async function executeAggregateStats(args) {
 
 // Serve static frontend files only in production (after all API routes)
 if (config.isProduction) {
-  const frontendDist = path.resolve(__dirname, 'frontend');
+  const frontendDist = path.resolve(__dirname, '../frontend/dist');
   app.use(express.static(frontendDist, {
     maxAge: '0', // Force no cache for immediate deployment updates
     setHeaders: (res, path) => {

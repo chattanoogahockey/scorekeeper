@@ -6,11 +6,11 @@ import fs from 'fs';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
-import { config } from './src/config/index.js';
+import { config } from './backend/src/config/index.js';
 import OpenAI from 'openai';
-import logger from './logger.js';
-import { requestIdMiddleware, performanceMiddleware, createRateLimit } from './src/utils/performance.js';
-import { responseMiddleware, errorHandler } from './src/utils/apiResponse.js';
+import logger from './backend/logger.js';
+import { requestIdMiddleware, performanceMiddleware, createRateLimit } from './backend/src/utils/performance.js';
+import { responseMiddleware, errorHandler } from './backend/src/utils/apiResponse.js';
 
 // Load environment variables from .env file
 dotenv.config();
@@ -46,13 +46,13 @@ import {
 } from './cosmosClient.js';
 
 // Import API routes
-import apiRoutes from './src/routes/api.js';
+import apiRoutes from './backend/src/routes/api.js';
 
 // Read package.json for version info
 const pkg = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
 
 // Import TTS service
-import ttsService from './ttsService.js';
+import ttsService from './backend/ttsService.js';
 
 // Conditionally import announcer service to prevent startup failures
 const createGoalAnnouncement = null;
@@ -66,7 +66,7 @@ let generateDualPenaltyAnnouncement = null;
 let generateDualRandomCommentary = null;
 
 try {
-  const announcerModule = await import('./announcerService.js');
+  const announcerModule = await import('./backend/backend/announcerService.js');
   generateGoalAnnouncement = announcerModule.generateGoalAnnouncement;
   generateScorelessCommentary = announcerModule.generateScorelessCommentary;
   generateGoalFeedDescription = announcerModule.generateGoalFeedDescription;
@@ -95,12 +95,6 @@ const app = express();
 // Add request ID and performance monitoring middleware first
 app.use(requestIdMiddleware);
 app.use(performanceMiddleware);
-
-// Add debugging middleware to log all requests
-app.use((req, res, next) => {
-  console.log(`🔍 Request: ${req.method} ${req.path} from ${req.ip}`);
-  next();
-});
 
 // Add API response middleware
 app.use(responseMiddleware);
@@ -545,7 +539,7 @@ function trimConversationLines(conversation, maxLines = 4) {
 async function initializeAnnouncer() {
   try {
     // Light-touch warmup: validate TTS client availability and perform a tiny synthesis with both voices
-    const { getAnnouncerVoices } = await import('./voice-config.js');
+    const { getAnnouncerVoices } = await import('./backend/voice-config.js');
     const voices = await getAnnouncerVoices();
     const originalVoice = ttsService.selectedVoice;
     for (const v of [voices.maleVoice, voices.femaleVoice]) {
@@ -578,7 +572,7 @@ async function preGenerateGoalAssets(gameId) {
     const gamesContainer = getGamesContainer();
     let historicalContainer = null;
     try {
-      const mod = await import('./cosmosClient.js'); historicalContainer = mod.getHistoricalPlayerStatsContainer?.();
+      const mod = await import('./backend/cosmosClient.js'); historicalContainer = mod.getHistoricalPlayerStatsContainer?.();
     } catch (_) {}
 
     const [{ resources: goals }, { resources: gamesByQuery }] = await Promise.all([
@@ -658,7 +652,7 @@ async function preGenerateGoalAssets(gameId) {
     entry.lastGoalId = lastGoal.id || lastGoal._rid || String(Date.now());
 
     // Prepare single announcer male/female (text + audio)
-    const { getAnnouncerVoices } = await import('./voice-config.js');
+    const { getAnnouncerVoices } = await import('./backend/voice-config.js');
     const voices = await getAnnouncerVoices();
 
     for (const [gender, voiceId] of [['male', voices.maleVoice], ['female', voices.femaleVoice]]) {
@@ -765,7 +759,7 @@ async function preGeneratePenaltyAssets(gameId) {
     const entry = announcerCache.penalties.get(gameId) || { single: {} };
     entry.lastPenaltyId = lastPenalty.id || lastPenalty._rid || String(Date.now());
 
-    const { getAnnouncerVoices } = await import('./voice-config.js');
+    const { getAnnouncerVoices } = await import('./backend/voice-config.js');
     const voices = await getAnnouncerVoices();
     for (const [gender, voiceId] of [['male', voices.maleVoice], ['female', voices.femaleVoice]]) {
       try {
@@ -1250,7 +1244,7 @@ app.get('/api/rosters', async (req, res) => {
 
   try {
     // Check if database is configured - if not, return demo data
-    const { getDatabase } = await import('./cosmosClient.js');
+    const { getDatabase } = await import('./backend/cosmosClient.js');
     let db = null;
     try {
       db = getDatabase();
@@ -1423,7 +1417,7 @@ app.post('/api/rosters', async (req, res) => {
     }
 
     // Import validation functions
-    const { validateRosterData, generatePlayerId } = await import('./eventValidation.js');
+    const { validateRosterData, generatePlayerId } = await import('./backend/eventValidation.js');
 
     // Validate roster data
     const validationErrors = await validateRosterData({
@@ -1647,7 +1641,7 @@ app.post('/api/goals', async (req, res) => {
 
   try {
     // Import validation functions
-    const { validateGoalEvent, getNextSequenceNumber, generatePlayerId } = await import('./eventValidation.js');
+    const { validateGoalEvent, getNextSequenceNumber, generatePlayerId } = await import('./backend/eventValidation.js');
 
     // Validate the goal event
     const validationErrors = await validateGoalEvent({
@@ -1870,7 +1864,7 @@ app.post('/api/penalties', async (req, res) => {
 
   try {
     // Import validation functions
-    const { validatePenaltyEvent, getNextSequenceNumber, generatePlayerId } = await import('./eventValidation.js');
+    const { validatePenaltyEvent, getNextSequenceNumber, generatePlayerId } = await import('./backend/eventValidation.js');
 
     // Validate the penalty event
     const validationErrors = await validatePenaltyEvent({
@@ -2161,7 +2155,7 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
   }
 
   // Map voice gender to Google TTS Studio voices using UNIFIED voice configuration
-  const { getAnnouncerVoices, logTtsUse } = await import('./voice-config.js');
+  const { getAnnouncerVoices, logTtsUse } = await import('./backend/voice-config.js');
   const voiceConfig = await getAnnouncerVoices();
 
   const selectedVoice = voiceGender === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
@@ -2316,7 +2310,7 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
     try {
       let historicalContainer = null;
       try {
-        const mod = await import('./cosmosClient.js'); historicalContainer = mod.getHistoricalPlayerStatsContainer?.();
+        const mod = await import('./backend/cosmosClient.js'); historicalContainer = mod.getHistoricalPlayerStatsContainer?.();
       } catch (_) {}
       if (historicalContainer) {
         if (!globalThis.__CAREER_GOAL_CACHE__) {
@@ -2362,7 +2356,7 @@ app.post('/api/goals/announce-last', aiRateLimitMiddleware, async (req, res) => 
         });
       }
       // Only use single-mode cache if the cached voice matches the currently selected voice id
-      const { getAnnouncerVoices } = await import('./voice-config.js');
+      const { getAnnouncerVoices } = await import('./backend/voice-config.js');
       const voices = await getAnnouncerVoices();
       const requestedVoiceId = voiceGender === 'male' ? voices.maleVoice : voices.femaleVoice;
       if (announcerMode !== 'dual' && cached.single?.[voiceGender]?.text && (!cached.single[voiceGender].voice || cached.single[voiceGender].voice === requestedVoiceId)) {
@@ -2489,7 +2483,7 @@ app.post('/api/penalties/announce-last', aiRateLimitMiddleware, async (req, res)
   }
 
   // Map voice gender to Google TTS Studio voices using UNIFIED voice configuration
-  const { getAnnouncerVoices, logTtsUse } = await import('./voice-config.js');
+  const { getAnnouncerVoices, logTtsUse } = await import('./backend/voice-config.js');
   const voiceConfig = await getAnnouncerVoices();
 
   const selectedVoice = voiceGender === 'male' ? voiceConfig.maleVoice : voiceConfig.femaleVoice;
@@ -2601,7 +2595,7 @@ app.post('/api/penalties/announce-last', aiRateLimitMiddleware, async (req, res)
           gameContext
         });
       }
-      const { getAnnouncerVoices } = await import('./voice-config.js');
+      const { getAnnouncerVoices } = await import('./backend/voice-config.js');
       const voices = await getAnnouncerVoices();
       const requestedVoiceId = voiceGender === 'male' ? voices.maleVoice : voices.femaleVoice;
       if (announcerMode !== 'dual' && cached.single?.[voiceGender]?.text && (!cached.single[voiceGender].voice || cached.single[voiceGender].voice === requestedVoiceId)) {
@@ -4015,7 +4009,7 @@ app.get('/api/health', (req, res) => {
 app.post('/api/admin/historical-player-stats/import', async (req, res) => {
   const { rows, csv, dryRun } = req.body || {};
   try {
-    const { getHistoricalPlayerStatsContainer } = await import('./cosmosClient.js');
+    const { getHistoricalPlayerStatsContainer } = await import('./backend/cosmosClient.js');
     const c = getHistoricalPlayerStatsContainer();
     let data = rows;
     if (!data && csv) {
@@ -4064,7 +4058,7 @@ app.post('/api/admin/historical-player-stats/import', async (req, res) => {
 // Ensure historical-player-stats container exists (idempotent)
 app.post('/api/admin/historical-player-stats/ensure', async (req, res) => {
   try {
-    const { getDatabase, getContainerDefinitions } = await import('./cosmosClient.js');
+    const { getDatabase, getContainerDefinitions } = await import('./backend/cosmosClient.js');
     const db = await getDatabase();
     const defs = getContainerDefinitions();
     const def = defs['historical-player-stats'];
@@ -4106,7 +4100,7 @@ app.get('/api/player-stats', async (req, res) => {
   } = req.query; // scope: totals|historical|live
 
   try {
-    const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions, getRostersContainer } = await import('./cosmosClient.js');
+    const { getDatabase, getHistoricalPlayerStatsContainer, getContainerDefinitions, getRostersContainer } = await import('./backend/cosmosClient.js');
 
     // Check if database is configured
     let db = null;
@@ -4499,7 +4493,7 @@ app.get('/api/player-stats', async (req, res) => {
 // Admin endpoint to normalize goal & penalty event field names for consistency (playerName, teamName)
 app.post('/api/admin/normalize-events', async (req, res) => {
   try {
-    const { getDatabase } = await import('./cosmosClient.js');
+    const { getDatabase } = await import('./backend/cosmosClient.js');
     const db = await getDatabase();
     const goalsC = db.container('goals');
     const pensC = db.container('penalties');
@@ -4538,7 +4532,7 @@ app.post('/api/admin/normalize-events', async (req, res) => {
 // Player stats metadata (distinct seasons & years from historical data)
 app.get('/api/player-stats/meta', async (req, res) => {
   try {
-    const { getHistoricalPlayerStatsContainer } = await import('./cosmosClient.js');
+    const { getHistoricalPlayerStatsContainer } = await import('./backend/cosmosClient.js');
     const histC = getHistoricalPlayerStatsContainer();
     const { resources } = await histC.items.query('SELECT c.season, c.year FROM c').fetchAll();
     const seasons = new Set();
@@ -4572,7 +4566,7 @@ app.get('/api/team-stats', async (req, res) => {
 
   const { division } = req.query || {};
   try {
-    const { getDatabase } = await import('./cosmosClient.js');
+    const { getDatabase } = await import('./backend/cosmosClient.js');
 
     // Check if database is configured
     let db = null;
@@ -4749,7 +4743,7 @@ app.get('/api/team-stats', async (req, res) => {
 app.post('/api/admin/backfill-submissions', async (req, res) => {
   const { dryRun } = req.body || {};
   try {
-    const { getDatabase } = await import('./cosmosClient.js');
+    const { getDatabase } = await import('./backend/cosmosClient.js');
     const db = await getDatabase();
     const gamesC = db.container('games');
     const goalsC = db.container('goals');
@@ -4831,7 +4825,7 @@ app.post('/api/admin/backfill-submissions', async (req, res) => {
 app.post('/api/admin/normalize-events', async (req, res) => {
   const { dryRun } = req.body || {};
   try {
-    const { getDatabase } = await import('./cosmosClient.js');
+    const { getDatabase } = await import('./backend/cosmosClient.js');
     const db = await getDatabase();
     const goalsC = db.container('goals');
     const penaltiesC = db.container('penalties');
@@ -5326,7 +5320,7 @@ app.delete('/api/shots-on-goal/:id', async (req, res) => {
 app.post('/api/games/:gameId/cancel', async (req, res) => {
   const { gameId } = req.params;
   try {
-    const db = await (await import('./cosmosClient.js')).getDatabase();
+    const db = await (await import('./backend/cosmosClient.js')).getDatabase();
     const goalsC = db.container('goals');
     const pensC = db.container('penalties');
     const shotsC = db.container('shots-on-goal');
@@ -5525,11 +5519,11 @@ app.post('/api/undo-shot-on-goal', async (req, res) => {
 });
 
 // Serve audio files generated by announcer
-app.use('/api/audio', express.static(path.join(__dirname, 'audio-cache')));
+app.use('/api/audio', express.static(path.join(__dirname, 'backend/audio-cache')));
 
 // Explicit sounds mapping in production to ensure reliable asset delivery
 if (config.isProduction) {
-  const frontendDistForSounds = path.resolve(__dirname, 'frontend');
+  const frontendDistForSounds = path.resolve(__dirname, 'frontend/public');
   const soundsDir = path.join(frontendDistForSounds, 'sounds');
 
   if (!fs.existsSync(soundsDir)) {
@@ -5628,7 +5622,7 @@ app.post('/api/admin/cleanup-games', async (req, res) => {
   try {
     console.log('🧹 Admin requested game cleanup...');
 
-    const { cleanupDuplicateGames } = await import('./cleanupDuplicateGames.js');
+    const { cleanupDuplicateGames } = await import('./backend/cleanupDuplicateGames.js');
 
     // Run cleanup and capture results
     const originalLog = console.log;
@@ -5718,7 +5712,7 @@ app.post('/api/tts/dual-line', async (req, res) => {
     console.log(`🎤 Generating ${speaker === 'male' ? 'Al' : 'Linda'} TTS: "${text.substring(0, 50)}..."`);
 
     // Use the UNIFIED voice configuration system - same as individual buttons
-    const { getAnnouncerVoices, logTtsUse } = await import('./voice-config.js');
+    const { getAnnouncerVoices, logTtsUse } = await import('./backend/voice-config.js');
     const voiceConfig = await getAnnouncerVoices();
 
     // Select studio voice based on speaker using the SAME voices as individual buttons
@@ -6089,7 +6083,7 @@ Answer in plain text only - no tables, charts, or formatting.`
 // Tool execution functions
 async function executeGetTopPlayers(args) {
   try {
-    const { getPlayerStatsContainer } = await import('./cosmosClient.js');
+    const { getPlayerStatsContainer } = await import('./backend/cosmosClient.js');
     const playerStatsContainer = getPlayerStatsContainer();
 
     // Validate metric parameter
@@ -6158,7 +6152,7 @@ async function executeGetTopPlayers(args) {
 
 async function executeGetTeamStats(args) {
   try {
-    const { getDatabase } = await import('./cosmosClient.js');
+    const { getDatabase } = await import('./backend/cosmosClient.js');
     const db = getDatabase();
     const gamesContainer = db.container('games');
 
@@ -6214,7 +6208,7 @@ async function executeGetTeamStats(args) {
 
 async function executeGetGameSummary(args) {
   try {
-    const { getDatabase } = await import('./cosmosClient.js');
+    const { getDatabase } = await import('./backend/cosmosClient.js');
     const db = getDatabase();
     const gamesContainer = db.container('games');
 
@@ -6248,7 +6242,7 @@ async function executeGetGameSummary(args) {
 async function executeAggregateStats(args) {
   try {
     // This is a simplified implementation - in a real scenario you'd build complex queries
-    const { getDatabase } = await import('./cosmosClient.js');
+    const { getDatabase } = await import('./backend/cosmosClient.js');
     const db = getDatabase();
 
     if (args.entity === 'players') {
@@ -6270,58 +6264,13 @@ async function executeAggregateStats(args) {
   }
 }
 
-// Serve static frontend files only in production (after all API routes)
-console.log('🔍 Checking production mode:', config.isProduction);
-console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
-console.log('🔍 Current __dirname:', __dirname);
-console.log('🔍 Current process.cwd():', process.cwd());
+// Serve static frontend files (after all API routes)
+const frontendDist = path.resolve(__dirname, 'frontend/dist');
+console.log('🔍 Checking for frontend build at:', frontendDist);
 
-if (config.isProduction) {
-  console.log('🔍 Entering production static file serving setup...');
-  
-  // Azure-specific path resolution
-  let frontendDist;
-  if (process.env.WEBSITE_SITE_NAME) {
-    // We're on Azure - use Azure-specific path
-    frontendDist = '/home/site/wwwroot/frontend/dist';
-    console.log('🔍 Azure environment detected, using Azure path:', frontendDist);
-  } else {
-    // Local or other environments
-    frontendDist = path.resolve(__dirname, 'frontend/dist');
-    console.log('🔍 Non-Azure environment, using relative path:', frontendDist);
-  }
-  console.log('🔍 Debug paths:');
-  console.log('  __dirname:', __dirname);
-  console.log('  frontendDist (first attempt):', frontendDist);
-  console.log('  Does frontendDist exist?:', fs.existsSync(frontendDist));
-  
-  // Azure fallback: if the path doesn't exist, try alternative paths
-  if (!fs.existsSync(frontendDist)) {
-    const alternatePaths = [
-      path.resolve('/home/site/wwwroot/frontend/dist'),
-      path.resolve(process.cwd(), 'frontend/dist'),
-      path.resolve('.', 'frontend/dist')
-    ];
-    
-    for (const alternatePath of alternatePaths) {
-      console.log('  Trying alternate path:', alternatePath);
-      if (fs.existsSync(alternatePath)) {
-        frontendDist = alternatePath;
-        console.log('  ✅ Found frontend files at:', frontendDist);
-        break;
-      }
-    }
-  }
-  
-  console.log('  Final frontendDist:', frontendDist);
-  if (fs.existsSync(frontendDist)) {
-    console.log('  frontendDist contents:', fs.readdirSync(frontendDist));
-  } else {
-    console.log('  ❌ Frontend dist directory not found!');
-    console.log('  Current working directory:', process.cwd());
-    console.log('  CWD contents:', fs.readdirSync(process.cwd()));
-  }
-  
+if (fs.existsSync(frontendDist)) {
+  console.log('✅ Frontend build found! Setting up static file serving...');
+  console.log('  Build contains:', fs.readdirSync(frontendDist).length, 'items');
   app.use(express.static(frontendDist, {
     maxAge: '0', // Force no cache for immediate deployment updates
     setHeaders: (res, path) => {
@@ -6339,33 +6288,18 @@ if (config.isProduction) {
     }
   }));
 
-  // Catch-all route to serve index.html for SPA (production only, MUST be last!)
+  // Catch-all route to serve index.html for SPA (MUST be last!)
   app.get('*', (req, res) => {
-    try {
-      // Force no cache for index.html to ensure fresh app loads
-      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.set('Pragma', 'no-cache');
-      res.set('Expires', '0');
-      
-      const indexPath = path.join(frontendDist, 'index.html');
-      console.log('🔍 Catch-all route triggered for:', req.path);
-      console.log('  Trying to serve:', indexPath);
-      console.log('  frontendDist:', frontendDist);
-      console.log('  Does index.html exist?:', fs.existsSync(indexPath));
-      
-      if (!fs.existsSync(indexPath)) {
-        console.log('❌ index.html not found, returning 404');
-        return res.status(404).send('Application not available - frontend files not found');
-      }
-      
-      res.sendFile(indexPath);
-    } catch (error) {
-      console.error('❌ Error in catch-all route:', error);
-      res.status(500).send('Server error');
-    }
+    // Force no cache for index.html to ensure fresh app loads
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.sendFile(path.join(frontendDist, 'index.html'));
   });
 } else {
-  // Development mode: log that frontend should be served separately
+  // No frontend build found - fine for development with separate Vite server
+  console.log('ℹ️ No frontend build found - run "npm run build" to create production build');
+  console.log('ℹ️ For development, run frontend separately: npm run dev:frontend');
   logger.info('Development mode: Frontend should be served by Vite dev server');
 }
 

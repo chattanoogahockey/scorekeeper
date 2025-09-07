@@ -6264,9 +6264,13 @@ async function executeAggregateStats(args) {
   }
 }
 
-// Serve static frontend files only in production (after all API routes)
-if (config.isProduction) {
-  const frontendDist = path.resolve(__dirname, '../frontend/dist');
+// Serve static frontend files (after all API routes)
+const frontendDist = path.resolve(__dirname, '../frontend/dist');
+console.log('🔍 Checking for frontend build at:', frontendDist);
+
+if (fs.existsSync(frontendDist)) {
+  console.log('✅ Frontend build found! Setting up static file serving...');
+  console.log('  Build contains:', fs.readdirSync(frontendDist).length, 'items');
   app.use(express.static(frontendDist, {
     maxAge: '0', // Force no cache for immediate deployment updates
     setHeaders: (res, path) => {
@@ -6284,7 +6288,7 @@ if (config.isProduction) {
     }
   }));
 
-  // Catch-all route to serve index.html for SPA (production only, MUST be last!)
+  // Catch-all route to serve index.html for SPA (MUST be last!)
   app.get('*', (req, res) => {
     // Force no cache for index.html to ensure fresh app loads
     res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -6293,7 +6297,9 @@ if (config.isProduction) {
     res.sendFile(path.join(frontendDist, 'index.html'));
   });
 } else {
-  // Development mode: log that frontend should be served separately
+  // No frontend build found - fine for development with separate Vite server
+  console.log('ℹ️ No frontend build found - run "npm run build" to create production build');
+  console.log('ℹ️ For development, run frontend separately: npm run dev:frontend');
   logger.info('Development mode: Frontend should be served by Vite dev server');
 }
 

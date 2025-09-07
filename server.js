@@ -6318,11 +6318,28 @@ if (config.isProduction) {
 
   // Catch-all route to serve index.html for SPA (production only, MUST be last!)
   app.get('*', (req, res) => {
-    // Force no cache for index.html to ensure fresh app loads
-    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.set('Pragma', 'no-cache');
-    res.set('Expires', '0');
-    res.sendFile(path.join(frontendDist, 'index.html'));
+    try {
+      // Force no cache for index.html to ensure fresh app loads
+      res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.set('Pragma', 'no-cache');
+      res.set('Expires', '0');
+      
+      const indexPath = path.join(frontendDist, 'index.html');
+      console.log('🔍 Catch-all route triggered for:', req.path);
+      console.log('  Trying to serve:', indexPath);
+      console.log('  frontendDist:', frontendDist);
+      console.log('  Does index.html exist?:', fs.existsSync(indexPath));
+      
+      if (!fs.existsSync(indexPath)) {
+        console.log('❌ index.html not found, returning 404');
+        return res.status(404).send('Application not available - frontend files not found');
+      }
+      
+      res.sendFile(indexPath);
+    } catch (error) {
+      console.error('❌ Error in catch-all route:', error);
+      res.status(500).send('Server error');
+    }
   });
 } else {
   // Development mode: log that frontend should be served separately

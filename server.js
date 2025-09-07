@@ -6278,7 +6278,18 @@ console.log('🔍 Current process.cwd():', process.cwd());
 
 if (config.isProduction) {
   console.log('🔍 Entering production static file serving setup...');
-  let frontendDist = path.resolve(__dirname, 'frontend/dist');
+  
+  // Azure-specific path resolution
+  let frontendDist;
+  if (process.env.WEBSITE_SITE_NAME) {
+    // We're on Azure - use Azure-specific path
+    frontendDist = '/home/site/wwwroot/frontend/dist';
+    console.log('🔍 Azure environment detected, using Azure path:', frontendDist);
+  } else {
+    // Local or other environments
+    frontendDist = path.resolve(__dirname, 'frontend/dist');
+    console.log('🔍 Non-Azure environment, using relative path:', frontendDist);
+  }
   console.log('🔍 Debug paths:');
   console.log('  __dirname:', __dirname);
   console.log('  frontendDist (first attempt):', frontendDist);

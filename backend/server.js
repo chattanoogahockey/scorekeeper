@@ -476,6 +476,11 @@ app.use(sanitizeInput);
 // Register API routes
 app.use('/api', apiRoutes);
 
+// Immediate health check for Azure warmup (responds instantly)
+app.get('/', (req, res) => {
+  res.status(200).send('OK - Hockey Scorekeeper Ready');
+});
+
 function recordTiming(kind, ms) {
   const arr = announcerMetrics.timings[kind];
   if (!arr) {
@@ -894,18 +899,8 @@ if (config.isProduction && !cosmosConfigured) {
   logger.success('Cosmos DB configuration detected');
 }
 
-// Initialize database containers synchronously on startup
-try {
-  logger.info('Initializing database containers...');
-  await initializeContainers();
-  logger.success('Database containers initialized successfully');
-} catch (error) {
-  logger.error('Database initialization failed', {
-    error: error.message,
-    stack: config.isProduction ? undefined : error.stack
-  });
-  logger.warn('Continuing in degraded mode - some features may not work');
-}
+// CRITICAL: Start server FIRST, then initialize database containers in background
+// This allows Azure health checks to succeed while services start up
 
 // HEALTH CHECK ENDPOINT for Azure - always available
 app.get('/health', (req, res) => {
@@ -6305,8 +6300,9 @@ if (config.isProduction) {
   logger.info('Development mode: Frontend should be served by Vite dev server');
 }
 
-const server = app.listen(config.port, 'localhost', () => {
+const server = app.listen(config.port, '0.0.0.0', () => {
   const memUsage = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+  const quickStartTime = Math.floor((Date.now() - startTime) / 1000);
 
   logger.success('Hockey Scorekeeper API started successfully', {
     port: config.port,
@@ -6314,8 +6310,9 @@ const server = app.listen(config.port, 'localhost', () => {
     version: pkg.version,
     nodeVersion: process.version,
     memoryUsage: `${memUsage}MB`,
+    startupTime: `${quickStartTime}s`,
     endpoints: {
-      server: `http://localhost:${config.port}`,
+      server: `http://0.0.0.0:${config.port}`,
       health: '/health',
       version: '/api/version',
       api: '/api/*'
@@ -6327,7 +6324,7 @@ const server = app.listen(config.port, 'localhost', () => {
       tts: !!ttsService
     }
   });
-  console.log('⏱️  Server started in', Math.floor((Date.now() - startTime) / 1000), 'seconds');
+  console.log('⚡ FAST START: Server listening in', quickStartTime, 'seconds - Azure warmup will succeed!');
   console.log('✅ Deployment completed successfully - Studio voice authentication enabled');
 
   // Production-ready banner
@@ -6339,7 +6336,9 @@ const server = app.listen(config.port, 'localhost', () => {
   console.log('   ██    ██   ██ ███████     ███████  ██████  ██████  ██   ██ ███████ ██   ██ ███████ ███████ ██      ███████ ██   ██ ');
   console.log('\n🏒 Production Hockey Scorekeeper System Ready! 🏒');
   console.log('🎙️  AI Commentary & Studio Voice TTS Active');
-  console.log('🥅 Production-ready with enhanced error handling! 🥅\n');
+  console.log('🥅 Production-ready with enhanced error handling! 🥅');
+  console.log(`✅ Server is listening on ALL INTERFACES (0.0.0.0:${config.port}) - Azure Ready!`);
+  console.log('');
 
   // Echo banner for Log Stream visibility
   setTimeout(() => {
@@ -6348,23 +6347,36 @@ const server = app.listen(config.port, 'localhost', () => {
   }, 5000);
 });
 
-// Add error handling for server
+// Enhanced server error handling for Azure
 server.on('error', (error) => {
-  console.error('❌ Server error:', error);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${config.port} is already in use`);
+  } else if (error.code === 'EACCES') {
+    console.error(`❌ Permission denied to bind to port ${config.port}`);
+  } else {
+    console.error('❌ Server error:', error);
+  }
   process.exit(1);
 });
 
 server.on('listening', () => {
-  console.log(`✅ Server is actually listening on http://localhost:${config.port}`);
-});
-
-// Handle server errors
-server.on('error', (error) => {
-  console.error('❌ Server error:', error);
-  // Don't exit on server errors in development
-  if (process.env.NODE_ENV !== 'development') {
-    process.exit(1);
-  }
+  console.log(`✅ Server is actually listening on http://0.0.0.0:${config.port} - Azure can reach this!`);
+  
+  // Initialize database containers in background AFTER server is listening
+  // This allows Azure health checks to succeed while services start up
+  setTimeout(async () => {
+    try {
+      console.log('🔧 Initializing Cosmos DB containers in background...');
+      const dbStartTime = Date.now();
+      await initializeContainers();
+      const dbElapsed = Math.round((Date.now() - dbStartTime) / 1000);
+      console.log(`🎉 Database containers initialized successfully in ${dbElapsed}s`);
+      console.log('✅ All services now fully operational');
+    } catch (error) {
+      console.error('❌ Database initialization failed:', error.message);
+      console.log('⚠️  Server running in degraded mode - some features may not work');
+    }
+  }, 100); // Start immediately after server confirms listening
 });
 
 // Graceful shutdown handlers - only in production

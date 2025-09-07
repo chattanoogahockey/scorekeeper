@@ -478,7 +478,7 @@ app.use('/api', apiRoutes);
 
 // Immediate health check for Azure warmup (responds instantly)
 app.get('/', (req, res) => {
-  res.status(200).send('OK - Hockey Scorekeeper Ready');
+  res.status(200).send('OK - Chattanooga Roller Hockey Scoring & Analytics Ready');
 });
 
 function recordTiming(kind, ms) {

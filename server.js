@@ -96,6 +96,12 @@ const app = express();
 app.use(requestIdMiddleware);
 app.use(performanceMiddleware);
 
+// Add debugging middleware to log all requests
+app.use((req, res, next) => {
+  console.log(`🔍 Request: ${req.method} ${req.path} from ${req.ip}`);
+  next();
+});
+
 // Add API response middleware
 app.use(responseMiddleware);
 
@@ -6265,7 +6271,13 @@ async function executeAggregateStats(args) {
 }
 
 // Serve static frontend files only in production (after all API routes)
+console.log('🔍 Checking production mode:', config.isProduction);
+console.log('🔍 NODE_ENV:', process.env.NODE_ENV);
+console.log('🔍 Current __dirname:', __dirname);
+console.log('🔍 Current process.cwd():', process.cwd());
+
 if (config.isProduction) {
+  console.log('🔍 Entering production static file serving setup...');
   let frontendDist = path.resolve(__dirname, 'frontend/dist');
   console.log('🔍 Debug paths:');
   console.log('  __dirname:', __dirname);

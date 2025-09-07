@@ -6267,6 +6267,14 @@ async function executeAggregateStats(args) {
 // Serve static frontend files only in production (after all API routes)
 if (config.isProduction) {
   const frontendDist = path.resolve(__dirname, 'frontend/dist');
+  console.log('🔍 Debug paths:');
+  console.log('  __dirname:', __dirname);
+  console.log('  frontendDist:', frontendDist);
+  console.log('  Does frontendDist exist?:', fs.existsSync(frontendDist));
+  if (fs.existsSync(frontendDist)) {
+    console.log('  frontendDist contents:', fs.readdirSync(frontendDist));
+  }
+  
   app.use(express.static(frontendDist, {
     maxAge: '0', // Force no cache for immediate deployment updates
     setHeaders: (res, path) => {

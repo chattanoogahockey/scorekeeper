@@ -6265,25 +6265,9 @@ async function executeAggregateStats(args) {
 }
 
 // Serve static frontend files (after all API routes)
-// Handle both Azure deployment structure and local development
-let frontendDist;
-if (process.env.WEBSITE_SITE_NAME) {
-  // Azure deployment - check multiple possible locations
-  const azurePaths = [
-    '/home/site/wwwroot/frontend/dist',
-    path.resolve(__dirname, 'frontend/dist'),
-    path.resolve(process.cwd(), 'frontend/dist')
-  ];
-  frontendDist = azurePaths.find(p => fs.existsSync(p)) || azurePaths[0];
-} else {
-  // Local development
-  frontendDist = path.resolve(__dirname, 'frontend/dist');
-}
-
+const frontendDist = path.resolve(__dirname, 'frontend/dist');
 console.log('🔍 Checking for frontend build at:', frontendDist);
-console.log('🌐 Azure deployment:', !!process.env.WEBSITE_SITE_NAME);
-console.log('📁 __dirname:', __dirname);
-console.log('📁 process.cwd():', process.cwd());
+console.log('📁 Current directory (__dirname):', __dirname);
 
 if (fs.existsSync(frontendDist)) {
   console.log('✅ Frontend build found! Setting up static file serving...');

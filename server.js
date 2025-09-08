@@ -6265,13 +6265,32 @@ async function executeAggregateStats(args) {
 }
 
 // Serve static frontend files (after all API routes)
-const frontendDist = path.resolve(process.cwd(), 'frontend/dist');
-console.log('🔍 Checking for frontend build at:', frontendDist);
+// Try several locations for the compiled frontend to handle different deployment structures
+const candidateDirs = [
+  path.resolve(process.cwd(), 'frontend/dist'),     // standard: frontend/dist from working directory
+  path.resolve(__dirname, 'frontend/dist'),         // when server.js runs from deployment root
+  path.resolve(__dirname, '../frontend/dist'),      // when server.js lives inside backend/
+  path.resolve(__dirname, 'frontend'),              // fallback: flattened build into frontend/
+];
+
+let frontendDist = candidateDirs.find(dir => {
+  try {
+    return fs.existsSync(dir) && fs.statSync(dir).isDirectory();
+  } catch {
+    return false;
+  }
+});
+
+console.log('🔍 Checking for frontend build locations:');
+candidateDirs.forEach((dir, index) => {
+  const exists = fs.existsSync(dir);
+  console.log(`  ${index + 1}. ${dir} ${exists ? '✅' : '❌'}`);
+});
 console.log('📁 Current working directory (process.cwd()):', process.cwd());
 console.log('📁 Current __dirname:', __dirname);
 
-if (fs.existsSync(frontendDist)) {
-  console.log('✅ Frontend build found! Setting up static file serving...');
+if (frontendDist) {
+  console.log('✅ Frontend build found at:', frontendDist);
   console.log('  Build contains:', fs.readdirSync(frontendDist).length, 'items');
   app.use(express.static(frontendDist, {
     maxAge: '0', // Force no cache for immediate deployment updates

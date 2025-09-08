@@ -81,10 +81,10 @@ jobs:
         # Copy backend node_modules (production only)
         cp -r backend/node_modules deploy/node_modules
         
-        # Frontend built assets only (not source)
+        # Frontend built assets only (not source) - preserve dist folder structure
         rm -rf deploy/frontend
         mkdir -p deploy/frontend
-        cp -r frontend/dist/* deploy/frontend/
+        cp -r frontend/dist deploy/frontend/
         
         # Essential root files
         cp package.json deploy/

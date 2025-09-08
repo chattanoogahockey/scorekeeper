@@ -6265,9 +6265,10 @@ async function executeAggregateStats(args) {
 }
 
 // Serve static frontend files (after all API routes)
-const frontendDist = path.resolve(__dirname, 'frontend/dist');
+const frontendDist = path.resolve(process.cwd(), 'frontend/dist');
 console.log('🔍 Checking for frontend build at:', frontendDist);
-console.log('📁 Current directory (__dirname):', __dirname);
+console.log('📁 Current working directory (process.cwd()):', process.cwd());
+console.log('📁 Current __dirname:', __dirname);
 
 if (fs.existsSync(frontendDist)) {
   console.log('✅ Frontend build found! Setting up static file serving...');

@@ -9,7 +9,7 @@
     "dev": "concurrently --names \"BACKEND,FRONTEND\" --colors \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:frontend": "cd frontend && npm run dev",
     "dev:backend": "cd backend && npm run dev",
-    "build": "echo 'Starting production build process...' && echo 'Installing frontend dependencies...' && cd frontend && npm install --include=dev && echo 'Frontend dependencies installed' && echo 'Building frontend application...' && npm run build && echo 'Frontend build complete!' && echo 'Verifying build output...' && dir dist && echo 'Installing backend dependencies...' && cd ../backend && npm install && echo 'Backend dependencies installed' && echo 'Production build completed successfully!'",
+    "build": "cd frontend && npm install && npm run build",
     "deploy:setup": "echo 'Follow DEPLOYMENT.md for Azure setup instructions'",
     "start": "node server.js",
     "postinstall": "echo 'Post-install complete'"

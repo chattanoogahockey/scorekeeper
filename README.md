@@ -2,11 +2,11 @@
 
 
 
-A completely static hockey scorekeeper application designed to run on GitHub Pages for free hosting. This version removes all server-side dependencies and uses client-side JavaScript with static JSON data files.A modern, mobile-first hockey scorekeeper application built with React and Node.js, featuring real-time goal tracking, roster management, and Azure Cosmos DB integration. Designed by scorekeepers, for scorekeepers.
+A completely static hockey scorekeeper application designed to run on GitHub Pages for free hosting. This version removes all server-side dependencies and uses client-side JavaScript with static JSON data files.A modern, mobile-first hockey scorekeeper application built with React, featuring goal tracking, roster management, and static JSON data storage. Designed by scorekeepers, for scorekeepers.
 
 
 
-## 🚀 Live DemoThis repository contains a full-stack web application for real‑time hockey scorekeeping, specifically optimized for mobile and tablet use during live games. The project features a React frontend with TailwindCSS for responsive styling and an Express backend API that integrates with Azure Cosmos DB for real-time data persistence.
+## 🚀 Live DemoThis repository contains a static web application for hockey scorekeeping, specifically optimized for mobile and tablet use during live games. The project features a React frontend with TailwindCSS for responsive styling and client-side data management with static JSON files.
 
 
 
@@ -22,7 +22,7 @@ Visit: https://chattanoogahockey.github.io/scorekeeper/## 🏒 Features
 
 - **🏒 Game Management** - Track games, goals, and penalties  - **Team Roster Management**: Complete player rosters with numbers and positions
 
-- **🎵 DJ Soundboard** - Client-side audio controls (no server needed)- **Attendance Tracking**: Record which players are present for each game, stored in Cosmos DB
+- **🎵 DJ Soundboard** - Client-side audio controls (no server needed)- **Attendance Tracking**: Record which players are present for each game, stored locally
 
 - **📱 Mobile Responsive** - Works great on phones and tablets- **Advanced Goal Recording System**:
 
@@ -30,7 +30,7 @@ Visit: https://chattanoogahockey.github.io/scorekeeper/## 🏒 Features
 
 - **💰 100% Free** - Hosted on GitHub Pages at no cost  - **Complete Goal Details**: Scorer, assist, shot type (wrist, slap, snap, backhand), goal type (regular, power play, short-handed, penalty shot, empty net)
 
-  - **Real-Time Database Integration**: Goals instantly saved to Cosmos DB with automatic score calculation
+  - **Client-Side Data Management**: Goals saved locally with automatic score calculation
 
 ## 🏗️ Architecture  - **Smart Form Validation**: Record button only activates when all required fields are completed
 
@@ -38,11 +38,11 @@ Visit: https://chattanoogahockey.github.io/scorekeeper/## 🏒 Features
 
 ### Static Data Flow- **Responsive Mobile Design**: 20% smaller team selection buttons, touch-friendly controls throughout
 
-```- **Real-Time Data Persistence**: All events stored in Azure Cosmos DB with immediate confirmation
+```- **Client-Side Data Persistence**: All events stored locally with immediate confirmation
 
 JSON Data Files (public/data/) - **Unified Versioning**: Consistent version reporting across all components
 
-    ↓- **Professional Deployment**: Automated Azure deployment with version verification
+    ↓- **Simple Deployment**: Automated GitHub Pages deployment
 
 Static Data Service (client-side)
 
@@ -78,15 +78,15 @@ scorekeeper/### Frontend
 
 │   │   ├── pages/          # Page components  
 
-│   │   ├── services/       # Static data services### Backend
+│   │   ├── services/       # Static data services### Data Management
 
-│   │   └── ...- **Node.js** with Express.js framework
+│   │   └── ...- **Static JSON Files** for data storage
 
-│   ├── package.json        # Frontend dependencies- **Azure Cosmos DB** integration via `@azure/cosmos` SDK
+│   ├── package.json        # Frontend dependencies- **Browser Local Storage** for user preferences
 
-│   └── vite.config.js      # Build configuration- **CORS** enabled for cross-origin requests
+│   └── vite.config.js      # Build configuration- **Client-Side Data Service** for JSON file management
 
-├── public/- **RESTful API** design with JSON responses
+├── public/- **No Backend Required** - Fully static application
 
 │   └── data/               # Static JSON data files- **Dynamic versioning** from package.json
 
@@ -94,19 +94,17 @@ scorekeeper/### Frontend
 
 │       ├── players.json    # Player statistics### Database
 
-│       ├── teams.json      # Team rosters- **Azure Cosmos DB** (SQL API) with configurable containers:
+│       ├── teams.json      # Team rosters- **Static JSON Files** for all data storage:
 
-│       └── summary.json    # Dashboard summaries  - `settings` – Global application settings
+│       └── summary.json    # Dashboard summaries  - `games.json` – Game records and submissions
 
-├── scripts/  - `analytics` – Pre-aggregated statistics and leaderboards
+├── scripts/  - `players.json` – Player statistics and profiles
 
-│   ├── build.ps1          # Windows build script  - `rink-reports` – Weekly division summaries and articles
+│   ├── build.ps1          # Windows build script  - `teams.json` – Team rosters
 
-│   └── build.sh           # Linux/Mac build script  - `games` – Game records and submissions
+│   └── build.sh           # Linux/Mac build script  - `summary.json` – Dashboard summaries
 
-└── package.json           # Root project configuration  - `players` – Player statistics and profiles
-
-```  - `goals` – Goal events and scoring data
+└── package.json           # Root project configuration  - All data stored client-side in browser
 
   - `penalties` – Penalty events and infractions
 
@@ -128,7 +126,7 @@ scorekeeper/### Frontend
 
 ```bash- [npm](https://www.npmjs.com/)
 
-# Clone the repository- Azure Cosmos DB account
+# Clone the repository- Git
 
 git clone https://github.com/chattanoogahockey/scorekeeper.git- Git
 
@@ -160,29 +158,27 @@ Visit `http://localhost:5173` to see the app.2. **Configure environment variable
 
    ```bash
 
-### Data Files Location   cd backend
+### Data Files Location
 
-All data is stored in `public/data/` as JSON files:   cp .env.example .env
+All data is stored in `public/data/` as JSON files:
 
-   # Edit .env with your Azure Cosmos DB credentials
+- **`games.json`** - Game records with scores, goals, penalties
 
-- **`games.json`** - Game records with scores, goals, penalties   ```
+- **`players.json`** - Player profiles and statistics
 
-- **`players.json`** - Player profiles and statistics  
+- **`teams.json`** - Team rosters and information3. **Start development server**
 
-- **`teams.json`** - Team rosters and information3. **Start development servers**
-
-- **`summary.json`** - Dashboard summaries and standings   ```bash
+```bash
 
    # From the root directory
 
 ### Updating Data   npm run dev
 
-1. **Manual Updates**: Edit JSON files directly in your code editor   ```
+1. **Manual Updates**: Edit JSON files directly in your code editor
 
 2. **GitHub Web Interface**: Edit files directly on GitHub.com   
 
-3. **Automated Scripts**: Use GitHub Actions for scheduled updates   This starts both backend (port 3001) and frontend (port 5173) concurrently.
+3. **Automated Scripts**: Use GitHub Actions for scheduled updates   This starts the frontend development server on port 5173.
 
 
 
@@ -190,7 +186,7 @@ All data is stored in `public/data/` as JSON files:   cp .env.example .env
 
    - Frontend: http://localhost:5173
 
-### GitHub Pages Setup   - Backend API: http://localhost:3001
+### GitHub Pages Setup
 
 1. **Push to GitHub**: Commit all changes to your main branch
 
@@ -198,65 +194,51 @@ All data is stored in `public/data/` as JSON files:   cp .env.example .env
 
 3. **Automatic Deploy**: Every push to main triggers a new deployment
 
-#### Backend (.env in /backend directory)
+#### Frontend (automatically configured)
 
 ## 🎮 Usage```env
 
-# Required: Cosmos DB core configuration
+# No environment variables required - fully static
 
-### For ScorekeepersCOSMOS_DB_URI=https://your-account.documents.azure.com:443/
+### For Scorekeepers
 
-1. **Navigate to Games** - Select active gameCOSMOS_DB_KEY=your_primary_key
+1. **Navigate to Games** - Select active game from uploaded data
+2. **Track Events** - Record goals and penalties (saved locally)
+3. **Use DJ Controls** - Play sounds during game (client-side only)
+4. **View Stats** - Check real-time statistics (no server required)
 
-2. **Track Events** - Record goals and penalties  COSMOS_DB_NAME=scorekeeper
+### For Fans
 
-3. **Use DJ Controls** - Play sounds during game
+1. **View Statistics** - Browse player and team stats from local data
+2. **Check Standings** - See current league standings
+3. **Review Games** - Look at past game results
 
-4. **View Stats** - Check real-time statistics# Standardized container names (override if your deployment differs)
+## 🎵 DJ Soundboard
 
-COSMOS_CONTAINER_SETTINGS=settings
+The DJ soundboard works entirely client-side:
 
-### For Fans  COSMOS_CONTAINER_ANALYTICS=analytics
-
-1. **View Statistics** - Browse player and team statsCOSMOS_CONTAINER_RINK_REPORTS=rink-reports
-
-2. **Check Standings** - See current league standingsCOSMOS_CONTAINER_GAMES=games
-
-3. **Review Games** - Look at past game resultsCOSMOS_CONTAINER_PLAYERS=players
-
-COSMOS_CONTAINER_GOALS=goals
-
-## 🎵 DJ SoundboardCOSMOS_CONTAINER_PENALTIES=penalties
-
-COSMOS_CONTAINER_ROSTERS=rosters
-
-The DJ soundboard works entirely client-side:COSMOS_CONTAINER_ATTENDANCE=attendance
-
-- **Audio Files**: Store in `frontend/public/sounds/`COSMOS_CONTAINER_OT_SHOOTOUT=ot-shootout
-
-- **No Server Required**: All audio processing happens in browserCOSMOS_CONTAINER_SHOTS_ON_GOAL=shots-on-goal
-
-- **Mobile Compatible**: Works on phones and tabletsCOSMOS_CONTAINER_HISTORICAL_PLAYER_STATS=historical-player-stats
+- **Audio Files**: Store in `frontend/public/sounds/`
+- **No Server Required**: All audio processing happens in browser
+- **Mobile Compatible**: Works on phones and tablets
+- **Offline Capable**: Functions without internet connection
 
 
 
-## 📊 Cost Comparison# Google Cloud TTS (optional)
+## 📊 Cost Comparison
 
-GOOGLE_APPLICATION_CREDENTIALS_JSON={...service_account_json...}
+| Feature | Previous (Azure) | Current (Static) |
+|---------|------------------|------------------|
+| **Hosting** | $10+/month | **FREE** |
+| **Database** | $5+/month | **FREE** |
+| **CDN** | Extra cost | **FREE** |
+| **Maintenance** | Required | None |
+| **Scalability** | Limited | Unlimited |
 
-| Feature | Server Version | Static Version |```
-
-|---------|---------------|----------------|
-
-| **Hosting** | $10+/month (Azure) | **FREE** (GitHub Pages) |#### Frontend (automatically configured)
-
-| **Database** | $5+/month (Cosmos DB) | **FREE** (JSON files) |- Development: `VITE_API_BASE_URL=http://localhost:3001`
-
-| **CDN** | Extra cost | **FREE** (GitHub CDN) |- Production: `VITE_API_BASE_URL=https://scorekeeper.azurewebsites.net`
+**Total Savings**: ~$180+/year with GitHub Pages
 
 | **Maintenance** | High | **Minimal** |
 
-| **Scaling** | Complex | **Automatic** |## 📱 Usage
+| **Scaling** | Complex | **Automatic** |
 
 | **Total Monthly** | $15-50+ | **$0** |
 
@@ -281,7 +263,7 @@ This project is licensed under the MIT License.
 *Built with ❤️ for the hockey community*3. Choose the goal scorer and optional assist
 4. Enter the time using the calculator-style number pad (MM:SS format)
 5. Select shot type, goal type, and breakaway status
-6. Submit to save to Cosmos DB with real-time confirmation
+6. Submit to save locally with immediate confirmation
 
 ### Mobile Interface Features
 - Touch-optimized button sizes (20% smaller team selection for space efficiency)
@@ -302,11 +284,10 @@ scorekeeper/
 │   ├── public/             # Static assets (sounds, version.json)
 │   ├── generate-version.js  # Build-time version generation
 │   └── package.json
-├── backend/                 # Node.js backend API
-│   ├── server.js           # Express server and routes
-│   ├── cosmosClient.js     # Cosmos DB connection
-│   ├── .env.example        # Environment template
-│   └── package.json
+├── backend/                 # Static data files (no server)
+│   ├── data/               # JSON data files
+│   ├── sounds/             # Audio files for DJ
+│   └── README.md
 ├── .github/workflows/       # GitHub Actions CI/CD
 │   └── main_scorekeeper.yml
 ├── test-api.js             # API testing script
@@ -358,58 +339,35 @@ npm test
 # Test API locally
 npm run test:api
 
-# Test API on Azure
-npm run test:api:remote
+# Test API locally
+npm run test:api
+
+# Test static functionality
+npm run test:static
 
 # Individual component tests
-npm run test:backend
 npm run test:frontend
 ```
 
 ### Manual Testing
 
-1. Start the development servers: `npm run dev`
+1. Start the development server: `npm run dev`
 2. Navigate to a game and record attendance
 3. Test goal recording with various scenarios
-4. Verify data persistence in Cosmos DB
+4. Verify data persistence in browser local storage
 5. Check version endpoint: http://localhost:3001/api/version
 
 ## 🚀 Deployment
 
-### Azure App Service
+### GitHub Pages
 
 The project includes automated deployment via GitHub Actions:
 
-1. **Setup Azure Resources**
-   - Create an Azure App Service
-   - Create an Azure Cosmos DB account
-   - Configure deployment credentials
+1. **Setup GitHub Pages**
+   - Go to repository Settings → Pages
+   - Set Source to "GitHub Actions"
 
-2. **Configure GitHub Secrets**
-   - `AzureAppService_PublishProfile_*` - Deployment profile from Azure
-
-3. **Environment Variables in Azure**
-   ```bash
-   COSMOS_DB_URI=https://your-account.documents.azure.com:443/
-   COSMOS_DB_KEY=your_primary_key
-   COSMOS_DB_NAME=scorekeeper
-   COSMOS_CONTAINER_SETTINGS=settings
-   COSMOS_CONTAINER_ANALYTICS=analytics
-   COSMOS_CONTAINER_RINK_REPORTS=rink-reports
-   COSMOS_CONTAINER_GAMES=games
-   COSMOS_CONTAINER_PLAYERS=players
-   COSMOS_CONTAINER_GOALS=goals
-   COSMOS_CONTAINER_PENALTIES=penalties
-   COSMOS_CONTAINER_ROSTERS=rosters
-   COSMOS_CONTAINER_ATTENDANCE=attendance
-   COSMOS_CONTAINER_OT_SHOOTOUT=ot-shootout
-   COSMOS_CONTAINER_SHOTS_ON_GOAL=shots-on-goal
-   COSMOS_CONTAINER_HISTORICAL_PLAYER_STATS=historical-player-stats
-   VITE_API_BASE_URL=https://scorekeeper.azurewebsites.net
-   NODE_ENV=production
-   ```
-
-4. **Deploy**
+2. **Deploy**
    ```bash
    # Push to main branch triggers automatic deployment
    git push origin main
@@ -419,9 +377,8 @@ The project includes automated deployment via GitHub Actions:
 
 - **Automatic versioning** from git commit and package.json
 - **Build verification** ensures deployed version matches expected
-- **Health checks** validate deployment success
-- **Cache optimization** for static assets
-- **Environment-specific configuration**
+- **Static file optimization** for fast loading
+- **No server maintenance required**
 
 ## 🔧 Development
 
@@ -429,14 +386,15 @@ The project includes automated deployment via GitHub Actions:
 
 - **GoalRecord.jsx**: Mobile-optimized goal recording form with calculator-style time input
 - **GameContext.jsx**: React context providing game state and roster data
-- **cosmosClient.js**: Azure Cosmos DB connection with configurable container names
-- **server.js**: Express server with RESTful API endpoints and dynamic versioning
+- **localStorage.js**: Client-side data persistence and caching
+- **staticDataService.js**: JSON file loading and management
 - **generate-version.js**: Build-time version generation with git metadata
 
 ### Development Features
 
 - **Hot reload** with Vite
-- **Real-time database integration**
+- **Client-side data management**
+- **Offline functionality**
 - **Unified versioning** across all components
 - **Configurable container names** for different environments
 - **Error handling** with user feedback
@@ -464,18 +422,15 @@ Two methods:
    ```
    Add `--dry` to preview without writes.
 
-2. Direct Cosmos (no server needed):
-   ```powershell
-   npm run import-historical-direct -- "C:\\Users\\marce\\OneDrive\\Documents\\CHAHKY\\data\\final_historical_data.csv"
+2. Static Data Import:
+   ```bash
+   # Import historical data to JSON files
+   npm run import-historical -- input.csv
    ```
-   Also supports `--dry`.
 
 Required CSV columns: Name,Division,Year,Goals,Assists,PIM,GP (optional Points,League,Season). Points auto-calculated if missing.
 
-Verify sample after import:
-```powershell
-Invoke-RestMethod -Uri "http://localhost:3001/api/player-stats?scope=historical" | Select-Object -First 5 | ConvertTo-Json -Depth 4
-```
+Verify data after import by checking the generated JSON files in `public/data/`.
 
 The application uses unified versioning across all components:
 
@@ -522,7 +477,7 @@ npm run build
 ### v2.1.0 (August 2025)
 - ✅ Unified versioning across all components
 - ✅ Dynamic version reporting from package.json
-- ✅ Configurable Cosmos DB container names
+- ✅ Static data file management
 - ✅ Enhanced GitHub Actions workflow with verification
 - ✅ Improved local development workflow
 - ✅ Professional error handling and logging
@@ -533,7 +488,7 @@ npm run build
 ### v2.0.0 (January 2025)
 - ✅ Complete mobile-optimized goal recording system
 - ✅ Calculator-style time input with proper validation
-- ✅ Real-time Cosmos DB integration with automatic score calculation
+- ✅ Real-time local storage integration with automatic score calculation
 - ✅ Smart form validation and user feedback
 - ✅ Responsive design optimized for scorekeepers
 - ✅ Automatic goal descriptions and context

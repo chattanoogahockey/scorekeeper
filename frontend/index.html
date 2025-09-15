@@ -7,6 +7,23 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Chattanooga Roller Hockey Scoring & Analytics</title>
+    <script type="text/javascript">
+      // Single Page Apps for GitHub Pages
+      // https://github.com/rafgraph/spa-github-pages
+      // This script redirects to the correct route when using direct links
+      var segmentCount = 1; // For project sites, keep 1 segment (/scorekeeper/)
+      var l = window.location;
+      var pathArray = l.pathname.split('/');
+      if (pathArray.length > segmentCount + 1) {
+        l.replace(
+          l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+          pathArray.slice(0, segmentCount + 1).join('/') + '/?/' +
+          pathArray.slice(segmentCount + 1).join('/').replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash
+        );
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

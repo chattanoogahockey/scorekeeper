@@ -7,7 +7,19 @@
     "dev": "vite",
     "build": "node generate-version.js && node ./node_modules/vite/bin/vite.js build || npx vite build || npm exec vite build",
     "preview": "vite preview",
-    "version": "node generate-version.js"
+    "version": "node generate-version.js",
+    "dep:audit": "npm audit",
+    "dep:why": "npm ls --depth=0",
+    "dep:prune": "npm prune",
+    "assets:check": "node analyze-bundle.js",
+    "assets:opt": "echo 'Asset optimization scripts would go here'",
+    "lint": "eslint src --ext .js,.jsx",
+    "lint:fix": "eslint src --ext .js,.jsx --fix",
+    "format": "prettier --write src/**/*.{js,jsx}",
+    "format:check": "prettier --check src/**/*.{js,jsx}",
+    "validate:data": "node scripts/validate-data.js",
+    "validate:all": "npm run lint && npm run format:check && npm run validate:data",
+    "quality:check": "npm run validate:all && npm run dep:audit"
   },
   "dependencies": {
     "chart.js": "^4.5.0",
@@ -17,9 +29,16 @@
     "react-router-dom": "^6.13.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.9.0",
     "@vitejs/plugin-react": "^4.2.0",
     "autoprefixer": "^10.4.14",
+    "eslint": "^9.9.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "eslint-plugin-react": "^7.35.0",
+    "eslint-plugin-react-hooks": "^5.1.0-rc.0",
     "postcss": "^8.4.24",
+    "prettier": "^3.3.3",
     "tailwindcss": "^3.3.2",
     "terser": "^5.44.0",
     "vite": "^7.1.4"

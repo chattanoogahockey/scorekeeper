@@ -1,5 +1,5 @@
 import React, { useContext, useState } from 'react';
-import axios from 'axios';
+import staticDataService from '../services/staticDataService.js';
 import { useNavigate } from 'react-router-dom';
 import { GameContext } from '../contexts/game-context.jsx';
 

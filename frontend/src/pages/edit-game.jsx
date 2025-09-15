@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import staticDataService from '../services/staticDataService.js';
 
 export default function EditGame() {
   const { gameId } = useParams();

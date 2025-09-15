@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import staticDataService from '../services/staticDataService.js';
 import { useGameContext } from '../contexts/game-context.jsx';
 
 const OTShootoutButton = ({ onGameCompleted }) => {

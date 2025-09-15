@@ -5,7 +5,15 @@ import path from 'path';
 try {
   // Read package.json from root directory for unified versioning
   const packageJsonPath = path.join('..', 'package.json');
-  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  let packageJson;
+  
+  // Try to read from parent directory first, fallback to local package.json
+  try {
+    packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  } catch (error) {
+    console.log('Could not read ../package.json, falling back to ./package.json');
+    packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf8'));
+  }
   
   let gitInfo = {};
   try {

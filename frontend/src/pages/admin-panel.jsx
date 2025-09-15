@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import staticDataService from '../services/staticDataService.js';
 import { GameContext } from '../contexts/game-context.jsx';
 
 // Version information component

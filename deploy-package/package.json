@@ -1,7 +1,7 @@
 {
   "name": "hockey-scorekeeper",
   "version": "2.1.0",
-  "description": "Hockey scorekeeper application with automated Azure deployment",
+  "description": "Static deployment package for hockey scorekeeper application",
   "private": true,
   "main": "server.js",
   "scripts": {
@@ -22,8 +22,5 @@
     "npm": ">=8.0.0"
   },
   "devDependencies": {},
-  "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5"
-  }
+  "dependencies": {}
 }

@@ -2,7 +2,7 @@
   "name": "hockey-scorekeeper-backend",
   "version": "2.1.0",
   "type": "module",
-  "description": "Backend API for real-time hockey scorekeeping application with modern architecture.",
+  "description": "Static data processing scripts for hockey scorekeeper application.",
   "main": "server.js",
   "files": [
     "*.js",
@@ -11,29 +11,15 @@
     "audio-cache/"
   ],
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
-    "lint": "eslint src/**/*.js",
-    "lint:fix": "eslint src/**/*.js --fix",
     "import-historical": "node ./scripts/importHistoricalStats.js",
-    "import-historical-direct": "node ./scripts/importHistoricalStatsDirect.js",
     "import-rosters": "node ./scripts/import-rosters.js",
     "verify-rosters": "node ./scripts/verify-rosters.js",
     "upload-games": "node ./scripts/upload-games.js",
     "verify-games": "node ./scripts/verify-games.js",
-    "build": "echo 'Backend build complete - no compilation needed'",
-    "health-check": "node -e \"console.log('Health check passed')\""
+    "build": "echo 'Static data processing scripts ready'",
+    "health-check": "node -e \"console.log('Static data processing available')\""
   },
   "dependencies": {
-    "@azure/cosmos": "^4.1.1",
-    "@google-cloud/text-to-speech": "^6.2.0",
-    "axios": "^1.11.0",
-    "compression": "^1.8.1",
-    "cors": "^2.8.5",
-    "dotenv": "^16.6.1",
-    "express": "^4.18.2",
-    "node-fetch": "^3.3.2",
-    "openai": "^4.52.7",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {

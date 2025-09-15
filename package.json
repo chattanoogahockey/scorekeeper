@@ -8,5 +8,10 @@
     "dev": "cd frontend && npm run dev"
   },
   "author": "chattanoogahockey",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/chattanoogahockey/scorekeeper.git"
+  },
+  "homepage": "https://chattanoogahockey.github.io/scorekeeper/"
 }

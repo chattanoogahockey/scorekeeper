@@ -28,8 +28,8 @@ $html404 = @"
     <script type="text/javascript">
         // Redirect to hash router for GitHub Pages SPA support
         var l = window.location;
-        if (l.pathname !== '/scorekeeper2/') {
-            l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/scorekeeper2/#' + l.pathname.replace('/scorekeeper2', ''));
+        if (l.pathname !== '/scorekeeper/') {
+            l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/scorekeeper/#' + l.pathname.replace('/scorekeeper', ''));
         }
     </script>
 </head>

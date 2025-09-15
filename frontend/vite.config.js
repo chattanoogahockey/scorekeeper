@@ -10,19 +10,13 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        // Remove timestamp for better caching
-        entryFileNames: 'assets/[name]-[hash].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]',
-        // Code splitting configuration
-        manualChunks: {
-          // Vendor chunks
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'chart-vendor': ['chart.js', 'react-chartjs-2']
-        }
+        // Simpler naming for GitHub Pages compatibility
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]'
       }
     },
-    // Enable source maps for production debugging
+    // Completely disable source maps for deployment
     sourcemap: false,
     // Optimize chunk size
     chunkSizeWarningLimit: 600

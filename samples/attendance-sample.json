@@ -1,0 +1,14 @@
+{
+  "id": "attendance_20250115_001",
+  "gameId": "20250115_a_001",
+  "teamName": "Ice Wolves",
+  "playersPresent": [
+    "player_001",
+    "player_002",
+    "player_003",
+    "player_004",
+    "player_005"
+  ],
+  "totalRosterSize": 6,
+  "createdAt": "2025-01-15T18:45:00.000Z"
+}

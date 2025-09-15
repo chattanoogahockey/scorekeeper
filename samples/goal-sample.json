@@ -1,0 +1,13 @@
+{
+  "id": "goal_20250115_001",
+  "gameId": "20250115_a_001",
+  "teamName": "Ice Wolves",
+  "playerName": "John Smith",
+  "period": 1,
+  "time": "05:30",
+  "assist1": "Mike Jones",
+  "assist2": "Dave Wilson",
+  "shotType": "Wrist Shot",
+  "goalType": "Even Strength",
+  "createdAt": "2025-01-15T19:05:30.000Z"
+}

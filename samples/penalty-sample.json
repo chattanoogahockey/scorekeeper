@@ -1,0 +1,12 @@
+{
+  "id": "penalty_20250115_001",
+  "gameId": "20250115_a_001",
+  "teamName": "Lightning Bolts",
+  "playerName": "Alex Brown",
+  "penaltyType": "Tripping",
+  "period": 2,
+  "time": "08:15",
+  "duration": 2,
+  "severity": "Minor",
+  "createdAt": "2025-01-15T19:23:15.000Z"
+}

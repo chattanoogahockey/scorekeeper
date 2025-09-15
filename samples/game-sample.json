@@ -1,0 +1,20 @@
+{
+  "id": "20250115_a_001",
+  "homeTeam": "Ice Wolves",
+  "awayTeam": "Lightning Bolts",
+  "gameDate": "2025-01-15",
+  "gameTime": "19:00",
+  "division": "A",
+  "season": "Winter",
+  "year": 2025,
+  "week": 1,
+  "status": "Scheduled",
+  "venue": "Chattanooga Ice Rink",
+  "rink": "Rink A",
+  "homeTeamGoals": 0,
+  "awayTeamGoals": 0,
+  "homeTeamShots": 0,
+  "awayTeamShots": 0,
+  "createdAt": "2025-01-15T10:00:00.000Z",
+  "updatedAt": "2025-01-15T10:00:00.000Z"
+}

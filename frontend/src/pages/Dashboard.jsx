@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { GameContext } from '../contexts/game-context.jsx';
 import { dashboardService } from '../services/dashboardService.js';
 
-import AnnouncerControls from '../components/announcer-controls.jsx';
 import DJPanel from '../components/dj-panel.jsx';
 
 /**
@@ -410,9 +409,8 @@ export default function Dashboard() {
         </div>
       </div>
       
-      {/* Announcer and DJ controls */}
-      <div className="grid gap-8 md:grid-cols-2 mt-8">
-        <AnnouncerControls gameId={selectedGame.id} />
+      {/* DJ controls */}
+      <div className="mt-8">
         <DJPanel />
       </div>
       {/* Live event feed */}

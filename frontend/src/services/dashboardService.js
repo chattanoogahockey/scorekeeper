@@ -1,135 +1,176 @@
-import axios from 'axios';
+import staticDataService from './staticDataService.js';
 
 /**
- * Dashboard Service - Handles dashboard-related API calls and business logic
- * Centralizes event management and form submissions
+ * Dashboard Service - Handles dashboard data
+ * Converted to use static JSON files
  */
 class DashboardService {
   constructor() {
-    // Use environment variable for API base URL in development, relative URLs in production
-    this.apiBase = import.meta.env.VITE_API_BASE_URL || '';
+    this.dataService = staticDataService;
   }
 
   /**
-   * Fetch events for a game
+   * Fetch dashboard summary data
+   */
+  async fetchDashboard() {
+    try {
+      const summary = await this.dataService.getSummary();
+      const [players, teams, games] = await Promise.all([
+        this.dataService.getPlayers(),
+        this.dataService.getTeams(),
+        this.dataService.getGames()
+      ]);
+
+      // Get recent games (last 5)
+      const recentGames = games
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 5);
+
+      // Get top scorers from summary or calculate from players
+      const topScorers = summary.topScorers || 
+        players
+          .sort((a, b) => (b.stats?.points || 0) - (a.stats?.points || 0))
+          .slice(0, 5)
+          .map(p => ({
+            playerId: p.id,
+            name: p.name,
+            team: p.team,
+            points: p.stats?.points || 0,
+            goals: p.stats?.goals || 0,
+            assists: p.stats?.assists || 0
+          }));
+
+      return {
+        summary: {
+          totalPlayers: players.length,
+          totalTeams: teams.length,
+          totalGames: games.length,
+          lastUpdate: summary.lastUpdated || new Date().toISOString()
+        },
+        topScorers,
+        recentGames: recentGames.slice(0, 3),
+        standings: summary.standings || {}
+      };
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      throw new Error('Failed to load dashboard data');
+    }
+  }
+
+  /**
+   * Get recent activity (games only, no real-time events)
+   */
+  async fetchRecentActivity() {
+    try {
+      const games = await this.dataService.getGames();
+      
+      // Convert recent games to activity format
+      const activities = games
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 10)
+        .map(game => ({
+          id: game.id,
+          type: 'game',
+          title: `${game.awayTeam} vs ${game.homeTeam}`,
+          description: `Final Score: ${game.awayScore} - ${game.homeScore}`,
+          timestamp: game.date,
+          data: game
+        }));
+
+      return activities;
+    } catch (error) {
+      console.error('Error fetching recent activity:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Get game events (goals, penalties)
    */
   async fetchEvents(gameId) {
     try {
-      const response = await axios.get(`${this.apiBase}/api/events`, {
-        params: { gameId }
+      const games = await this.dataService.getGames();
+      const game = games.find(g => g.id === gameId);
+      
+      if (!game) {
+        return [];
+      }
+
+      // Combine goals and penalties into events
+      const events = [];
+      
+      // Add goals as events
+      if (game.goals) {
+        game.goals.forEach(goal => {
+          events.push({
+            id: goal.id,
+            type: 'goal',
+            team: goal.team,
+            player: goal.player,
+            period: goal.period,
+            time: goal.time,
+            assists: goal.assists || [],
+            timestamp: new Date(`${game.date}T${game.time || '19:00'}:00`).toISOString()
+          });
+        });
+      }
+
+      // Add penalties as events
+      if (game.penalties) {
+        game.penalties.forEach(penalty => {
+          events.push({
+            id: penalty.id,
+            type: 'penalty',
+            team: penalty.team,
+            player: penalty.player,
+            period: penalty.period,
+            time: penalty.time,
+            infraction: penalty.infraction,
+            duration: penalty.duration,
+            timestamp: new Date(`${game.date}T${game.time || '19:00'}:00`).toISOString()
+          });
+        });
+      }
+
+      // Sort by period and time
+      return events.sort((a, b) => {
+        if (a.period !== b.period) {
+          return a.period - b.period;
+        }
+        // Simple time sorting (MM:SS format)
+        const [aMin, aSec] = a.time.split(':').map(Number);
+        const [bMin, bSec] = b.time.split(':').map(Number);
+        return (aMin * 60 + aSec) - (bMin * 60 + bSec);
       });
-      return response.data;
     } catch (error) {
       console.error('Error fetching events:', error);
-      throw new Error('Failed to load events');
+      return [];
     }
   }
 
   /**
-   * Submit a goal
+   * For static data, these submission methods will just return success
+   * In a real static implementation, you might save to localStorage
+   * or require manual data file updates
    */
   async submitGoal(goalData) {
-    try {
-      const response = await axios.post(`${this.apiBase}/api/goals`, goalData);
-      return response.data;
-    } catch (error) {
-      console.error('Error submitting goal:', error);
-      throw new Error('Failed to submit goal');
-    }
+    console.log('Goal submitted (static mode):', goalData);
+    return { success: true, message: 'Goal recorded (static mode)' };
   }
 
-  /**
-   * Submit a penalty
-   */
   async submitPenalty(penaltyData) {
-    try {
-      const response = await axios.post(`${this.apiBase}/api/penalties`, penaltyData);
-      return response.data;
-    } catch (error) {
-      console.error('Error submitting penalty:', error);
-      throw new Error('Failed to submit penalty');
-    }
+    console.log('Penalty submitted (static mode):', penaltyData);
+    return { success: true, message: 'Penalty recorded (static mode)' };
   }
 
-  /**
-   * Validate goal form
-   */
-  validateGoalForm(formData) {
-    const required = ['period', 'team', 'player', 'time', 'shotType', 'goalType'];
-
-    for (const field of required) {
-      if (!formData[field]) {
-        return `Missing required field: ${field}`;
-      }
-    }
-
-    // Validate time format
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(formData.time)) {
-      return 'Time must be in MM:SS format';
-    }
-
-    return null;
+  async updateGameScore(gameId, scoreUpdate) {
+    console.log('Score updated (static mode):', gameId, scoreUpdate);
+    return { success: true, message: 'Score updated (static mode)' };
   }
 
-  /**
-   * Validate penalty form
-   */
-  validatePenaltyForm(formData) {
-    const required = ['period', 'team', 'penalizedPlayer', 'penaltyType', 'length', 'time'];
-
-    for (const field of required) {
-      if (!formData[field]) {
-        return `Missing required field: ${field}`;
-      }
-    }
-
-    // Validate time format
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(formData.time)) {
-      return 'Time must be in MM:SS format';
-    }
-
-    return null;
-  }
-
-  /**
-   * Get players for a team
-   */
-  getPlayersForTeam(teamName, rosters) {
-    const roster = rosters.find((r) => r.teamName === teamName);
-    return roster ? roster.players : [];
-  }
-
-  /**
-   * Calculate game progress for announcer context
-   */
-  calculateGameProgress(period, timeRemaining) {
-    // Convert time string (MM:SS) to total seconds
-    const [minutes, seconds] = timeRemaining.split(':').map(Number);
-    const totalSecondsRemaining = (minutes * 60) + seconds;
-
-    // Each period is 20 minutes (1200 seconds)
-    const secondsPerPeriod = 20 * 60;
-
-    // Calculate how much time has elapsed in current period
-    const elapsedInCurrentPeriod = secondsPerPeriod - totalSecondsRemaining;
-
-    // Calculate total elapsed time in game
-    const totalElapsedTime = ((period - 1) * secondsPerPeriod) + elapsedInCurrentPeriod;
-
-    // Total game time is 3 periods of 20 minutes each (3600 seconds)
-    const totalGameTime = 3 * secondsPerPeriod;
-
-    // Calculate progression percentage
-    const percentage = Math.round((totalElapsedTime / totalGameTime) * 100);
-
-    return {
-      percentage,
-      totalElapsedTime,
-      totalSecondsRemaining,
-      elapsedInCurrentPeriod
-    };
+  async updateGamePeriod(gameId, period) {
+    console.log('Period updated (static mode):', gameId, period);
+    return { success: true, message: 'Period updated (static mode)' };
   }
 }
 

@@ -1,17 +1,14 @@
-import axios from 'axios';
-
 /**
- * Goal Recording Service - Handles goal-related business logic and API calls
- * Centralizes goal context calculation and data operations
+ * Goal Recording Service - Handles goal-related business logic
+ * Converted for static data usage
  */
 class GoalRecordingService {
   constructor() {
-    // Use environment variable for API base URL in development, relative URLs in production
-    this.apiBase = import.meta.env.VITE_API_BASE_URL || '';
+    // No API calls in static mode
   }
 
   /**
-   * Calculate goal context for AI announcer
+   * Calculate goal context (keeping this for DJ soundboard functionality)
    */
   determineGoalContext(scoringTeam, currentScore, selectedGame) {
     const awayTeam = selectedGame.awayTeam || selectedGame.awayteam;
@@ -30,102 +27,126 @@ class GoalRecordingService {
       return "First goal of game";
     }
 
-    // Tying goal (score becomes tied)
+    const scoreDifference = Math.abs(newAwayScore - newHomeScore);
+
+    // Tie game
     if (newAwayScore === newHomeScore) {
-      return "Tying goal";
+      return "Tie game";
     }
 
-    // Go-ahead goal (from tied to leading)
-    if (currentScore.away === currentScore.home) {
-      return "Go-ahead goal";
+    // Game winner (in 3rd period with < 2 minutes)
+    if (selectedGame.period === 3 && scoreDifference > 2) {
+      return "Game effectively over";
     }
 
-    // Game-winning goal scenarios (extending lead significantly)
-    const leadDifference = Math.abs(newAwayScore - newHomeScore);
-    if (leadDifference >= 3) {
+    // Go-ahead goal
+    if (totalGoals > 0) {
+      const wasAwayLeading = currentScore.away > currentScore.home;
+      const wasHomeLeading = currentScore.home > currentScore.away;
+      const wasTied = currentScore.away === currentScore.home;
+
+      if (wasTied || (isAwayTeamScoring && wasHomeLeading) || (!isAwayTeamScoring && wasAwayLeading)) {
+        return "Go-ahead goal";
+      }
+    }
+
+    // Insurance goal (extending lead by 2+)
+    if (scoreDifference >= 2) {
       return "Insurance goal";
-    }
-
-    // Comeback goal (reducing opponent's lead)
-    const previousLead = Math.abs(currentScore.away - currentScore.home);
-    const newLead = Math.abs(newAwayScore - newHomeScore);
-    if (previousLead > newLead && previousLead >= 2) {
-      return "Comeback goal";
     }
 
     return "Regular goal";
   }
 
   /**
-   * Fetch existing goals for a game
+   * Submit goal (static mode - just log for now)
    */
-  async fetchExistingGoals(gameId) {
+  async submitGoal(goalData) {
     try {
-      const response = await axios.get(`${this.apiBase}/api/goals`, {
-        params: { gameId }
-      });
+      console.log('Goal submitted (static mode):', goalData);
+      
+      // In static mode, you could save to localStorage for persistence
+      const existingGoals = JSON.parse(localStorage.getItem('hockey_goals') || '[]');
+      const newGoal = {
+        ...goalData,
+        id: `goal_${Date.now()}`,
+        timestamp: new Date().toISOString()
+      };
+      existingGoals.push(newGoal);
+      localStorage.setItem('hockey_goals', JSON.stringify(existingGoals));
 
-      return response.data || [];
+      return {
+        success: true,
+        data: newGoal,
+        message: 'Goal recorded successfully (static mode)'
+      };
     } catch (error) {
-      console.error('Error fetching existing goals:', error);
+      console.error('Error submitting goal:', error);
+      return {
+        success: false,
+        error: 'Failed to record goal'
+      };
+    }
+  }
+
+  /**
+   * Get goals from localStorage
+   */
+  async getGoals(gameId = null) {
+    try {
+      const goals = JSON.parse(localStorage.getItem('hockey_goals') || '[]');
+      
+      if (gameId) {
+        return goals.filter(goal => goal.gameId === gameId);
+      }
+      
+      return goals;
+    } catch (error) {
+      console.error('Error getting goals:', error);
       return [];
     }
   }
 
   /**
-   * Submit a new goal
+   * Update game score (static mode)
    */
-  async submitGoal(goalData) {
+  async updateGameScore(gameId, scoreData) {
     try {
-      const response = await axios.post(`${this.apiBase}/api/goals`, goalData);
-      return response.data;
+      console.log('Score updated (static mode):', gameId, scoreData);
+      
+      // Save to localStorage
+      const existingScores = JSON.parse(localStorage.getItem('hockey_scores') || '{}');
+      existingScores[gameId] = {
+        ...scoreData,
+        lastUpdated: new Date().toISOString()
+      };
+      localStorage.setItem('hockey_scores', JSON.stringify(existingScores));
+
+      return {
+        success: true,
+        data: scoreData,
+        message: 'Score updated successfully (static mode)'
+      };
     } catch (error) {
-      console.error('Error submitting goal:', error);
-      throw new Error('Failed to submit goal');
+      console.error('Error updating score:', error);
+      return {
+        success: false,
+        error: 'Failed to update score'
+      };
     }
   }
 
   /**
-   * Calculate current score from goals
+   * Get current game score from localStorage
    */
-  calculateCurrentScore(goals, selectedGame) {
-    const awayScore = goals.filter(g => g.scoringTeam === (selectedGame.awayTeam || selectedGame.awayteam)).length;
-    const homeScore = goals.filter(g => g.scoringTeam === (selectedGame.homeTeam || selectedGame.hometeam)).length;
-    return { away: awayScore, home: homeScore };
-  }
-
-  /**
-   * Validate goal form data
-   */
-  validateGoalForm(formData) {
-    const required = ['period', 'team', 'player', 'time', 'shotType', 'goalType'];
-
-    for (const field of required) {
-      if (!formData[field]) {
-        return `Missing required field: ${field}`;
-      }
+  async getCurrentScore(gameId) {
+    try {
+      const scores = JSON.parse(localStorage.getItem('hockey_scores') || '{}');
+      return scores[gameId] || { home: 0, away: 0 };
+    } catch (error) {
+      console.error('Error getting current score:', error);
+      return { home: 0, away: 0 };
     }
-
-    // Validate time format (MM:SS)
-    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
-    if (!timeRegex.test(formData.time)) {
-      return 'Time must be in MM:SS format';
-    }
-
-    // Validate period (1-3)
-    if (formData.period < 1 || formData.period > 3) {
-      return 'Period must be between 1 and 3';
-    }
-
-    return null; // No errors
-  }
-
-  /**
-   * Get available players for a team
-   */
-  getPlayersForTeam(teamName, rosters) {
-    const roster = rosters.find((r) => r.teamName === teamName);
-    return roster ? roster.players : [];
   }
 }
 

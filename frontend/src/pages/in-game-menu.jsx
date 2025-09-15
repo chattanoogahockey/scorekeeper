@@ -1,10 +1,8 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { GameContext } from '../contexts/game-context.jsx';
-import AnnouncerControls from '../components/announcer-controls.jsx';
 import MediaControlPanel from '../components/media-control-panel.jsx';
 import OTShootoutButton from '../components/ot-shootout-button.jsx';
-import axios from 'axios';
 
 /**
  * Enhanced In-Game Menu with integrated dashboard functionality
@@ -397,11 +395,6 @@ export default function InGameMenu() {
               {/* DJ Controls */}
               <div>
                 <MediaControlPanel gameId={selectedGame.id || selectedGame.gameId} />
-              </div>
-              
-              {/* Announcer Controls */}
-              <div>
-                <AnnouncerControls gameId={selectedGame.id || selectedGame.gameId} />
               </div>
             </div>
           </div>

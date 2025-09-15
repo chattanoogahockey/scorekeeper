@@ -1,0 +1,354 @@
+// Production-ready Cosmos DB client configuration
+import { fileURLToPath } from 'url';
+import { dirname, join as pathJoin } from 'path';
+import dotenv from 'dotenv';
+import { CosmosClient } from '@azure/cosmos';
+import { config } from './src/config/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Configure environment variables
+dotenv.config({ path: pathJoin(__dirname, '.env') });
+
+/**
+ * Standardized Container Names (using hyphens consistently)
+ * Can be overridden via environment variables for different environments
+ */
+const containerNames = config.cosmos.containers;
+
+/**
+ * Production Cosmos DB Container Definitions
+ *
+ * Container Schema:
+ * 1. games - Game records and submissions
+ * 2. player-stats - Current season player statistics (live aggregation)
+ * 3. goals - Goal events and scoring data
+ * 4. penalties - Penalty events and infractions
+ * 5. rosters - Team rosters and player assignments
+ * 6. attendance - Game attendance tracking
+ * 7. ot-shootout - Overtime and shootout results
+ * 8. shots-on-goal - Shots on goal tracking and analytics
+ * 9. historical-player-stats - Historical player career statistics
+ */
+
+const CONTAINER_DEFINITIONS = {
+  // Current season player statistics
+  'player-stats': {
+    name: containerNames.playerStats,
+    partitionKey: '/_partitionKey',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/division/?' },
+        { path: '/teamName/?' },
+        { path: '/playerName/?' },
+        { path: '/season/?' }
+      ]
+    }
+  },
+
+  // Team rosters and player assignments
+  'rosters': {
+    name: containerNames.rosters,
+    partitionKey: '/teamName',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/teamName/?' },
+        { path: '/division/?' },
+        { path: '/season/?' },
+        { path: '/players/[]/playerId/?' },
+        { path: '/players/[]/name/?' }
+      ]
+    }
+  },
+
+  // Shots on goal tracking
+  'shots-on-goal': {
+    name: containerNames.shotsOnGoal,
+    partitionKey: '/gameId',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/gameId/?' },
+        { path: '/team/?' },
+        { path: '/timeRecorded/?' }
+      ]
+    }
+  },
+
+  // Historical aggregate player stats (read-only after import)
+  'historical-player-stats': {
+    name: containerNames.historicalPlayerStats,
+    partitionKey: '/division',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/division/?' },
+        { path: '/year/?' },
+        { path: '/playerName/?' }
+      ]
+    }
+  },
+
+  // Game records and submissions
+  'games': {
+    name: containerNames.games,
+    partitionKey: '/league',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/homeTeam/?' },
+        { path: '/awayTeam/?' },
+        { path: '/date/?' },
+        { path: '/status/?' }
+      ]
+    }
+  },
+
+  // Goal events and scoring data
+  'goals': {
+    name: containerNames.goals,
+    partitionKey: '/gameId',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/gameId/?' },
+        { path: '/teamName/?' },
+        { path: '/playerName/?' }
+      ]
+    }
+  },
+
+  // Penalty events and infractions
+  'penalties': {
+    name: containerNames.penalties,
+    partitionKey: '/gameId',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/gameId/?' },
+        { path: '/teamName/?' },
+        { path: '/playerName/?' }
+      ]
+    }
+  },
+
+  // Game attendance tracking
+  'attendance': {
+    name: containerNames.attendance,
+    partitionKey: '/gameId',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/gameId/?' },
+        { path: '/teamName/?' }
+      ]
+    }
+  },
+
+  // Overtime and shootout results
+  'ot-shootout': {
+    name: containerNames.otShootout,
+    partitionKey: '/gameId',
+    indexingPolicy: {
+      indexingMode: 'consistent',
+      includedPaths: [
+        { path: '/*' },
+        { path: '/gameId/?' },
+        { path: '/winner/?' }
+      ]
+    }
+  }
+};
+
+// Environment variable configuration
+const cosmosUri = config.cosmos.uri;
+const cosmosKey = config.cosmos.key;
+const cosmosDatabase = config.cosmos.databaseName;
+
+const cosmosConfigured = Boolean(cosmosUri && cosmosKey && cosmosDatabase);
+let client = null;
+let database = null;
+
+if (cosmosConfigured) {
+  // Initialize Cosmos DB client only when properly configured
+  client = new CosmosClient({ endpoint: cosmosUri, key: cosmosKey });
+  database = client.database(cosmosDatabase);
+} else {
+  console.warn('⚠️ Cosmos DB not configured. Running in degraded mode.');
+}
+
+/**
+ * Get database instance
+ */
+export function getDatabase() {
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
+  return database;
+}
+
+/**
+ * Container accessor functions with proper error handling
+ */
+
+// Games container - Game records and submissions
+export function getGamesContainer() {
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
+  return database.container(CONTAINER_DEFINITIONS['games'].name);
+}
+
+// Player-stats container - Current season player statistics
+export function getPlayerStatsContainer() {
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
+  return database.container(CONTAINER_DEFINITIONS['player-stats'].name);
+}
+
+// Goals container - Goal events and scoring data
+export function getGoalsContainer() {
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
+  return database.container(CONTAINER_DEFINITIONS['goals'].name);
+}
+
+// Penalties container - Penalty events and infractions
+export function getPenaltiesContainer() {
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
+  return database.container(CONTAINER_DEFINITIONS['penalties'].name);
+}
+
+// Rosters container - Team rosters and player assignments
+export function getRostersContainer() {
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
+  return database.container(CONTAINER_DEFINITIONS['rosters'].name);
+}
+
+// Attendance container - Game attendance tracking
+export function getAttendanceContainer() {
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
+  return database.container(CONTAINER_DEFINITIONS['attendance'].name);
+}
+
+// OT/Shootout container - Overtime and shootout results
+export function getOTShootoutContainer() {
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
+  return database.container(CONTAINER_DEFINITIONS['ot-shootout'].name);
+}
+
+// Shots on Goal container - Shots on goal tracking and analytics
+export function getShotsOnGoalContainer() {
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
+  return database.container(CONTAINER_DEFINITIONS['shots-on-goal'].name);
+}
+
+// Historical player stats container
+export function getHistoricalPlayerStatsContainer() {
+  if (!cosmosConfigured || !database) {
+    throw new Error('Cosmos DB not configured');
+  }
+  return database.container(CONTAINER_DEFINITIONS['historical-player-stats'].name);
+}
+
+// Legacy aliases for backward compatibility (deprecated)
+export function getTeamsContainer() {
+  console.warn('getTeamsContainer is deprecated, use getPlayerStatsContainer or getRostersContainer');
+  return getRostersContainer();
+}
+
+export function getPlayersContainer() {
+  console.warn('getPlayersContainer is deprecated, use getPlayerStatsContainer');
+  return getPlayerStatsContainer();
+}
+
+/**
+ * Initialize all containers with proper indexing policies
+ * Called during application startup
+ */
+export async function initializeContainers() {
+  if (!cosmosConfigured || !database) {
+    console.warn('⚠️ Skipping Cosmos DB initialization (not configured)');
+    return false;
+  }
+
+  console.log('🔧 Initializing Cosmos DB containers...');
+  try {
+    const containerPromises = Object.values(CONTAINER_DEFINITIONS).map(async (definition) => {
+      const { name, partitionKey, indexingPolicy } = definition;
+      try {
+        // First try to get existing container
+        let container;
+        try {
+          const containerResponse = await database.container(name).read();
+          container = containerResponse.container;
+          console.log(`✅ Container '${name}' ready (existing)`);
+        } catch (error) {
+          if (error.code === 404) {
+            // Container doesn't exist, create it
+            const { container: newContainer } = await database.containers.createIfNotExists({
+              id: name,
+              partitionKey,
+              indexingPolicy
+            });
+            container = newContainer;
+            console.log(`✅ Container '${name}' ready (created)`);
+          } else {
+            throw error;
+          }
+        }
+        return container;
+      } catch (error) {
+        console.error(`❌ Failed to initialize container '${name}':`, error.message);
+        // Don't throw - continue with other containers
+        return null;
+      }
+    });
+    
+    const containers = await Promise.all(containerPromises);
+    const successfulContainers = containers.filter(c => c !== null);
+    console.log(`🎉 ${successfulContainers.length}/${Object.keys(CONTAINER_DEFINITIONS).length} Cosmos DB containers initialized successfully`);
+    return successfulContainers.length > 0;
+  } catch (error) {
+    console.error('💥 Failed to initialize Cosmos DB containers:', error);
+    // Don't throw - let the application continue with degraded functionality
+    return false;
+  }
+}
+
+/**
+ * Get container definitions for documentation/debugging
+ */
+export function getContainerDefinitions() {
+  return CONTAINER_DEFINITIONS;
+}
+
+/**
+ * Get standardized container names
+ */
+export function getContainerNames() {
+  return containerNames;
+}

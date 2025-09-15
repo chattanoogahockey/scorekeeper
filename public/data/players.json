@@ -1,0 +1,82 @@
+[
+  {
+    "id": "player_001",
+    "name": "John Smith",
+    "team": "Ice Wolves",
+    "position": "Forward",
+    "jerseyNumber": 12,
+    "division": "A",
+    "stats": {
+      "gamesPlayed": 8,
+      "goals": 12,
+      "assists": 8,
+      "points": 20,
+      "penalties": 3,
+      "pim": 6
+    }
+  },
+  {
+    "id": "player_002",
+    "name": "Mike Jones",
+    "team": "Ice Wolves", 
+    "position": "Defense",
+    "jerseyNumber": 5,
+    "division": "A",
+    "stats": {
+      "gamesPlayed": 8,
+      "goals": 2,
+      "assists": 12,
+      "points": 14,
+      "penalties": 5,
+      "pim": 10
+    }
+  },
+  {
+    "id": "player_003",
+    "name": "Dave Wilson",
+    "team": "Ice Wolves",
+    "position": "Forward",
+    "jerseyNumber": 8,
+    "division": "A",
+    "stats": {
+      "gamesPlayed": 7,
+      "goals": 6,
+      "assists": 9,
+      "points": 15,
+      "penalties": 2,
+      "pim": 4
+    }
+  },
+  {
+    "id": "player_004",
+    "name": "Alex Brown",
+    "team": "Lightning Bolts",
+    "position": "Forward",
+    "jerseyNumber": 15,
+    "division": "A",
+    "stats": {
+      "gamesPlayed": 8,
+      "goals": 10,
+      "assists": 6,
+      "points": 16,
+      "penalties": 4,
+      "pim": 8
+    }
+  },
+  {
+    "id": "player_005",
+    "name": "Tom Davis",
+    "team": "Lightning Bolts",
+    "position": "Defense",
+    "jerseyNumber": 3,
+    "division": "A",
+    "stats": {
+      "gamesPlayed": 8,
+      "goals": 1,
+      "assists": 14,
+      "points": 15,
+      "penalties": 1,
+      "pim": 2
+    }
+  }
+]

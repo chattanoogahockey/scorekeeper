@@ -4,7 +4,10 @@ import react from '@vitejs/plugin-react';
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: '/scorekeeper2/',
   build: {
+    outDir: '../dist',
+    emptyOutDir: true,
     rollupOptions: {
       output: {
         // Remove timestamp for better caching
@@ -15,8 +18,7 @@ export default defineConfig({
         manualChunks: {
           // Vendor chunks
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'chart-vendor': ['chart.js', 'react-chartjs-2'],
-          'ui-vendor': ['axios']
+          'chart-vendor': ['chart.js', 'react-chartjs-2']
         }
       }
     },

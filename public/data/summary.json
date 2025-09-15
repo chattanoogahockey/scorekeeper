@@ -1,0 +1,65 @@
+{
+  "lastUpdated": "2024-01-18T08:30:00Z",
+  "currentSeason": "2024 Winter",
+  "totalGames": 24,
+  "totalPlayers": 42,
+  "totalTeams": 6,
+  "divisions": ["A", "B"],
+  "topScorers": [
+    {
+      "playerId": "player_001",
+      "name": "John Smith",
+      "team": "Ice Wolves",
+      "points": 20,
+      "goals": 12,
+      "assists": 8
+    },
+    {
+      "playerId": "player_004", 
+      "name": "Alex Brown",
+      "team": "Lightning Bolts",
+      "points": 16,
+      "goals": 10,
+      "assists": 6
+    },
+    {
+      "playerId": "player_003",
+      "name": "Dave Wilson",
+      "team": "Ice Wolves", 
+      "points": 15,
+      "goals": 6,
+      "assists": 9
+    }
+  ],
+  "standings": {
+    "A": [
+      {
+        "team": "Ice Wolves",
+        "gp": 8,
+        "w": 6,
+        "l": 2,
+        "gf": 28,
+        "ga": 18,
+        "pts": 12
+      },
+      {
+        "team": "Lightning Bolts", 
+        "gp": 8,
+        "w": 4,
+        "l": 4,
+        "gf": 22,
+        "ga": 24,
+        "pts": 8
+      },
+      {
+        "team": "Thunder Hawks",
+        "gp": 8,
+        "w": 2,
+        "l": 6,
+        "gf": 15,
+        "ga": 30,
+        "pts": 4
+      }
+    ]
+  }
+}

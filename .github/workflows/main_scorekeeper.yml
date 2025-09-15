@@ -2,7 +2,7 @@
 # More GitHub Actions for Azure: https://github.com/Azure/actions
 # Updated: 2025-09-06 - Force workflow trigger
 
-name: 'Build and deploy Node.js app to Azure Web App: scorekeeper'
+name: 'Deploy scorekeeper (minimal)'
 
 on:
   push:
@@ -16,141 +16,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Show deployment info
-      run: |
-        echo "🚀 Deploying commit: ${{ github.sha }}"
-        echo "📝 Commit message: ${{ github.event.head_commit.message }}"
-        echo "👤 Author: ${{ github.event.head_commit.author.name }}"
-        echo "⏰ Timestamp: $(date -u)"
+      - name: Info
+        run: |
+          echo "Deploying commit ${{ github.sha }} at $(date -u)"
 
-    - name: Fetch full git history
-      run: |
-        git fetch --unshallow --tags || true
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
 
-    - name: Set up Node.js version
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.x'
-        cache: 'npm'
-        cache-dependency-path: |
-          backend/package-lock.json
-          frontend/package-lock.json
-    
-    - name: Install backend dependencies
-      run: |
-        cd backend
-        npm ci --production
-    
-    - name: Install and build frontend
-      run: |
-        cd frontend
-        npm ci
-        # Clear Vite cache to prevent stale module resolution issues
-        rm -rf node_modules/.vite
-        # Generate version info with deployment timestamp
-        NODE_ENV=production DEPLOYMENT_TIMESTAMP=$DEPLOYMENT_TIMESTAMP node generate-version.js
-        npm run build
-    
-    - name: Create optimized deployment package
-      run: |
-        mkdir -p deploy
-        
-        # Backend essentials (production only) - Updated for cleaned structure
-        cp backend/package*.json deploy/
-        cp backend/server.js deploy/             # Main server file
-        
-        # Copy essential backend files
-        cp backend/logger.js deploy/
-        cp backend/cosmosClient.js deploy/
-        cp backend/ttsService.js deploy/
-        cp backend/voice-config.js deploy/
-        cp backend/announcerService.js deploy/ || echo "Announcer service optional"
-        
-        # Copy config directory
-        cp -r backend/config deploy/config || echo "Config directory optional"
-        
-        # Copy src directory structure (controllers, services, middleware, etc.)
-        cp -r backend/src deploy/src
-        
-        # Copy backend node_modules (production only)
-        cp -r backend/node_modules deploy/node_modules
-        
-        # Frontend built assets only (not source) - preserve dist folder structure
-        rm -rf deploy/frontend
-        mkdir -p deploy/frontend
-        cp -r frontend/dist deploy/frontend/
-        
-        # Essential root files
-        cp package.json deploy/
-        cp web.config deploy/
-        
-        # Verify package is lean
-        echo "📦 Deploy package contents:"
-        ls -la deploy/
-        echo "📊 Deploy package size:"
-        du -sh deploy/
-        echo "🎯 Frontend build size:"
-        du -sh deploy/frontend/
-    
-    - name: Create deployment environment
-      run: |
-        # Create .env file for deployment with git info
-        echo "BUILD_SOURCEVERSION=${{ github.sha }}" >> deploy/.env
-        echo "BUILD_SOURCEBRANCH=${{ github.ref_name }}" >> deploy/.env
-        echo "GITHUB_ACTIONS=true" >> deploy/.env
-        echo "Environment variables for deployment:"
-        cat deploy/.env
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
 
-    - name: 'Deploy to Azure Web App'
-      uses: azure/webapps-deploy@v3
-      with: 
-        app-name: 'scorekeeper'
-        slot-name: 'production'
-        publish-profile: ${{ secrets.AzureAppService_PublishProfile_aa98474905f14a53afdc3e9da94e0ae4 }}
-        package: './deploy'
+      - name: Prepare minimal package
+        run: |
+          mkdir package
+          cp server.js package/
+          cp package.json package/
+          cp web.config package/ || true
+          # copy built frontend
+          mkdir -p package/frontend/dist
+          cp -r frontend/dist/* package/frontend/dist/
+          cd package
+          npm install --production --no-audit --no-fund
+          cd ..
+          echo "Contents:"; ls -R package | head -100
+          zip -r deploy.zip package
+          echo "Zip size:"; du -h deploy.zip
 
-    - name: Set final deployment timestamp
-      run: |
-        # Set the actual deployment completion timestamp
-        FINAL_DEPLOYMENT_TIMESTAMP=$(TZ='America/New_York' date +%Y-%m-%dT%H:%M:%S%z)
-        echo "FINAL_DEPLOYMENT_TIMESTAMP=$FINAL_DEPLOYMENT_TIMESTAMP" >> $GITHUB_ENV
-        echo "Final deployment completed at: $FINAL_DEPLOYMENT_TIMESTAMP"
-        
-        # Wait a moment for Azure to fully initialize
-        sleep 15
-        
-        # Update the deployed app with the actual completion timestamp
-        curl -X POST "https://scorekeeper.azurewebsites.net/api/admin/update-deployment-time" \
-          -H "Content-Type: application/json" \
-          -d "{\"deploymentTimestamp\": \"$FINAL_DEPLOYMENT_TIMESTAMP\", \"githubSha\": \"${{ github.sha }}\"}" \
-          || echo "Could not update deployment timestamp via API"
+      - name: Azure Deploy (zip)
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: 'scorekeeper'
+          publish-profile: ${{ secrets.AzureAppService_PublishProfile_aa98474905f14a53afdc3e9da94e0ae4 }}
+          package: deploy.zip
 
-    - name: Verify deployment with timeout
-      run: |
-        # Wait for deployment to complete with timeout
-        echo "⏳ Waiting for deployment to be ready..."
-        timeout 60s bash -c 'until curl -f https://scorekeeper.azurewebsites.net/health; do sleep 3; done' || echo "Health check timeout - deployment may still be starting"
-        
-        # Verify version endpoint
-        echo "🔍 Checking version endpoint..."
-        curl -sSf https://scorekeeper.azurewebsites.net/api/version | tee /tmp/version.json || echo "Version check failed"
-        
-        if command -v jq > /dev/null; then
-          DEPLOYED_VERSION=$(jq -r .version /tmp/version.json 2>/dev/null || echo "unknown")
-          PACKAGE_VERSION=$(jq -r .version package.json)
-          echo "📋 Deployed version: $DEPLOYED_VERSION"
-          echo "📋 Package version: $PACKAGE_VERSION"
-          if [ "$DEPLOYED_VERSION" = "$PACKAGE_VERSION" ]; then
-            echo "✅ Version verification successful"
-          else
-            echo "⚠️ Version mismatch detected"
-          fi
-        fi
-        
-        echo "🎉 Deployment verification complete"
+      - name: Post-deploy health check
+        run: |
+          echo "Waiting for warmup..."; sleep 20
+          curl -v --retry 10 --retry-delay 5 https://scorekeeper.azurewebsites.net/api/health || true

@@ -1,5 +1,5 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GameProvider } from './contexts/game-context.jsx';
 
 // Lazy load all page components
@@ -28,22 +28,24 @@ const LoadingSpinner = () => (
 export default function App() {
   return (
     <GameProvider>
-      <Suspense fallback={<LoadingSpinner />}>
-        <Routes>
-          <Route path="/" element={<InitialMenu />} />
-          <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/admin/edit/:gameId" element={<EditGame />} />
-          <Route path="/leagues" element={<LeagueGameSelection />} />
-          <Route path="/roster" element={<RosterAttendance />} />
-          <Route path="/ingame" element={<InGameMenu />} />
-          <Route path="/goal" element={<GoalRecord />} />
-          <Route path="/penalty" element={<PenaltyRecord />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/statistics" element={<Statistics />} />
-          <Route path="/test" element={<ApiTest />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
-      </Suspense>
+      <HashRouter>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            <Route path="/" element={<InitialMenu />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/admin/edit/:gameId" element={<EditGame />} />
+            <Route path="/leagues" element={<LeagueGameSelection />} />
+            <Route path="/roster" element={<RosterAttendance />} />
+            <Route path="/ingame" element={<InGameMenu />} />
+            <Route path="/goal" element={<GoalRecord />} />
+            <Route path="/penalty" element={<PenaltyRecord />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/statistics" element={<Statistics />} />
+            <Route path="/test" element={<ApiTest />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </Suspense>
+      </HashRouter>
     </GameProvider>
   );
 }

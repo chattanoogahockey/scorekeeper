@@ -1,0 +1,29 @@
+{
+  "name": "hockey-scorekeeper",
+  "version": "2.1.0",
+  "description": "Hockey scorekeeper application with automated Azure deployment",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "echo 'Post-install complete'"
+  },
+  "keywords": [
+    "hockey",
+    "scorekeeper",
+    "azure",
+    "react",
+    "express"
+  ],
+  "author": "Chattanooga Hockey",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "devDependencies": {},
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}

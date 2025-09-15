@@ -1,44 +1,12 @@
-{
-  "name": "hockey-scorekeeper",
-  "version": "2.1.0",
-  "description": "Hockey scorekeeper application with automated Azure deployment",
-  "private": true,
+﻿{
+  "name": "hockey-scorekeeper-static",
+  "version": "3.0.0",
+  "description": "Static Hockey Scorekeeper Application for GitHub Pages",
+  "type": "module",
   "scripts": {
-    "install:all": "npm install && cd frontend && npm install && cd ../backend && npm install",
-    "dev": "concurrently --names \"BACKEND,FRONTEND\" --colors \"blue,green\" \"npm run dev:backend\" \"npm run dev:frontend\"",
-    "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && npm run dev",
-    "build": "cd frontend && npm install && npm run build",
-    "deploy:setup": "echo 'Follow DEPLOYMENT.md for Azure setup instructions'",
-    "start": "node server.js",
-    "postinstall": "echo 'Post-install complete'"
+    "build": "cd frontend && npm run build",
+    "dev": "cd frontend && npm run dev"
   },
-  "keywords": [
-    "hockey",
-    "scorekeeper",
-    "azure",
-    "react",
-    "express"
-  ],
-  "author": "Chattanooga Hockey",
-  "license": "MIT",
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
-  },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
-  },
-  "dependencies": {
-    "@azure/cosmos": "^4.1.1",
-    "@google-cloud/text-to-speech": "^6.2.0",
-    "axios": "^1.11.0",
-    "compression": "^1.8.1",
-    "cors": "^2.8.5",
-    "dotenv": "^16.6.1",
-    "express": "^4.18.2",
-    "node-fetch": "^3.3.2",
-    "openai": "^4.52.7",
-    "xlsx": "^0.18.5"
-  }
+  "author": "chattanoogahockey",
+  "license": "MIT"
 }

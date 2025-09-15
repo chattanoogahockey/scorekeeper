@@ -1,0 +1,73 @@
+[
+  {
+    "id": "game_2024_001",
+    "date": "2024-01-15",
+    "time": "19:00",
+    "division": "A",
+    "homeTeam": "Ice Wolves",
+    "awayTeam": "Lightning Bolts",
+    "homeScore": 4,
+    "awayScore": 2,
+    "period": 3,
+    "status": "completed",
+    "goals": [
+      {
+        "id": "goal_001",
+        "team": "Ice Wolves",
+        "player": "John Smith",
+        "playerId": "player_001",
+        "period": 1,
+        "time": "5:30",
+        "assists": ["Mike Jones", "Dave Wilson"],
+        "assistIds": ["player_002", "player_003"]
+      },
+      {
+        "id": "goal_002",
+        "team": "Lightning Bolts",
+        "player": "Alex Brown",
+        "playerId": "player_004",
+        "period": 1,
+        "time": "12:45",
+        "assists": ["Tom Davis"],
+        "assistIds": ["player_005"]
+      }
+    ],
+    "penalties": [
+      {
+        "id": "penalty_001",
+        "team": "Ice Wolves",
+        "player": "Mike Jones",
+        "playerId": "player_002",
+        "period": 2,
+        "time": "8:15",
+        "infraction": "Tripping",
+        "duration": 2
+      }
+    ]
+  },
+  {
+    "id": "game_2024_002",
+    "date": "2024-01-17",
+    "time": "20:30",
+    "division": "A",
+    "homeTeam": "Thunder Hawks",
+    "awayTeam": "Ice Wolves",
+    "homeScore": 1,
+    "awayScore": 3,
+    "period": 3,
+    "status": "completed",
+    "goals": [
+      {
+        "id": "goal_003",
+        "team": "Ice Wolves",
+        "player": "John Smith",
+        "playerId": "player_001",
+        "period": 1,
+        "time": "3:20",
+        "assists": ["Dave Wilson"],
+        "assistIds": ["player_003"]
+      }
+    ],
+    "penalties": []
+  }
+]

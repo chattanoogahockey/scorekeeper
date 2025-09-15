@@ -6,6 +6,10 @@ class StaticDataService {
   constructor() {
     this.cache = new Map();
     this.baseUrl = window.location.origin;
+    // Fallback base URL for local development
+    if (window.location.pathname.includes('/scorekeeper/')) {
+      this.baseUrl += '/scorekeeper';
+    }
   }
 
   /**

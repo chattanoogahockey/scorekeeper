@@ -1,7 +1,7 @@
 {
   "version": "2.1.0",
   "name": "hockey-scorekeeper-frontend",
-  "commit": "276b93dc238f81ddf07644c395788d8f0ac101ef",
+  "commit": "81e4bb7f8416d4e3597e406a3476d546d8ffa2cb",
   "branch": "migration-audit/2025-09-15",
   "buildTime": "08/08/2025, 07:32:00 AM EDT"
 }

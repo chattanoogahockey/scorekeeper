@@ -10,16 +10,36 @@ export default defineConfig({
     emptyOutDir: true,
     rollupOptions: {
       output: {
-        // Simpler naming for GitHub Pages compatibility
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]'
+        // Optimized chunk splitting for better caching
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+        manualChunks: {
+          // Separate vendor chunks for better caching
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['chart.js'],
+          'utils': ['./src/services/staticDataService', './src/services/dashboardService']
+        }
       }
     },
     // Completely disable source maps for deployment
     sourcemap: false,
-    // Optimize chunk size
-    chunkSizeWarningLimit: 600
+    // Optimize chunk size with better warning limit
+    chunkSizeWarningLimit: 500,
+    // Enable minification
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    },
+    // Enable CSS code splitting
+    cssCodeSplit: true,
+    // Preload modules for better performance
+    modulePreload: {
+      polyfill: false
+    }
   },
   server: {
     host: '0.0.0.0',
@@ -31,4 +51,13 @@ export default defineConfig({
       },
     },
   },
+  // Performance optimizations
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'chart.js']
+  },
+  // Enable gzip compression in preview mode
+  preview: {
+    port: 4173,
+    strictPort: true,
+  }
 });

@@ -356,9 +356,9 @@ export default function MediaControlPanel({ gameId }) {
   };
 
   return (
-    <div>
+    <section aria-labelledby="dj-panel-heading" role="region">
       <div className="flex justify-between items-center mb-4">
-        <h4 className="text-lg font-semibold flex items-center gap-2">
+        <h4 id="dj-panel-heading" className="text-lg font-semibold flex items-center gap-2">
           DJ
         </h4>
         {/* Fade Out Button - Only show when DJ sounds are playing */}
@@ -366,109 +366,152 @@ export default function MediaControlPanel({ gameId }) {
           <button
             onClick={fadeOut}
             disabled={!isPlaying || isFading}
-            className={`px-3 py-1 rounded-lg transition-all duration-200 text-sm font-medium ${
+            className={`px-3 py-1 rounded-lg transition-all duration-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-offset-2 ${
               isPlaying && !isFading
-                ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md'
+                ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md focus:ring-orange-500'
                 : 'bg-gray-300 text-gray-500 cursor-not-allowed'
             }`}
+            aria-label={isFading ? "Currently fading out audio" : "Fade out current audio"}
+            aria-describedby="fade-description"
           >
             {isFading ? 'Fading...' : 'Fade Out'}
           </button>
         )}
+        <div id="fade-description" className="sr-only">
+          Gradually reduce volume and stop the currently playing audio
+        </div>
       </div>
-      
-      <div className="grid grid-cols-2 gap-2">
+
+      <div className="grid grid-cols-2 gap-2" role="group" aria-label="DJ sound effects controls">
         {/* Row 1 */}
         <button
           onClick={() => playSound('goal_horn', 'mp3')}
           disabled={isPlaying}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
-            isPlaying 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+            isPlaying
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm focus:ring-blue-500'
           }`}
+          aria-label="Play goal horn sound effect"
+          aria-describedby="goal-horn-description"
         >
           Goal Horn
         </button>
+        <div id="goal-horn-description" className="sr-only">
+          Play a celebratory horn sound for scoring goals
+        </div>
+
         <button
           onClick={() => playSound('whistle', 'mp3')}
           disabled={isPlaying}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
-            isPlaying 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+            isPlaying
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm focus:ring-blue-500'
           }`}
+          aria-label="Play referee whistle sound effect"
+          aria-describedby="whistle-description"
         >
           Whistle
         </button>
-        
+        <div id="whistle-description" className="sr-only">
+          Play a referee whistle sound to signal game events
+        </div>
+
         {/* Row 2 */}
         <button
           onClick={() => playSound('dj_air_horn', 'mp3')}
           disabled={isPlaying}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
-            isPlaying 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+            isPlaying
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm focus:ring-blue-500'
           }`}
+          aria-label="Play air horn sound effect"
+          aria-describedby="air-horn-description"
         >
           Air Horn
         </button>
+        <div id="air-horn-description" className="sr-only">
+          Play a loud air horn sound for dramatic effect
+        </div>
+
         <button
           onClick={() => playSound('hockey-buzzer', 'mp3')}
           disabled={isPlaying}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
-            isPlaying 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+            isPlaying
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm focus:ring-blue-500'
           }`}
+          aria-label="Play hockey buzzer sound effect"
+          aria-describedby="buzzer-description"
         >
           Buzzer
         </button>
-        
+        <div id="buzzer-description" className="sr-only">
+          Play a buzzer sound to signal end of period or timeout
+        </div>
+
         {/* Row 3 */}
         <button
           onClick={playOrganSound}
           disabled={isPlaying}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
-            isPlaying 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+            isPlaying
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm focus:ring-blue-500'
           }`}
+          aria-label="Play random organ music"
+          aria-describedby="organ-description"
         >
           Organs
         </button>
+        <div id="organ-description" className="sr-only">
+          Play randomly selected organ music for background atmosphere
+        </div>
+
         <button
           onClick={playFanfareSound}
           disabled={isPlaying || fanfareSounds.length === 0}
-          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center ${
+          className={`px-3 py-2 text-white rounded-lg transition-all duration-200 text-sm font-medium text-center focus:outline-none focus:ring-2 focus:ring-offset-2 ${
             isPlaying || fanfareSounds.length === 0
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-blue-500 hover:bg-blue-600 shadow-sm'
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-blue-500 hover:bg-blue-600 shadow-sm focus:ring-blue-500'
           }`}
-          title={fanfareSounds.length === 0 ? 'Loading fanfare files...' : `Play fanfare (${fanfareSounds.length} files available)`}
+          aria-label={fanfareSounds.length === 0 ? "Loading fanfare files" : `Play fanfare (${fanfareSounds.length} files available)`}
+          aria-describedby="fanfare-description"
         >
           {fanfareSounds.length === 0 ? 'Loading...' : 'Fanfare'}
         </button>
+        <div id="fanfare-description" className="sr-only">
+          Play celebratory fanfare music for special occasions
+        </div>
       </div>
-      
+
       {/* DJ Audio Progress */}
       {djAudioProgress.isPlaying && (
-        <div className="mt-3 p-2 bg-blue-50 rounded-lg border">
+        <div className="mt-3 p-2 bg-blue-50 rounded-lg border" role="status" aria-live="polite" aria-label="Audio playback progress">
           <div className="flex items-center justify-between text-xs text-blue-600 mb-1">
             <span className="font-medium">{djAudioProgress.fileName}</span>
-            <span>{Math.round(djAudioProgress.current)}s / {Math.round(djAudioProgress.duration)}s</span>
+            <span aria-label={`Playback time: ${Math.round(djAudioProgress.current)} seconds of ${Math.round(djAudioProgress.duration)} seconds`}>
+              {Math.round(djAudioProgress.current)}s / {Math.round(djAudioProgress.duration)}s
+            </span>
           </div>
-          <div className="w-full bg-blue-200 rounded-full h-2">
-            <div 
+          <div className="w-full bg-blue-200 rounded-full h-2" role="progressbar"
+               aria-valuenow={Math.round((djAudioProgress.current / djAudioProgress.duration) * 100)}
+               aria-valuemin="0"
+               aria-valuemax="100"
+               aria-label={`Audio progress: ${Math.round((djAudioProgress.current / djAudioProgress.duration) * 100)}% complete`}>
+            <div
               className="bg-blue-500 h-2 rounded-full transition-all duration-100"
-              style={{ 
-                width: `${Math.min((djAudioProgress.current / djAudioProgress.duration) * 100, 100)}%` 
+              style={{
+                width: `${Math.min((djAudioProgress.current / djAudioProgress.duration) * 100, 100)}%`
               }}
             ></div>
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }

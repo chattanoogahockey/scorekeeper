@@ -27,10 +27,10 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center p-8 max-w-md">
-            <div className="text-6xl mb-4">🏒</div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">
+        <main className="min-h-screen flex items-center justify-center bg-gray-50" role="main" aria-labelledby="error-title">
+          <div className="text-center p-8 max-w-md" role="alert" aria-live="assertive">
+            <div className="text-6xl mb-4" aria-hidden="true">🏒</div>
+            <h1 id="error-title" className="text-2xl font-bold text-gray-800 mb-4">
               Hockey Scorekeeper
             </h1>
             <p className="text-gray-600 mb-6">
@@ -38,24 +38,29 @@ class ErrorBoundary extends React.Component {
             </p>
             <button
               onClick={() => window.location.reload()}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              aria-describedby="reload-description"
             >
               Reload App
             </button>
+            <div id="reload-description" className="sr-only">
+              Reload the application to try again
+            </div>
             <div className="mt-6 text-sm text-gray-500">
               <p>
-                <a 
-                  href="https://github.com/chattanoogahockey/scorekeeper" 
-                  className="text-blue-600 hover:underline"
+                <a
+                  href="https://github.com/chattanoogahockey/scorekeeper"
+                  className="text-blue-600 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-sm"
                   target="_blank"
                   rel="noopener noreferrer"
+                  aria-label="View the Hockey Scorekeeper project on GitHub (opens in new tab)"
                 >
                   View on GitHub
                 </a>
               </p>
             </div>
           </div>
-        </div>
+        </main>
       );
     }
 

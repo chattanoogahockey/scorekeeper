@@ -3,10 +3,73 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-    <meta http-equiv="Pragma" content="no-cache" />
-    <meta http-equiv="Expires" content="0" />
-    <title>Chattanooga Roller Hockey Scoring & Analytics</title>
+
+    <!-- SEO Meta Tags -->
+    <title>Chattanooga Roller Hockey Scoring & Analytics | The Scorekeeper</title>
+    <meta name="description" content="Professional hockey scoring and analytics platform for Chattanooga Roller Hockey League. Track games, statistics, and player performance in real-time." />
+    <meta name="keywords" content="hockey, scoring, analytics, Chattanooga, roller hockey, sports, statistics, live scoring" />
+    <meta name="author" content="Chattanooga Hockey League" />
+    <meta name="robots" content="index, follow" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://chattanoogahockey.github.io/scorekeeper/" />
+    <meta property="og:title" content="Chattanooga Roller Hockey Scoring & Analytics" />
+    <meta property="og:description" content="Professional hockey scoring and analytics platform for Chattanooga Roller Hockey League. Track games, statistics, and player performance in real-time." />
+    <meta property="og:image" content="https://chattanoogahockey.github.io/scorekeeper/og-preview.jpg" />
+    <meta property="og:site_name" content="The Scorekeeper" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="https://chattanoogahockey.github.io/scorekeeper/" />
+    <meta property="twitter:title" content="Chattanooga Roller Hockey Scoring & Analytics" />
+    <meta property="twitter:description" content="Professional hockey scoring and analytics platform for Chattanooga Roller Hockey League." />
+    <meta property="twitter:image" content="https://chattanoogahockey.github.io/scorekeeper/og-preview.jpg" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://chattanoogahockey.github.io/scorekeeper/" />
+
+    <!-- Favicon and Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Theme and App Meta -->
+    <meta name="theme-color" content="#1e40af" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Scorekeeper" />
+    <meta name="application-name" content="Scorekeeper" />
+
+    <!-- Performance and Caching -->
+    <meta http-equiv="Cache-Control" content="public, max-age=31536000, immutable" />
+    <meta http-equiv="Pragma" content="cache" />
+    <meta http-equiv="Expires" content="31536000" />
+
+    <!-- Preload critical resources for better performance -->
+    <link rel="modulepreload" href="/src/main.jsx" />
+    <link rel="preload" href="/src/index.css" as="style" />
+    <link rel="preload" href="/src/accessibility.css" as="style" />
+
+    <!-- Preload service worker for better performance -->
+    <link rel="preload" href="/sw.js" as="script" />
+
+    <!-- DNS prefetch for external resources -->
+    <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+    <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+
+    <!-- Preconnect to improve connection performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Security headers -->
+    <meta http-equiv="X-Content-Type-Options" content="nosniff" />
+    <meta http-equiv="X-Frame-Options" content="DENY" />
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block" />
+    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
+
     <script type="text/javascript">
       // Single Page Apps for GitHub Pages
       // https://github.com/rafgraph/spa-github-pages
@@ -26,7 +89,63 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Skip to main content for accessibility -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded-md z-50">
+      Skip to main content
+    </a>
+
+    <div id="root" role="application" aria-label="Hockey Scorekeeper Application"></div>
+
+    <!-- Preload critical scripts -->
     <script type="module" src="/src/main.jsx"></script>
+
+    <!-- Performance monitoring and optimizations -->
+    <script>
+      // Enhanced performance monitoring
+      window.addEventListener('load', function() {
+        if ('performance' in window && 'getEntriesByType' in performance) {
+          const navigation = performance.getEntriesByType('navigation')[0];
+          const loadTime = navigation.loadEventEnd - navigation.fetchStart;
+          const domContentLoaded = navigation.domContentLoadedEventEnd - navigation.fetchStart;
+          const firstPaint = performance.getEntriesByType('paint').find(entry => entry.name === 'first-paint');
+          const firstContentfulPaint = performance.getEntriesByType('paint').find(entry => entry.name === 'first-contentful-paint');
+
+          // Log performance metrics
+          console.log('📊 Performance Metrics:');
+          console.log('Page load time:', loadTime + 'ms');
+          console.log('DOM content loaded:', domContentLoaded + 'ms');
+          if (firstPaint) console.log('First paint:', firstPaint.startTime + 'ms');
+          if (firstContentfulPaint) console.log('First contentful paint:', firstContentfulPaint.startTime + 'ms');
+
+          // Performance scoring for Lighthouse targets
+          const performanceScore = loadTime < 3000 ? '✅ Fast' : loadTime < 5000 ? '⚠️ Moderate' : '❌ Slow';
+          console.log('Performance rating:', performanceScore);
+
+          // Mark for accessibility monitoring
+          if ('IntersectionObserver' in window) {
+            console.log('✅ IntersectionObserver available for lazy loading');
+          }
+        }
+      });
+
+      // Preload critical routes on user interaction
+      document.addEventListener('DOMContentLoaded', function() {
+        // Preload dashboard on first user interaction
+        let preloadTriggered = false;
+        const triggerPreload = () => {
+          if (!preloadTriggered) {
+            preloadTriggered = true;
+            // Preload dashboard component
+            import('./src/pages/Dashboard.jsx');
+            console.log('🚀 Preloading Dashboard component');
+          }
+        };
+
+        // Trigger preload on various user interactions
+        document.addEventListener('mouseenter', triggerPreload, { once: true });
+        document.addEventListener('touchstart', triggerPreload, { once: true });
+        document.addEventListener('keydown', triggerPreload, { once: true });
+      });
+    </script>
   </body>
 </html>

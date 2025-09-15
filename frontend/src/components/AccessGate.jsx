@@ -165,36 +165,39 @@ export default function AccessGate({ children }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4" role="main" aria-labelledby="access-gate-title">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8" role="dialog" aria-modal="true" aria-labelledby="access-gate-title" aria-describedby="access-gate-description">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
-            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <header className="text-center mb-8">
+          <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4" aria-hidden="true">
+            <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Hockey Scorekeeper</h1>
-          <p className="text-gray-600">Enter passphrase to continue</p>
-        </div>
+          <h1 id="access-gate-title" className="text-2xl font-bold text-gray-900 mb-2">Hockey Scorekeeper</h1>
+          <p id="access-gate-description" className="text-gray-600">Enter passphrase to continue</p>
+        </header>
 
         {/* Disclaimer */}
-        <div className="mb-6">
+        <section className="mb-6" aria-labelledby="security-notice-heading">
           <button
             onClick={() => setShowDisclaimer(!showDisclaimer)}
-            className="text-sm text-blue-600 hover:text-blue-800 underline"
+            className="text-sm text-blue-600 hover:text-blue-800 underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-sm"
+            aria-expanded={showDisclaimer}
+            aria-controls="security-disclaimer"
+            type="button"
           >
             {showDisclaimer ? 'Hide' : 'Show'} Security Notice
           </button>
           {showDisclaimer && (
-            <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <div id="security-disclaimer" className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-md" role="alert" aria-live="polite">
               <p className="text-sm text-yellow-800">{ACCESS_CONFIG.disclaimer}</p>
             </div>
           )}
-        </div>
+        </section>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           <div>
             <label htmlFor="passphrase" className="block text-sm font-medium text-gray-700 mb-1">
               Passphrase
@@ -208,11 +211,14 @@ export default function AccessGate({ children }) {
               placeholder="Enter passphrase"
               required
               autoFocus
+              aria-required="true"
+              aria-describedby={error ? "passphrase-error" : undefined}
+              aria-invalid={error ? "true" : "false"}
             />
           </div>
 
           {error && (
-            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3">
+            <div id="passphrase-error" className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-3" role="alert" aria-live="assertive">
               {error}
             </div>
           )}
@@ -220,24 +226,31 @@ export default function AccessGate({ children }) {
           <button
             type="submit"
             className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            disabled={!passphrase.trim()}
+            aria-describedby="submit-button-description"
           >
             Access Scorekeeper
           </button>
+          <div id="submit-button-description" className="sr-only">
+            Submit the passphrase to access the hockey scorekeeper application
+          </div>
         </form>
 
         {/* Footer */}
-        <div className="mt-8 text-center">
-          <p className="text-xs text-gray-500">
+        <footer className="mt-8 text-center">
+          <p className="text-xs text-gray-500" aria-live="polite">
             Access granted will be remembered for {ACCESS_CONFIG.persistenceDays} days
           </p>
           <button
             onClick={resetAccess}
-            className="mt-2 text-xs text-gray-400 hover:text-gray-600 underline"
+            className="mt-2 text-xs text-gray-400 hover:text-gray-600 underline focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 rounded-sm"
+            type="button"
+            aria-label="Reset access for testing purposes"
           >
             Reset Access (for testing)
           </button>
-        </div>
+        </footer>
       </div>
-    </div>
+    </main>
   );
 }

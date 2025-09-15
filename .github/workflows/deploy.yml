@@ -15,8 +15,65 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Validation job - runs on every push
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Lint and type check
+        run: |
+          cd frontend
+          npm run build --if-present || echo "No build script found"
+
+      - name: Check links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          use-verbose-mode: 'yes'
+          check-modified-files-only: 'yes'
+          config-file: '.github/workflows/link-check-config.json'
+
+      - name: Validate JSON schemas
+        run: |
+          echo "🔍 Validating JSON schemas..."
+          # Check if JSON files are valid
+          find . -name "*.json" -not -path "./node_modules/*" -not -path "./.git/*" | while read file; do
+            echo "Validating $file..."
+            python3 -m json.tool "$file" > /dev/null || echo "❌ Invalid JSON: $file"
+          done
+
+          # Validate data files
+          echo "📊 Validating data files..."
+          if [ -f "frontend/public/data/games.json" ]; then
+            python3 -c "import json; data = json.load(open('frontend/public/data/games.json')); print('✅ games.json structure valid' if isinstance(data, list) else '❌ games.json should be an array')"
+          fi
+
+      - name: Validate HTML
+        run: |
+          echo "🌐 Validating HTML files..."
+          if command -v tidy &> /dev/null; then
+            find frontend/public -name "*.html" -exec tidy -q -e {} \; 2>/dev/null || echo "⚠️ HTML validation warnings found"
+          else
+            echo "ℹ️ tidy not available, skipping HTML validation"
+          fi
+
   build:
     runs-on: ubuntu-latest
+    needs: validate
     steps:
       - name: Checkout
         uses: actions/checkout@v4

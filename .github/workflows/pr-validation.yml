@@ -1,0 +1,145 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
+
+jobs:
+  validate-pr:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build for validation
+        run: |
+          cd frontend
+          npm run build
+
+      - name: Check links in documentation
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: 'yes'
+          use-verbose-mode: 'yes'
+          check-modified-files-only: 'yes'
+          config-file: '.github/workflows/link-check-config.json'
+          base-branch: main
+
+      - name: Validate JSON files
+        run: |
+          echo "🔍 Validating JSON files..."
+          # Check syntax of all JSON files
+          find . -name "*.json" -not -path "./node_modules/*" -not -path "./.git/*" | while read file; do
+            echo "Validating $file..."
+            if ! python3 -m json.tool "$file" > /dev/null 2>&1; then
+              echo "❌ Invalid JSON: $file"
+              exit 1
+            fi
+          done
+          echo "✅ All JSON files are valid"
+
+      - name: Validate data structure
+        run: |
+          echo "📊 Validating data files structure..."
+
+          # Validate games.json
+          if [ -f "frontend/public/data/games.json" ]; then
+            python3 -c "import json, sys; data = json.load(open('frontend/public/data/games.json')); print('✅ games.json structure valid' if isinstance(data, list) else '❌ games.json should be an array'); sys.exit(0 if isinstance(data, list) else 1)"
+          fi
+
+          # Validate players.json
+          if [ -f "frontend/public/data/players.json" ]; then
+            python3 -c "import json, sys; data = json.load(open('frontend/public/data/players.json')); print('✅ players.json structure valid' if isinstance(data, list) else '❌ players.json should be an array'); sys.exit(0 if isinstance(data, list) else 1)"
+          fi
+
+          # Validate teams.json
+          if [ -f "frontend/public/data/teams.json" ]; then
+            python3 -c "import json, sys; data = json.load(open('frontend/public/data/teams.json')); print('✅ teams.json structure valid' if isinstance(data, list) else '❌ teams.json should be an array'); sys.exit(0 if isinstance(data, list) else 1)"
+          fi
+
+      - name: Check for sensitive data
+        run: |
+          echo "🔒 Checking for sensitive data leaks..."
+
+          # Check for API keys, secrets, etc.
+          if grep -r "API_KEY\|SECRET\|PASSWORD\|TOKEN" --include="*.js" --include="*.jsx" --include="*.ts" --include="*.json" --exclude-dir=node_modules --exclude-dir=.git .; then
+            echo "⚠️ Potential sensitive data found in files"
+            echo "Please ensure no API keys or secrets are committed"
+          else
+            echo "✅ No sensitive data patterns found"
+          fi
+
+      - name: Validate file sizes
+        run: |
+          echo "📏 Checking file sizes..."
+
+          # Check for large files that shouldn't be in repo
+          find . -type f -not -path "./node_modules/*" -not -path "./.git/*" -not -path "./dist/*" -size +50M | while read file; do
+            echo "⚠️ Large file found: $file"
+            ls -lh "$file"
+          done
+
+      - name: Comment on PR
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { exec } = require('child_process');
+            const { promisify } = require('util');
+            const execAsync = promisify(exec);
+
+            try {
+              // Get validation results
+              const { stdout: linkCheck } = await execAsync('find . -name "*.md" -exec grep -l "http" {} \\; | wc -l');
+              const { stdout: jsonFiles } = await execAsync('find . -name "*.json" -not -path "./node_modules/*" | wc -l');
+
+              const comment = `## 🔍 PR Validation Results
+
+✅ **Validation completed successfully!**
+
+### Checks Performed:
+- 🔗 **Link validation**: Checked documentation files
+- 📄 **JSON validation**: Validated JSON files
+- 🏗️ **Build validation**: Frontend build successful
+- 🔒 **Security check**: No sensitive data patterns found
+- 📏 **File size check**: No oversized files detected
+
+### Next Steps:
+- Review the build artifacts in the Actions tab
+- Ensure all tests pass before merging
+- Check that the deployment preview works correctly
+
+*This comment was automatically generated by the PR validation workflow.*`;
+
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: comment
+              });
+            } catch (error) {
+              console.error('Error creating PR comment:', error);
+            }

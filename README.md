@@ -1,4 +1,4 @@
-# Hockey Scorekeeper - Static Edition# Hockey Scorekeeper 2.1
+# Hockey Scorekeeper 2.1
 
 
 
@@ -10,7 +10,7 @@ A completely static hockey scorekeeper application designed to run on GitHub Pag
 
 
 
-Visit: https://chattanoogahockey.github.io/scorekeeper2/## 🏒 Features
+Visit: https://chattanoogahockey.github.io/scorekeeper/## 🏒 Features
 
 
 
@@ -64,7 +64,7 @@ GitHub Pages (CDN)- Audio announcements and sound effects
 
 ```
 
-scorekeeper2/### Frontend
+scorekeeper/### Frontend
 
 ├── .github/workflows/- **React 18** with Vite for fast development and hot reload
 
@@ -130,9 +130,9 @@ scorekeeper2/### Frontend
 
 # Clone the repository- Azure Cosmos DB account
 
-git clone https://github.com/chattanoogahockey/scorekeeper2.git- Git
+git clone https://github.com/chattanoogahockey/scorekeeper.git- Git
 
-cd scorekeeper2
+cd scorekeeper
 
 ### Quick Start
 
@@ -142,9 +142,9 @@ cd frontend1. **Clone and install everything**
 
 npm install   ```bash
 
-   git clone https://github.com/chattanoogahockey/scorekeeper2.git
+   git clone https://github.com/chattanoogahockey/scorekeeper.git
 
-# Start development server   cd scorekeeper2
+# Start development server   cd scorekeeper
 
 npm run dev   npm run install:all
 
@@ -292,7 +292,7 @@ This project is licensed under the MIT License.
 ## 🏗️ Project Structure
 
 ```
-scorekeeper2/
+scorekeeper/
 ├── frontend/                 # React frontend application
 │   ├── src/
 │   │   ├── components/      # Reusable UI components

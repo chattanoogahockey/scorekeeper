@@ -226,68 +226,15 @@ export default function AdminPanel() {
           )}
         </div>
 
-        {/* Voice Configuration Section */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4">Announcer Voice Configuration</h2>
-          <p className="text-gray-600 mb-4">Configure which Studio or Neural voices to use for Al (male) and Linda (female) announcements. Studio voices are premium quality, Neural voices are more natural. Players can switch between these during games.</p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Male Voice Dropdown */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <span className="text-xl mr-2">👨</span>Al (Male Voice)
-              </label>
-              <select 
-                value={voiceConfig.maleVoice} 
-                onChange={(e) => setVoiceConfig({...voiceConfig, maleVoice: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-2"
-              >
-                {availableVoices.filter(voice => voice.gender === 'male').map(voice => (
-                  <option key={voice.id} value={voice.id}>
-                    {voice.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Female Voice Dropdown */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <span className="text-xl mr-2">👩</span>Linda (Female Voice)
-              </label>
-              <select 
-                value={voiceConfig.femaleVoice} 
-                onChange={(e) => setVoiceConfig({...voiceConfig, femaleVoice: e.target.value})}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 mb-2"
-              >
-                {availableVoices.filter(voice => voice.gender === 'female').map(voice => (
-                  <option key={voice.id} value={voice.id}>
-                    {voice.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-6">
-            <button
-              onClick={handleVoiceConfigSave}
-              disabled={voiceConfigLoading}
-              className="bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white px-6 py-2 rounded-lg transition-colors"
-            >
-              {voiceConfigLoading ? 'Saving...' : 'Save Voice Configuration'}
-            </button>
-          </div>
-
-          {/* Current Configuration Display */}
-          <div className="mt-4 p-4 bg-gray-50 rounded border">
-            <p className="text-sm text-gray-600">
-              <strong>Current Configuration:</strong><br/>
-              👨 Al: {voiceConfig.maleVoice}<br/>
-              👩 Linda: {voiceConfig.femaleVoice}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              💡 Players can switch between Al and Linda using the buttons in the game interface.
+        {/* Voice Configuration Section - Disabled for Static Version */}
+        <div className="bg-gray-100 rounded-lg shadow-md p-6 mb-6 border-2 border-dashed border-gray-300">
+          <h2 className="text-2xl font-bold mb-4 text-gray-500">Announcer Voice Configuration</h2>
+          <div className="text-center py-8">
+            <div className="text-6xl mb-4">🔇</div>
+            <p className="text-gray-600 mb-2">Text-to-Speech Announcer Disabled</p>
+            <p className="text-sm text-gray-500">
+              Voice announcements are not available in the static version.<br/>
+              Audio files are played locally for game sounds and DJ controls.
             </p>
           </div>
         </div>

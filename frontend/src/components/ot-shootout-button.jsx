@@ -43,20 +43,32 @@ const OTShootoutButton = ({ onGameCompleted }) => {
         submittedBy: 'Scorekeeper'
       };
 
-      const response = await axios.post('/api/ot-shootout', payload);
-      
-      if (response.data.success) {
-        alert(`${gameType === 'overtime' ? 'Overtime' : 'Shootout'} winner recorded! Game completed and submitted automatically.`);
-        handleCloseDialog();
-        
-        // Notify parent component that game is completed
-        if (onGameCompleted) {
-          onGameCompleted(selectedGameId);
-        }
+      // Save to local storage instead of API call
+      const gameData = staticDataService.getGameData(selectedGameId);
+      if (gameData) {
+        const updatedGameData = {
+          ...gameData,
+          otShootoutResult: {
+            winner: selectedWinner,
+            gameType,
+            submittedBy: 'Scorekeeper',
+            submittedAt: new Date().toISOString()
+          },
+          status: 'completed'
+        };
+        staticDataService.saveGameData(selectedGameId, updatedGameData);
+      }
+
+      alert(`${gameType === 'overtime' ? 'Overtime' : 'Shootout'} winner recorded! Game completed and saved locally.`);
+      handleCloseDialog();
+
+      // Notify parent component that game is completed
+      if (onGameCompleted) {
+        onGameCompleted(selectedGameId);
       }
     } catch (error) {
-      console.error('Error submitting OT/Shootout:', error);
-      setError(error.response?.data?.error || 'Failed to submit OT/Shootout result');
+      console.error('Error saving OT/Shootout:', error);
+      setError('Failed to save OT/Shootout result locally');
     } finally {
       setIsSubmitting(false);
     }

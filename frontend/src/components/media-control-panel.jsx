@@ -50,10 +50,37 @@ export default function MediaControlPanel({ gameId }) {
     let cancelled = false;
     const loadOrgans = async () => {
       try {
-        const resp = await fetch('/api/sounds/organs');
-        const data = await resp.json();
-        if (!cancelled && Array.isArray(data.urls)) {
-          const shuffled = shuffle(data.urls);
+        // Use local audio files instead of API call
+        const localOrganUrls = [
+          '/sounds/organs/Arabian Organ.mp3',
+          '/sounds/organs/Comes to Town Organ.mp3',
+          '/sounds/organs/Coo Caracha Organ.mp3',
+          '/sounds/organs/Lets Go Team Organ 2.mp3',
+          '/sounds/organs/Lets Go Team Organ.mp3',
+          '/sounds/organs/Long Organ Synth.mp3',
+          '/sounds/organs/Long Organ.mp3',
+          '/sounds/organs/Organ 3.mp3',
+          '/sounds/organs/Organ 5.mp3',
+          '/sounds/organs/Organ and Fans 2.mp3',
+          '/sounds/organs/Organ and Fans.mp3',
+          '/sounds/organs/Organ Claps.mp3',
+          '/sounds/organs/Organ Crowd.mp3',
+          '/sounds/organs/Organ Long.mp3',
+          '/sounds/organs/Organ March.mp3',
+          '/sounds/organs/Organ Synths.mp3',
+          '/sounds/organs/organ_10.mp3',
+          '/sounds/organs/organ_7.mp3',
+          '/sounds/organs/organ_build_up.mp3',
+          '/sounds/organs/organ_bull_fight_rally.mp3',
+          '/sounds/organs/organ_charge.mp3',
+          '/sounds/organs/organ_happy_know_it.mp3',
+          '/sounds/organs/organ_lets_go_uppity.mp3',
+          '/sounds/organs/organ_mexican_hat_dance.mp3',
+          '/sounds/organs/organ_toro.mp3',
+          '/sounds/organs/Pop The Weasel Organ.mp3'
+        ];
+        if (!cancelled) {
+          const shuffled = shuffle(localOrganUrls);
           setOrganUrls(shuffled);
           const lastStart = localStorage.getItem('mcp_lastOrganStart') || '';
           let pool = [...shuffled];
@@ -84,10 +111,27 @@ export default function MediaControlPanel({ gameId }) {
     };
     const loadFanfare = async () => {
       try {
-        const resp = await fetch('/api/sounds/fanfare');
-        const data = await resp.json();
-        if (!cancelled && Array.isArray(data.urls)) {
-          const shuffled = shuffle(data.urls);
+        // Use local audio files instead of API call
+        const localFanfareUrls = [
+          '/sounds/fanfare/Banjo On My Knee Organ Crowd.mp3',
+          '/sounds/fanfare/Charge Trumpet Fanfare.mp3',
+          '/sounds/fanfare/circus_organ_grinder.mp3',
+          '/sounds/fanfare/Fanfare Long Trumpet Charge.mp3',
+          '/sounds/fanfare/Fanfare Monkey Chased the Weasel.mp3',
+          '/sounds/fanfare/Fanfare Organ 3.mp3',
+          '/sounds/fanfare/Fanfare Organ Mixer.mp3',
+          '/sounds/fanfare/Fanfare Trumpet.mp3',
+          '/sounds/fanfare/fanfare_bugle.mp3',
+          '/sounds/fanfare/fanfare_organ.mp3',
+          '/sounds/fanfare/fanfare_piano.mp3',
+          '/sounds/fanfare/fanfare_trumpet.mp3',
+          '/sounds/fanfare/Horn Fanfare.mp3',
+          '/sounds/fanfare/Organ Fanfare 1.mp3',
+          '/sounds/fanfare/Organ Fanfare 3.mp3',
+          '/sounds/fanfare/Organ Fanfare 4.mp3'
+        ];
+        if (!cancelled) {
+          const shuffled = shuffle(localFanfareUrls);
           setFanfareSounds(shuffled);
           const lastStart = localStorage.getItem('mcp_lastFanfareStart') || '';
           let pool = [...shuffled];

@@ -1,27 +1,20 @@
-import React, { Suspense } from 'react';
+import React from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { GameProvider } from './contexts/game-context.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 
-// Lazy load all page components
-const InitialMenu = React.lazy(() => import('./pages/initial-menu.jsx'));
-const AdminPanel = React.lazy(() => import('./pages/admin-panel.jsx'));
-const EditGame = React.lazy(() => import('./pages/edit-game.jsx'));
-const LeagueGameSelection = React.lazy(() => import('./pages/league-game-selection.jsx'));
-const RosterAttendance = React.lazy(() => import('./pages/roster-attendance.jsx'));
-const InGameMenu = React.lazy(() => import('./pages/in-game-menu.jsx'));
-const GoalRecord = React.lazy(() => import('./pages/goal-record.jsx'));
-const PenaltyRecord = React.lazy(() => import('./pages/penalty-record.jsx'));
-const Dashboard = React.lazy(() => import('./pages/Dashboard.jsx'));
-const Statistics = React.lazy(() => import('./pages/Statistics.jsx'));
-const ApiTest = React.lazy(() => import('./pages/api-test.jsx'));
-
-// Loading component
-const LoadingSpinner = () => (
-  <div className="min-h-screen flex items-center justify-center">
-    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-  </div>
-);
+// Direct imports for better reliability
+import InitialMenu from './pages/initial-menu.jsx';
+import AdminPanel from './pages/admin-panel.jsx';
+import EditGame from './pages/edit-game.jsx';
+import LeagueGameSelection from './pages/league-game-selection.jsx';
+import RosterAttendance from './pages/roster-attendance.jsx';
+import InGameMenu from './pages/in-game-menu.jsx';
+import GoalRecord from './pages/goal-record.jsx';
+import PenaltyRecord from './pages/penalty-record.jsx';
+import Dashboard from './pages/Dashboard.jsx';
+import Statistics from './pages/Statistics.jsx';
+import ApiTest from './pages/api-test.jsx';
 
 /**
  * Main application component defining routes and wrapping with GameProvider.
@@ -31,22 +24,20 @@ export default function App() {
     <ErrorBoundary>
       <GameProvider>
         <HashRouter>
-          <Suspense fallback={<LoadingSpinner />}>
-            <Routes>
-              <Route path="/" element={<InitialMenu />} />
-              <Route path="/admin" element={<AdminPanel />} />
-              <Route path="/admin/edit/:gameId" element={<EditGame />} />
-              <Route path="/leagues" element={<LeagueGameSelection />} />
-              <Route path="/roster" element={<RosterAttendance />} />
-              <Route path="/ingame" element={<InGameMenu />} />
-              <Route path="/goal" element={<GoalRecord />} />
-              <Route path="/penalty" element={<PenaltyRecord />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/statistics" element={<Statistics />} />
-              <Route path="/test" element={<ApiTest />} />
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </Suspense>
+          <Routes>
+            <Route path="/" element={<InitialMenu />} />
+            <Route path="/admin" element={<AdminPanel />} />
+            <Route path="/admin/edit/:gameId" element={<EditGame />} />
+            <Route path="/leagues" element={<LeagueGameSelection />} />
+            <Route path="/roster" element={<RosterAttendance />} />
+            <Route path="/ingame" element={<InGameMenu />} />
+            <Route path="/goal" element={<GoalRecord />} />
+            <Route path="/penalty" element={<PenaltyRecord />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/statistics" element={<Statistics />} />
+            <Route path="/test" element={<ApiTest />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
         </HashRouter>
       </GameProvider>
     </ErrorBoundary>

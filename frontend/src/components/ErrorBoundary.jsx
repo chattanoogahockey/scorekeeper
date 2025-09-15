@@ -16,6 +16,12 @@ class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, errorInfo) {
     console.error('App Error:', error, errorInfo);
+    // Log additional details for debugging
+    console.error('Error details:', {
+      message: error.message,
+      stack: error.stack,
+      componentStack: errorInfo.componentStack
+    });
   }
 
   render() {
@@ -37,8 +43,7 @@ class ErrorBoundary extends React.Component {
               Reload App
             </button>
             <div className="mt-6 text-sm text-gray-500">
-              <p>Static demo version - no server required</p>
-              <p className="mt-1">
+              <p>
                 <a 
                   href="https://github.com/chattanoogahockey/scorekeeper" 
                   className="text-blue-600 hover:underline"

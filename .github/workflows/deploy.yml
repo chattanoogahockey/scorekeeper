@@ -38,11 +38,6 @@ jobs:
           cd frontend
           npm run build
 
-      - name: Copy data files to build
-        run: |
-          mkdir -p dist/data
-          cp -r public/data/* dist/data/
-
       - name: Setup Pages
         uses: actions/configure-pages@v4
 

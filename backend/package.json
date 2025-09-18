@@ -1,47 +1,39 @@
-{
-  "name": "hockey-scorekeeper-backend",
-  "version": "2.1.0",
+﻿{
+  "name": "scorekeeper_lite",
+  "version": "0.1.0",
+  "description": "Modern GitHub Pages app for Chattanooga Roller Hockey League scorekeeping with JSON data exports.",
   "type": "module",
-  "description": "Static data processing scripts for hockey scorekeeper application.",
-  "main": "server.js",
-  "files": [
-    "*.js",
-    "src/",
-    "config/",
-    "audio-cache/"
-  ],
   "scripts": {
-    "import-historical": "node ./scripts/importHistoricalStats.js",
-    "import-rosters": "node ./scripts/import-rosters.js",
-    "verify-rosters": "node ./scripts/verify-rosters.js",
-    "upload-games": "node ./scripts/upload-games.js",
-    "verify-games": "node ./scripts/verify-games.js",
-    "build": "echo 'Static data processing scripts ready'",
-    "health-check": "node -e \"console.log('Static data processing available')\""
-  },
-  "dependencies": {
-    "xlsx": "^0.18.5"
-  },
-  "devDependencies": {
-    "eslint": "^8.45.0",
-    "nodemon": "^3.1.10"
-  },
-  "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "dev": "wds --config web-dev-server.config.mjs",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "validate:data": "node scripts/validate-data.mjs",
+    "validate": "npm run lint && npm run test:run && npm run validate:data"
   },
   "keywords": [
     "hockey",
-    "scorekeeper",
-    "express",
-    "azure-cosmos",
-    "real-time",
-    "api"
+    "scorekeeping",
+    "github-pages",
+    "json",
+    "frontend"
   ],
-  "author": "Hockey Scorekeeper Team",
+  "author": "Chattanooga Hockey",
   "license": "MIT",
+  "homepage": "https://chattanoogaHockey.github.io/scorekeeper_lite/",
+  "bugs": {
+    "url": "https://github.com/chattanoogaHockey/scorekeeper_lite/issues"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/hockey-scorekeeper"
+    "url": "git+https://github.com/chattanoogaHockey/scorekeeper_lite.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+  },
+  "dependencies": {
   }
 }
